@@ -1,0 +1,820 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PROJECT 30: Search in a Rotated Sorted Array</title>
+<link rel="icon" type="image/png" href="images/favicon.png">
+<link rel="stylesheet" href="styles.css">
+
+</head>
+<body>
+<div id="progress-bar-container"><div id="progress-bar" style="width:51%"></div></div>
+<div id="progress-label">51%</div>
+<div class="page-wrapper">
+<div class="chat-message"><div class="px-2"><h1>PROJECT 30: Search in a Rotated Sorted Array</h1>
+<h2>🎯 Modified Binary Search → Sorted-Half Identification → Pivot-Aware Elimination</h2>
+<hr>
+<h2>🔗 DEPENDENCY CHAIN</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>Project 9 (Classic Binary Search on Sorted Array)
+</span>    → Introduced binary search: half-elimination, mid-point logic
+    → Array was FULLY sorted → simple comparison with mid decides direction
+    → O(log n) time, O(1) space
+
+PROJECT 30 (THIS):
+    → Array was sorted BUT then ROTATED
+    → Standard binary search comparison breaks
+    → NEW SKILL: Identify which HALF is sorted → use that to decide direction
+    → Binary search still works — but the DECISION LOGIC is more nuanced
+    → First "modified" binary search problem</code></pre></div>
+<hr>
+<h2>🧩 THE HYPOTHETICAL PROBLEM</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ An array was ORIGINALLY sorted in ascending order
+</span>→ Then it was ROTATED at some unknown pivot point
+→ Given this rotated array and a TARGET value
+→ Find the index of the target, or return -1 if not found
+→ Must achieve O(log n) time complexity
+
+What is rotation?
+  Original sorted: [0, 1, 2, 4, 5, 6, 7]
+  
+  Rotated at pivot 4: [4, 5, 6, 7, 0, 1, 2]
+    → The last 4 elements moved to the front
+    → OR equivalently: the first 3 elements moved to the back
+
+  Rotated at pivot 2: [2, 4, 5, 6, 7, 0, 1]
+  Rotated at pivot 6: [6, 7, 0, 1, 2, 4, 5]
+  Rotated at pivot 0: [0, 1, 2, 4, 5, 6, 7]  (no rotation — still valid)
+
+Example 1:
+  Input:  nums = [4, 5, 6, 7, 0, 1, 2], target = 0
+  Output: 4  (nums[4] = 0)
+
+Example 2:
+  Input:  nums = [4, 5, 6, 7, 0, 1, 2], target = 3
+  Output: -1  (3 is not in the array)
+
+Example 3:
+  Input:  nums = [1], target = 1
+  Output: 0</code></pre></div>
+<hr>
+<h2>🔍 HOW TO APPROACH IT</h2>
+<h3>Step 1 — Why Standard Binary Search Breaks</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>Recall Project 9 — standard binary search:
+</span>  → Look at mid element
+  → If target &gt; nums[mid] → target is in RIGHT half → left = mid + 1
+  → If target &lt; nums[mid] → target is in LEFT half → right = mid - 1
+  → This works because the array is FULLY sorted
+
+Now with rotation:
+  Array: [4, 5, 6, 7, 0, 1, 2]
+  Target: 0
+  
+  left=0, right=6, mid=3 → nums[mid] = 7
+  
+  Standard logic: target(0) &lt; nums[mid](7) → go LEFT
+  But target is at index 4 → that's the RIGHT half!
+  Standard binary search gives WRONG direction!
+
+WHY?
+→ The array has a "break point" where values drop
+→ [4, 5, 6, 7 | 0, 1, 2]
+         ↑ sorted     ↑ sorted
+→ Each HALF is sorted internally
+→ But the overall array is NOT sorted
+→ Standard comparison with mid doesn't reliably indicate direction</code></pre></div>
+<h3>Step 2 — The Key Insight: One Half is ALWAYS Sorted</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>No matter where the rotation point is, when you pick mid:
+</span>→ EITHER the left half [left..mid] is sorted
+→ OR the right half [mid..right] is sorted
+→ At least ONE half is GUARANTEED to be properly sorted
+
+PROOF:
+→ The rotation creates exactly ONE break point
+→ The break point is in either the left half or the right half
+→ The half WITHOUT the break point is fully sorted
+
+Examples:
+  [4, 5, 6, 7, 0, 1, 2]  mid=3 (value 7)
+   left half: [4,5,6,7] → sorted ✓ (nums[left]=4 ≤ nums[mid]=7)
+   right half: [7,0,1,2] → NOT sorted (break at 7→0)
+
+  [6, 7, 0, 1, 2, 4, 5]  mid=3 (value 1)
+   left half: [6,7,0,1] → NOT sorted (break at 7→0)
+   right half: [1,2,4,5] → sorted ✓ (nums[mid]=1 ≤ nums[right]=5)
+
+  [0, 1, 2, 4, 5, 6, 7]  mid=3 (value 4)
+   left half: [0,1,2,4] → sorted ✓
+   right half: [4,5,6,7] → sorted ✓ (both sorted — no rotation)</code></pre></div>
+<h3>Step 3 — Using the Sorted Half to Make Decisions</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>Once we identify which half is sorted, we can CHECK if target is in that range:
+</span>
+IF LEFT HALF IS SORTED (nums[left] &lt;= nums[mid]):
+  → We know the exact range of left half: [nums[left], nums[mid]]
+  → Is target in this range? nums[left] &lt;= target &lt; nums[mid]
+    → YES → target is in left half → right = mid - 1
+    → NO  → target must be in right half → left = mid + 1
+
+IF RIGHT HALF IS SORTED (nums[mid] &lt;= nums[right]):
+  → We know the exact range of right half: [nums[mid], nums[right]]
+  → Is target in this range? nums[mid] &lt; target &lt;= nums[right]
+    → YES → target is in right half → left = mid + 1
+    → NO  → target must be in left half → right = mid - 1
+
+This is the COMPLETE decision logic. Let's trace through it.</code></pre></div>
+<h3>Step 4 — Complete Walkthrough</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>Array: [4, 5, 6, 7, 0, 1, 2]    Target = 0
+</span>
+Step 1: left=0, right=6, mid=3
+  nums[left]=4, nums[mid]=7, nums[right]=2
+  
+  Is left half sorted? nums[left](4) &lt;= nums[mid](7) → YES ✓
+  Is target in sorted left half? 4 &lt;= 0 &lt; 7 → NO (0 &lt; 4)
+  → Target NOT in left half → go RIGHT
+  → left = mid + 1 = 4
+
+Step 2: left=4, right=6, mid=5
+  nums[left]=0, nums[mid]=1, nums[right]=2
+  
+  Is left half sorted? nums[left](0) &lt;= nums[mid](1) → YES ✓
+  Is target in sorted left half? 0 &lt;= 0 &lt; 1 → YES (target = 0, 0 &lt;= 0 ✓ and 0 &lt; 1 ✓)
+  → Target IN left half → go LEFT
+  → right = mid - 1 = 4
+
+Step 3: left=4, right=4, mid=4
+  nums[mid] = 0 == target → FOUND at index 4 ✓
+
+
+Another example: Target = 5
+
+Step 1: left=0, right=6, mid=3
+  nums[left]=4, nums[mid]=7, nums[right]=2
+  
+  Left half sorted? 4 &lt;= 7 → YES ✓
+  Target in left half? 4 &lt;= 5 &lt; 7 → YES (4 &lt;= 5 ✓ and 5 &lt; 7 ✓)
+  → go LEFT → right = mid - 1 = 2
+
+Step 2: left=0, right=2, mid=1
+  nums[left]=4, nums[mid]=5, nums[right]=6
+  
+  Left half sorted? 4 &lt;= 5 → YES ✓
+  Target in left half? 4 &lt;= 5 &lt; 5 → NO (5 &lt; 5 is false)
+  → go RIGHT → left = mid + 1 = 2
+
+Step 3: left=2, right=2, mid=2
+  nums[mid] = 6 ≠ 5 → not found
+  
+  Wait — 5 is at index 1! Let me re-trace...
+
+  Actually Step 2: left=0, right=2, mid=1
+  nums[mid] = 5 == target → FOUND at index 1 ✓
+  
+  (We check nums[mid] == target FIRST before checking halves)</code></pre></div>
+<h3>Step 5 — The Complete Algorithm</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>while left &lt;= right:
+</span>    mid = left + (right - left) / 2
+    
+    // Step 1: Check if mid IS the target
+    if nums[mid] == target:
+        return mid
+    
+    // Step 2: Determine which half is sorted
+    if nums[left] &lt;= nums[mid]:
+        // LEFT half is sorted [left..mid]
+        
+        // Step 3: Is target in the sorted left half?
+        if nums[left] &lt;= target &lt; nums[mid]:
+            right = mid - 1    // search left
+        else:
+            left = mid + 1     // search right
+    
+    else:
+        // RIGHT half is sorted [mid..right]
+        
+        // Step 3: Is target in the sorted right half?
+        if nums[mid] &lt; target &lt;= nums[right]:
+            left = mid + 1     // search right
+        else:
+            right = mid - 1    // search left
+
+return -1   // not found</code></pre></div>
+<hr>
+<h2>🛠️ HOW CAN WE SOLVE IT — Deep Dive on the Decision Logic</h2>
+<h3>Why nums[left] &lt;= nums[mid] Identifies the Sorted Half</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>Case A: No rotation break in left half
+</span>  [4, 5, 6, 7, 0, 1, 2]
+   L        M           R
+  nums[left]=4 &lt;= nums[mid]=7 → LEFT is sorted ✓
+  The break (7→0) is in the right half
+
+Case B: Rotation break IS in left half
+  [6, 7, 0, 1, 2, 4, 5]
+   L        M           R
+  nums[left]=6 &gt; nums[mid]=1 → LEFT is NOT sorted
+  The break (7→0) is in the left half
+  Therefore RIGHT half must be sorted ✓
+
+Case C: No rotation at all
+  [0, 1, 2, 4, 5, 6, 7]
+   L        M           R
+  nums[left]=0 &lt;= nums[mid]=4 → LEFT is sorted ✓
+  And actually right half is also sorted
+  Both halves sorted → standard binary search still works
+
+The &lt;= (not just &lt;) in nums[left] &lt;= nums[mid]:
+→ Handles the case when left == mid (subarray of size 1-2)
+→ A single element is trivially "sorted"
+→ Using &lt; instead of &lt;= would misclassify this case</code></pre></div>
+<h3>Why the Range Checks Use Different Comparisons</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>When LEFT half is sorted:
+</span>  Range of left half values: [nums[left], nums[mid]]
+  
+  Check: nums[left] &lt;= target AND target &lt; nums[mid]
+                  ^^                      ^
+                  &lt;=                      &lt;  (strict)
+  
+  Why &lt;= on left? 
+    → Target could EQUAL nums[left] → it's in the left half
+  
+  Why &lt; on right (not &lt;=)?
+    → If target == nums[mid], we already found it (checked first)
+    → So target &lt; nums[mid] is the remaining case
+
+When RIGHT half is sorted:
+  Range of right half values: [nums[mid], nums[right]]
+  
+  Check: nums[mid] &lt; target AND target &lt;= nums[right]
+                    ^                      ^^
+                    &lt; (strict)             &lt;=
+  
+  Why &lt; on left?
+    → If target == nums[mid], already found (checked first)
+  
+  Why &lt;= on right?
+    → Target could EQUAL nums[right] → it's in the right half</code></pre></div>
+<hr>
+<h2>✅ WHAT SHOULD YOU DO</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ ALWAYS check nums[mid] == target FIRST
+</span>     → Before any half-identification logic
+     → This handles the trivial "found it" case immediately
+
+→ ALWAYS use nums[left] &lt;= nums[mid] (with &lt;=) for sorted-half check
+     → The = handles single-element and two-element subarrays
+     → Using &lt; causes bugs when left == mid
+
+→ ALWAYS use left + (right - left) / 2 for mid calculation
+     → Same as Project 9 — prevents integer overflow
+     → (left + right) / 2 can overflow if left + right &gt; Integer.MAX_VALUE
+
+→ ALWAYS think in terms of "which half is RELIABLY sorted?"
+     → The sorted half has KNOWN boundaries
+     → You can CHECK if target is in those boundaries
+     → The unsorted half might contain anything → check it by elimination
+
+→ ALWAYS handle edge cases:
+     → Array of size 1
+     → Array with no rotation (fully sorted)
+     → Target smaller than all elements
+     → Target larger than all elements
+     → Target at the rotation point</code></pre></div>
+<hr>
+<h2>🚫 WHAT SHOULD YOU NOT DO</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ DO NOT try to find the pivot point first
+</span>     BAD approach:
+       Step 1: Find the rotation pivot index
+       Step 2: Binary search on the correct half
+     
+     → This works but requires TWO binary searches
+     → The single-pass approach (this project) is more elegant
+     → Interviewers prefer the single-pass solution
+     → Finding pivot is its own problem (variant, not prerequisite)
+
+→ DO NOT use standard binary search logic directly
+     BAD:
+       if (target &lt; nums[mid]) right = mid - 1;
+       else left = mid + 1;
+     → This ignores the rotation → gives wrong answers
+     → The rotation means smaller values might be to the RIGHT of mid
+
+→ DO NOT forget the equality in nums[left] &lt;= nums[mid]
+     BAD:
+       if (nums[left] &lt; nums[mid])   // strict &lt;
+     → When left == mid (two-element subarray):
+       nums = [3, 1], left=0, mid=0, right=1
+       nums[left](3) &lt; nums[mid](3) → FALSE (they're equal)
+       Falls into "right half sorted" branch
+       But right half is [3, 1] → NOT sorted!
+       → Wrong decision → bug
+
+     GOOD:
+       if (nums[left] &lt;= nums[mid])  // inclusive &lt;=
+     → nums[left](3) &lt;= nums[mid](3) → TRUE
+       Left "half" is just [3] → trivially sorted ✓
+       → Correct decision
+
+→ DO NOT assume the array has no duplicates without checking
+     → This solution assumes DISTINCT elements
+     → With duplicates, nums[left] == nums[mid] == nums[right] is ambiguous
+     → Cannot determine which half is sorted → worst case O(n)
+     → Different problem: "Search in Rotated Sorted Array II"
+
+→ DO NOT confuse the target range checks
+     BAD:
+       if (nums[left] &lt;= target &lt;= nums[mid])  // not valid Java syntax
+     → Java doesn't support chained comparisons
+     → Must split into: nums[left] &lt;= target &amp;&amp; target &lt; nums[mid]</code></pre></div>
+<hr>
+<h2>🔀 WHEN TO USE THIS PATTERN</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>✓ Array was sorted then rotated (or partially sorted)
+</span>✓ Need O(log n) search time
+✓ Array has distinct elements (or handle duplicates separately)
+✓ Problem mentions "rotated sorted array"
+✓ Any problem where PART of the search space is sorted
+
+RECOGNIZABLE KEYWORDS:
+→ "rotated sorted array"
+→ "shifted sorted array"
+→ "circular sorted array"
+→ "find element in rotated array"
+→ "minimum in rotated sorted array" (related variant)
+
+BROADER PRINCIPLE:
+→ Binary search works whenever you can RELIABLY eliminate half the search space
+→ In standard sorted array: comparison with mid eliminates one half
+→ In rotated array: identifying the sorted half lets you eliminate one half
+→ The MECHANISM of elimination changes, but the PRINCIPLE is the same
+→ This is why it's called "Modified Binary Search"</code></pre></div>
+<hr>
+<h2>🚫 WHEN NOT TO USE THIS PATTERN</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>✗ Array is completely unsorted (no sorted structure at all)
+</span>     → No half-elimination possible → linear search O(n)
+
+✗ Array has many duplicates
+     → nums[left] == nums[mid] == nums[right] → can't determine sorted half
+     → Worst case degrades to O(n)
+     → Need special handling: shrink from both ends when all three are equal
+
+✗ Problem asks to find the ROTATION POINT (not a target)
+     → Related but different: find minimum element in rotated array
+     → Different comparison logic (compare with right boundary instead)
+
+✗ Array is sorted but with a different structure (e.g., bitonic)
+     → Bitonic array: increases then decreases (Project 31 — peak element)
+     → Different half-elimination logic needed
+
+✗ Need to find ALL occurrences of target
+     → Binary search finds ONE occurrence
+     → For all occurrences: find one, then expand left/right
+     → Or use two binary searches (find first and last)</code></pre></div>
+<hr>
+<h2>⚙️ HOW IT ONLY WORKS — Internal Mechanics</h2>
+<h3>The Rotation Invariant</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>INVARIANT: A rotated sorted array of distinct elements has these properties:
+</span>
+1. There exists exactly ONE index p (the pivot) where:
+   nums[p] &gt; nums[p+1]  (the "break point")
+   
+2. All elements before the pivot are sorted: nums[0] &lt; nums[1] &lt; ... &lt; nums[p]
+3. All elements after the pivot are sorted: nums[p+1] &lt; nums[p+2] &lt; ... &lt; nums[n-1]
+4. nums[n-1] &lt; nums[0] (the last element is less than the first — due to rotation)
+   Exception: if rotation amount is 0, then nums[n-1] &gt;= nums[0]
+
+5. For any subarray [left..right]:
+   If nums[left] &lt;= nums[right] → this subarray is fully sorted (no break point inside)
+   If nums[left] &gt; nums[right] → the break point is inside this subarray</code></pre></div>
+<h3>Proof That Our Algorithm Always Finds the Target</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>CLAIM: If target exists in the array, our algorithm finds it.
+</span>
+PROOF:
+At each step, we maintain the invariant:
+  "If target exists, it is within [left, right]"
+
+Initial: left=0, right=n-1 → target is in [0, n-1] if it exists ✓
+
+At each step:
+  Case 1: nums[mid] == target → found → correct ✓
+  
+  Case 2: Left half is sorted (nums[left] &lt;= nums[mid])
+    Case 2a: target in [nums[left], nums[mid]) → right = mid-1
+      → Target IS in left half → we search there → correct ✓
+    Case 2b: target NOT in [nums[left], nums[mid]) → left = mid+1
+      → Target is NOT in the sorted left half
+      → Target must be in right half (if it exists) → we search there → correct ✓
+  
+  Case 3: Right half is sorted (nums[mid] &lt; nums[left], so nums[mid] &lt;= nums[right])
+    Case 3a: target in (nums[mid], nums[right]] → left = mid+1
+      → Target IS in right half → we search there → correct ✓
+    Case 3b: target NOT in (nums[mid], nums[right]] → right = mid-1
+      → Target is NOT in the sorted right half
+      → Target must be in left half (if it exists) → we search there → correct ✓
+
+In all cases, we correctly narrow the search space.
+The target is never eliminated from the search range.
+Eventually, left meets right, and we either find target or determine it's absent.
+QED.</code></pre></div>
+<h3>Time Complexity</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ Each iteration eliminates approximately half the search space
+</span>→ Search space starts at n, halves each step
+→ n → n/2 → n/4 → ... → 1
+→ Number of steps: log₂(n)
+→ Each step: O(1) work (comparisons and index updates)
+→ TOTAL: O(log n) time
+
+This is the SAME as standard binary search — the rotation doesn't add cost.
+We just make different DECISIONS at each step, but still eliminate half.</code></pre></div>
+<h3>Space Complexity</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ Only variables: left, right, mid
+</span>→ No additional data structures
+→ TOTAL: O(1) space</code></pre></div>
+<h3>Visual: How Elimination Works</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>Array: [4, 5, 6, 7, 0, 1, 2]    Target = 1
+</span>
+Step 1: [4, 5, 6, 7, 0, 1, 2]    left=0, right=6, mid=3
+         L        M           R
+         ←—sorted—→
+  Left sorted: [4,5,6,7]
+  Is 1 in [4, 7)? → NO (1 &lt; 4)
+  → Eliminate left half → left = 4
+
+Step 2: [_, _, _, _, 0, 1, 2]     left=4, right=6, mid=5
+                     L  M  R
+                     ←sort→
+  Left sorted: [0, 1]
+  Is 1 in [0, 1)? → NO (1 is not &lt; 1, it equals 1... wait)
+  
+  Actually: nums[mid] = 1 == target → FOUND at index 5 ✓
+  (We check mid == target FIRST, before half-identification)
+
+Each step eliminates half → logarithmic convergence.</code></pre></div>
+<hr>
+<h2>⚠️ COMMON PITFALLS AND FAILURE MODES</h2>
+<h3>Pitfall 1: Forgetting to Check nums[mid] == target First</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span class="token" style="color: rgb(0, 128, 0); font-style: italic;">// ❌ WRONG ORDER — may never find target</span><span>
+</span><span></span><span class="token" style="color: rgb(0, 0, 255);">while</span><span> </span><span class="token" style="color: rgb(57, 58, 52);">(</span><span>left </span><span class="token" style="color: rgb(57, 58, 52);">&lt;=</span><span> right</span><span class="token" style="color: rgb(57, 58, 52);">)</span><span> </span><span class="token" style="color: rgb(57, 58, 52);">{</span><span>
+</span><span>    </span><span class="token" style="color: rgb(0, 0, 255);">int</span><span> mid </span><span class="token" style="color: rgb(57, 58, 52);">=</span><span> left </span><span class="token" style="color: rgb(57, 58, 52);">+</span><span> </span><span class="token" style="color: rgb(57, 58, 52);">(</span><span>right </span><span class="token" style="color: rgb(57, 58, 52);">-</span><span> left</span><span class="token" style="color: rgb(57, 58, 52);">)</span><span> </span><span class="token" style="color: rgb(57, 58, 52);">/</span><span> </span><span class="token" style="color: rgb(54, 172, 170);">2</span><span class="token" style="color: rgb(57, 58, 52);">;</span><span>
+</span>    
+<span>    </span><span class="token" style="color: rgb(0, 128, 0); font-style: italic;">// Immediately jumps to half-identification</span><span>
+</span><span>    </span><span class="token" style="color: rgb(0, 0, 255);">if</span><span> </span><span class="token" style="color: rgb(57, 58, 52);">(</span><span>nums</span><span class="token" style="color: rgb(57, 58, 52);">[</span><span>left</span><span class="token" style="color: rgb(57, 58, 52);">]</span><span> </span><span class="token" style="color: rgb(57, 58, 52);">&lt;=</span><span> nums</span><span class="token" style="color: rgb(57, 58, 52);">[</span><span>mid</span><span class="token" style="color: rgb(57, 58, 52);">]</span><span class="token" style="color: rgb(57, 58, 52);">)</span><span> </span><span class="token" style="color: rgb(57, 58, 52);">{</span><span>
+</span><span>        </span><span class="token" style="color: rgb(0, 0, 255);">if</span><span> </span><span class="token" style="color: rgb(57, 58, 52);">(</span><span>nums</span><span class="token" style="color: rgb(57, 58, 52);">[</span><span>left</span><span class="token" style="color: rgb(57, 58, 52);">]</span><span> </span><span class="token" style="color: rgb(57, 58, 52);">&lt;=</span><span> target </span><span class="token" style="color: rgb(57, 58, 52);">&amp;&amp;</span><span> target </span><span class="token" style="color: rgb(57, 58, 52);">&lt;</span><span> nums</span><span class="token" style="color: rgb(57, 58, 52);">[</span><span>mid</span><span class="token" style="color: rgb(57, 58, 52);">]</span><span class="token" style="color: rgb(57, 58, 52);">)</span><span> </span><span class="token" style="color: rgb(57, 58, 52);">{</span><span>
+</span><span>            right </span><span class="token" style="color: rgb(57, 58, 52);">=</span><span> mid </span><span class="token" style="color: rgb(57, 58, 52);">-</span><span> </span><span class="token" style="color: rgb(54, 172, 170);">1</span><span class="token" style="color: rgb(57, 58, 52);">;</span><span>
+</span><span>        </span><span class="token" style="color: rgb(57, 58, 52);">}</span><span> </span><span class="token" style="color: rgb(0, 0, 255);">else</span><span> </span><span class="token" style="color: rgb(57, 58, 52);">{</span><span>
+</span><span>            left </span><span class="token" style="color: rgb(57, 58, 52);">=</span><span> mid </span><span class="token" style="color: rgb(57, 58, 52);">+</span><span> </span><span class="token" style="color: rgb(54, 172, 170);">1</span><span class="token" style="color: rgb(57, 58, 52);">;</span><span>   </span><span class="token" style="color: rgb(0, 128, 0); font-style: italic;">// skips mid even if it's the answer!</span><span>
+</span><span>        </span><span class="token" style="color: rgb(57, 58, 52);">}</span><span>
+</span><span>    </span><span class="token" style="color: rgb(57, 58, 52);">}</span><span>
+</span><span>    </span><span class="token" style="color: rgb(0, 128, 0); font-style: italic;">// ...</span><span>
+</span><span></span><span class="token" style="color: rgb(57, 58, 52);">}</span><span>
+</span>
+<span></span><span class="token" style="color: rgb(0, 128, 0); font-style: italic;">// ✅ CORRECT — check mid first</span><span>
+</span><span></span><span class="token" style="color: rgb(0, 0, 255);">while</span><span> </span><span class="token" style="color: rgb(57, 58, 52);">(</span><span>left </span><span class="token" style="color: rgb(57, 58, 52);">&lt;=</span><span> right</span><span class="token" style="color: rgb(57, 58, 52);">)</span><span> </span><span class="token" style="color: rgb(57, 58, 52);">{</span><span>
+</span><span>    </span><span class="token" style="color: rgb(0, 0, 255);">int</span><span> mid </span><span class="token" style="color: rgb(57, 58, 52);">=</span><span> left </span><span class="token" style="color: rgb(57, 58, 52);">+</span><span> </span><span class="token" style="color: rgb(57, 58, 52);">(</span><span>right </span><span class="token" style="color: rgb(57, 58, 52);">-</span><span> left</span><span class="token" style="color: rgb(57, 58, 52);">)</span><span> </span><span class="token" style="color: rgb(57, 58, 52);">/</span><span> </span><span class="token" style="color: rgb(54, 172, 170);">2</span><span class="token" style="color: rgb(57, 58, 52);">;</span><span>
+</span>    
+<span>    </span><span class="token" style="color: rgb(0, 0, 255);">if</span><span> </span><span class="token" style="color: rgb(57, 58, 52);">(</span><span>nums</span><span class="token" style="color: rgb(57, 58, 52);">[</span><span>mid</span><span class="token" style="color: rgb(57, 58, 52);">]</span><span> </span><span class="token" style="color: rgb(57, 58, 52);">==</span><span> target</span><span class="token" style="color: rgb(57, 58, 52);">)</span><span> </span><span class="token" style="color: rgb(0, 0, 255);">return</span><span> mid</span><span class="token" style="color: rgb(57, 58, 52);">;</span><span>   </span><span class="token" style="color: rgb(0, 128, 0); font-style: italic;">// CHECK FIRST</span><span>
+</span>    
+<span>    </span><span class="token" style="color: rgb(0, 128, 0); font-style: italic;">// Then determine direction</span><span>
+</span><span>    </span><span class="token" style="color: rgb(0, 0, 255);">if</span><span> </span><span class="token" style="color: rgb(57, 58, 52);">(</span><span>nums</span><span class="token" style="color: rgb(57, 58, 52);">[</span><span>left</span><span class="token" style="color: rgb(57, 58, 52);">]</span><span> </span><span class="token" style="color: rgb(57, 58, 52);">&lt;=</span><span> nums</span><span class="token" style="color: rgb(57, 58, 52);">[</span><span>mid</span><span class="token" style="color: rgb(57, 58, 52);">]</span><span class="token" style="color: rgb(57, 58, 52);">)</span><span> </span><span class="token" style="color: rgb(57, 58, 52);">{</span><span>
+</span><span>        </span><span class="token" style="color: rgb(0, 128, 0); font-style: italic;">// ...</span><span>
+</span><span>    </span><span class="token" style="color: rgb(57, 58, 52);">}</span><span>
+</span><span></span><span class="token" style="color: rgb(57, 58, 52);">}</span></code></pre></div>
+<h3>Pitfall 2: Wrong Comparison Operator (&lt; vs &lt;=)</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span class="token" style="color: rgb(0, 128, 0); font-style: italic;">// ❌ BUG — strict &lt; instead of &lt;=</span><span>
+</span><span></span><span class="token" style="color: rgb(0, 0, 255);">if</span><span> </span><span class="token" style="color: rgb(57, 58, 52);">(</span><span>nums</span><span class="token" style="color: rgb(57, 58, 52);">[</span><span>left</span><span class="token" style="color: rgb(57, 58, 52);">]</span><span> </span><span class="token" style="color: rgb(57, 58, 52);">&lt;</span><span> nums</span><span class="token" style="color: rgb(57, 58, 52);">[</span><span>mid</span><span class="token" style="color: rgb(57, 58, 52);">]</span><span class="token" style="color: rgb(57, 58, 52);">)</span><span> </span><span class="token" style="color: rgb(57, 58, 52);">{</span><span>   </span><span class="token" style="color: rgb(0, 128, 0); font-style: italic;">// should be &lt;=</span><span>
+</span><span>    </span><span class="token" style="color: rgb(0, 128, 0); font-style: italic;">// When left == mid (2-element subarray):</span><span>
+</span><span>    </span><span class="token" style="color: rgb(0, 128, 0); font-style: italic;">// nums = [3, 1], left=0, mid=0</span><span>
+</span><span>    </span><span class="token" style="color: rgb(0, 128, 0); font-style: italic;">// 3 &lt; 3 → FALSE → falls to else branch</span><span>
+</span><span>    </span><span class="token" style="color: rgb(0, 128, 0); font-style: italic;">// else assumes RIGHT is sorted</span><span>
+</span><span>    </span><span class="token" style="color: rgb(0, 128, 0); font-style: italic;">// But right half is [3, 1] → NOT sorted → wrong decision</span><span>
+</span><span></span><span class="token" style="color: rgb(57, 58, 52);">}</span><span>
+</span>
+<span></span><span class="token" style="color: rgb(0, 128, 0); font-style: italic;">// ✅ CORRECT</span><span>
+</span><span></span><span class="token" style="color: rgb(0, 0, 255);">if</span><span> </span><span class="token" style="color: rgb(57, 58, 52);">(</span><span>nums</span><span class="token" style="color: rgb(57, 58, 52);">[</span><span>left</span><span class="token" style="color: rgb(57, 58, 52);">]</span><span> </span><span class="token" style="color: rgb(57, 58, 52);">&lt;=</span><span> nums</span><span class="token" style="color: rgb(57, 58, 52);">[</span><span>mid</span><span class="token" style="color: rgb(57, 58, 52);">]</span><span class="token" style="color: rgb(57, 58, 52);">)</span><span> </span><span class="token" style="color: rgb(57, 58, 52);">{</span><span>  </span><span class="token" style="color: rgb(0, 128, 0); font-style: italic;">// &lt;= handles left == mid case</span><span>
+</span><span>    </span><span class="token" style="color: rgb(0, 128, 0); font-style: italic;">// ...</span><span>
+</span><span></span><span class="token" style="color: rgb(57, 58, 52);">}</span></code></pre></div>
+<h3>Pitfall 3: Off-by-One in Range Check</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span class="token" style="color: rgb(0, 128, 0); font-style: italic;">// ❌ BUG — inclusive on both sides</span><span>
+</span><span></span><span class="token" style="color: rgb(0, 0, 255);">if</span><span> </span><span class="token" style="color: rgb(57, 58, 52);">(</span><span>nums</span><span class="token" style="color: rgb(57, 58, 52);">[</span><span>left</span><span class="token" style="color: rgb(57, 58, 52);">]</span><span> </span><span class="token" style="color: rgb(57, 58, 52);">&lt;=</span><span> target </span><span class="token" style="color: rgb(57, 58, 52);">&amp;&amp;</span><span> target </span><span class="token" style="color: rgb(57, 58, 52);">&lt;=</span><span> nums</span><span class="token" style="color: rgb(57, 58, 52);">[</span><span>mid</span><span class="token" style="color: rgb(57, 58, 52);">]</span><span class="token" style="color: rgb(57, 58, 52);">)</span><span> </span><span class="token" style="color: rgb(57, 58, 52);">{</span><span>
+</span><span>    </span><span class="token" style="color: rgb(0, 128, 0); font-style: italic;">//                               ^^ should be &lt;</span><span>
+</span><span>    </span><span class="token" style="color: rgb(0, 128, 0); font-style: italic;">// If target == nums[mid], we already returned (checked first)</span><span>
+</span><span>    </span><span class="token" style="color: rgb(0, 128, 0); font-style: italic;">// This condition is technically unreachable for target == nums[mid]</span><span>
+</span><span>    </span><span class="token" style="color: rgb(0, 128, 0); font-style: italic;">// BUT if we forgot the initial check, this would infinite loop:</span><span>
+</span><span>    </span><span class="token" style="color: rgb(0, 128, 0); font-style: italic;">//   target == nums[mid] → go left → mid stays same → infinite loop</span><span>
+</span><span></span><span class="token" style="color: rgb(57, 58, 52);">}</span><span>
+</span>
+<span></span><span class="token" style="color: rgb(0, 128, 0); font-style: italic;">// ✅ CORRECT — exclusive on mid side</span><span>
+</span><span></span><span class="token" style="color: rgb(0, 0, 255);">if</span><span> </span><span class="token" style="color: rgb(57, 58, 52);">(</span><span>nums</span><span class="token" style="color: rgb(57, 58, 52);">[</span><span>left</span><span class="token" style="color: rgb(57, 58, 52);">]</span><span> </span><span class="token" style="color: rgb(57, 58, 52);">&lt;=</span><span> target </span><span class="token" style="color: rgb(57, 58, 52);">&amp;&amp;</span><span> target </span><span class="token" style="color: rgb(57, 58, 52);">&lt;</span><span> nums</span><span class="token" style="color: rgb(57, 58, 52);">[</span><span>mid</span><span class="token" style="color: rgb(57, 58, 52);">]</span><span class="token" style="color: rgb(57, 58, 52);">)</span><span> </span><span class="token" style="color: rgb(57, 58, 52);">{</span><span>
+</span><span>    right </span><span class="token" style="color: rgb(57, 58, 52);">=</span><span> mid </span><span class="token" style="color: rgb(57, 58, 52);">-</span><span> </span><span class="token" style="color: rgb(54, 172, 170);">1</span><span class="token" style="color: rgb(57, 58, 52);">;</span><span>
+</span><span></span><span class="token" style="color: rgb(57, 58, 52);">}</span></code></pre></div>
+<h3>Pitfall 4: Array with Single Element</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span class="token" style="color: rgb(0, 128, 0); font-style: italic;">// nums = [5], target = 5</span><span>
+</span><span></span><span class="token" style="color: rgb(0, 128, 0); font-style: italic;">// left=0, right=0, mid=0</span><span>
+</span><span></span><span class="token" style="color: rgb(0, 128, 0); font-style: italic;">// nums[mid] = 5 == target → return 0 ✓</span><span>
+</span>
+<span></span><span class="token" style="color: rgb(0, 128, 0); font-style: italic;">// nums = [5], target = 3</span><span>
+</span><span></span><span class="token" style="color: rgb(0, 128, 0); font-style: italic;">// left=0, right=0, mid=0</span><span>
+</span><span></span><span class="token" style="color: rgb(0, 128, 0); font-style: italic;">// nums[mid] = 5 ≠ 3</span><span>
+</span><span></span><span class="token" style="color: rgb(0, 128, 0); font-style: italic;">// nums[left](5) &lt;= nums[mid](5) → left sorted</span><span>
+</span><span></span><span class="token" style="color: rgb(0, 128, 0); font-style: italic;">// Is 3 in [5, 5)? → NO (3 &lt; 5)</span><span>
+</span><span></span><span class="token" style="color: rgb(0, 128, 0); font-style: italic;">// left = mid + 1 = 1</span><span>
+</span><span></span><span class="token" style="color: rgb(0, 128, 0); font-style: italic;">// left &gt; right → exit loop → return -1 ✓</span><span>
+</span>
+<span></span><span class="token" style="color: rgb(0, 128, 0); font-style: italic;">// Single element works correctly — no special case needed</span></code></pre></div>
+<h3>Pitfall 5: No Rotation (Fully Sorted Array)</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span class="token" style="color: rgb(0, 128, 0); font-style: italic;">// nums = [1, 2, 3, 4, 5], target = 3</span><span>
+</span><span></span><span class="token" style="color: rgb(0, 128, 0); font-style: italic;">// left=0, right=4, mid=2</span><span>
+</span><span></span><span class="token" style="color: rgb(0, 128, 0); font-style: italic;">// nums[mid] = 3 == target → return 2 ✓</span><span>
+</span>
+<span></span><span class="token" style="color: rgb(0, 128, 0); font-style: italic;">// nums = [1, 2, 3, 4, 5], target = 4</span><span>
+</span><span></span><span class="token" style="color: rgb(0, 128, 0); font-style: italic;">// left=0, right=4, mid=2</span><span>
+</span><span></span><span class="token" style="color: rgb(0, 128, 0); font-style: italic;">// nums[mid] = 3 ≠ 4</span><span>
+</span><span></span><span class="token" style="color: rgb(0, 128, 0); font-style: italic;">// nums[left](1) &lt;= nums[mid](3) → left sorted</span><span>
+</span><span></span><span class="token" style="color: rgb(0, 128, 0); font-style: italic;">// Is 4 in [1, 3)? → NO (4 &gt;= 3)</span><span>
+</span><span></span><span class="token" style="color: rgb(0, 128, 0); font-style: italic;">// left = mid + 1 = 3</span><span>
+</span><span></span><span class="token" style="color: rgb(0, 128, 0); font-style: italic;">// ...continues as standard binary search</span><span>
+</span>
+<span></span><span class="token" style="color: rgb(0, 128, 0); font-style: italic;">// No rotation = both halves always sorted</span><span>
+</span><span></span><span class="token" style="color: rgb(0, 128, 0); font-style: italic;">// Algorithm degenerates to standard binary search → still correct ✓</span></code></pre></div>
+<h3>Pitfall 6: Duplicate Elements (This Solution Doesn't Handle)</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span class="token" style="color: rgb(0, 128, 0); font-style: italic;">// nums = [2, 5, 6, 0, 0, 1, 2], target = 0</span><span>
+</span><span></span><span class="token" style="color: rgb(0, 128, 0); font-style: italic;">// left=0, right=6, mid=3</span><span>
+</span><span></span><span class="token" style="color: rgb(0, 128, 0); font-style: italic;">// nums[left]=2, nums[mid]=0, nums[right]=2</span><span>
+</span><span></span><span class="token" style="color: rgb(0, 128, 0); font-style: italic;">// </span><span>
+</span><span></span><span class="token" style="color: rgb(0, 128, 0); font-style: italic;">// nums[left](2) &lt;= nums[mid](0)? → NO</span><span>
+</span><span></span><span class="token" style="color: rgb(0, 128, 0); font-style: italic;">// So right half "sorted"? nums[mid](0) &lt;= nums[right](2) → YES</span><span>
+</span><span></span><span class="token" style="color: rgb(0, 128, 0); font-style: italic;">// Is 0 in (0, 2]? → NO (0 is not &gt; 0, it equals 0)</span><span>
+</span><span></span><span class="token" style="color: rgb(0, 128, 0); font-style: italic;">// → right = mid - 1 = 2</span><span>
+</span><span></span><span class="token" style="color: rgb(0, 128, 0); font-style: italic;">// But wait — nums[mid] = 0 == target! We should have returned mid=3!</span><span>
+</span><span></span><span class="token" style="color: rgb(0, 128, 0); font-style: italic;">// </span><span>
+</span><span></span><span class="token" style="color: rgb(0, 128, 0); font-style: italic;">// The bug: we forgot to check nums[mid] == target FIRST.</span><span>
+</span><span></span><span class="token" style="color: rgb(0, 128, 0); font-style: italic;">// With the check, this works. But duplicates cause OTHER issues:</span><span>
+</span><span></span><span class="token" style="color: rgb(0, 128, 0); font-style: italic;">// </span><span>
+</span><span></span><span class="token" style="color: rgb(0, 128, 0); font-style: italic;">// nums = [1, 1, 1, 1, 1, 1, 2, 1, 1]</span><span>
+</span><span></span><span class="token" style="color: rgb(0, 128, 0); font-style: italic;">// nums[left]=1, nums[mid]=1, nums[right]=1</span><span>
+</span><span></span><span class="token" style="color: rgb(0, 128, 0); font-style: italic;">// nums[left] &lt;= nums[mid]? 1 &lt;= 1 → YES → left "sorted"</span><span>
+</span><span></span><span class="token" style="color: rgb(0, 128, 0); font-style: italic;">// But left half is [1,1,1,1,1] and right is [1,2,1,1]</span><span>
+</span><span></span><span class="token" style="color: rgb(0, 128, 0); font-style: italic;">// We can't tell where the break is!</span><span>
+</span><span></span><span class="token" style="color: rgb(0, 128, 0); font-style: italic;">// </span><span>
+</span><span></span><span class="token" style="color: rgb(0, 128, 0); font-style: italic;">// FIX for duplicates: when nums[left] == nums[mid] == nums[right]</span><span>
+</span><span></span><span class="token" style="color: rgb(0, 128, 0); font-style: italic;">//   → Can't determine sorted half → increment left, decrement right</span><span>
+</span><span></span><span class="token" style="color: rgb(0, 128, 0); font-style: italic;">//   → Worst case: O(n) (all elements same except one)</span><span>
+</span><span></span><span class="token" style="color: rgb(0, 128, 0); font-style: italic;">//   → This is "Search in Rotated Sorted Array II" — different problem</span></code></pre></div>
+<hr>
+<h2>📈 SCALABILITY CONSIDERATIONS</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>PERFORMANCE:
+</span>
+n             Steps (log₂n)    Standard Search
+10            ~3               ~10 (linear)
+1,000         ~10              ~1,000
+1,000,000     ~20              ~1,000,000
+1,000,000,000 ~30              ~1,000,000,000
+
+→ Binary search on rotated array is O(log n) — same as standard
+→ The rotation adds ZERO extra cost — just different decision logic
+→ For n = 1 billion: only ~30 comparisons needed
+→ This is why binary search (and its modifications) is so powerful
+
+COMPARISON WITH ALTERNATIVES:
+→ Linear search: O(n) — always works but slow
+→ Find pivot + two binary searches: O(log n) but 2x constant factor
+→ Single-pass modified binary search: O(log n) with smallest constant
+→ HashMap: O(n) build time + O(1) lookup — good for repeated queries
+
+FOR INTERVIEWS:
+→ O(log n) is the expected answer
+→ Linear search will be rejected
+→ Find-pivot approach is acceptable but not optimal
+→ Single-pass approach is the gold standard</code></pre></div>
+<hr>
+<h2>🔍 INTERPRETABILITY CONSIDERATIONS</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>MENTAL MODEL — The Clock Face:
+</span>→ Imagine a clock with numbers sorted clockwise: 0,1,2,3,...,11
+→ Now rotate it: the 12 o'clock position now shows 7
+→ Reading clockwise from 7: 7,8,9,10,11,0,1,2,3,4,5,6
+→ This is a "rotated sorted array"
+→ If you pick any position and look left or right:
+     → One direction takes you through a sorted sequence
+     → The other direction crosses the "break" (11→0)
+
+MENTAL MODEL — The Two-Part Sorted Sequence:
+→ A rotated array is TWO sorted sequences concatenated:
+     [large values, sorted] + [small values, sorted]
+     [4, 5, 6, 7] + [0, 1, 2]
+→ When you look at mid, you can tell which part you're in
+→ Then use the sorted part to make a reliable decision
+
+DEBUGGING STRATEGY:
+→ Print left, right, mid, and nums[mid] at each step
+→ Print which half is identified as sorted
+→ Print the range check result and direction chosen
+→ Verify the search space shrinks each step
+→ Check that target is never eliminated from the valid range
+
+INTERVIEW COMMUNICATION:
+→ "I'll use binary search, but modified for rotation"
+→ "At each step, I identify which half is sorted using nums[left] vs nums[mid]"
+→ "I check if the target falls within the sorted half's range"
+→ "If yes, I search that half; if no, I search the other half"
+→ "This guarantees O(log n) time because we still eliminate half each step"</code></pre></div>
+<hr>
+<div class="github-btn-wrap"><a class="github-btn" href="https://github.com/Shakti4640/leetcode-patterns-guide-java/tree/main/project- (30)" target="_blank" rel="noopener"><svg viewBox="0 0 24 24"><path d="M12 .5C5.37.5 0 5.87 0 12.5c0 5.3 3.44 9.8 8.2 11.39.6.11.82-.26.82-.58v-2.03c-3.34.73-4.04-1.61-4.04-1.61-.55-1.39-1.34-1.76-1.34-1.76-1.09-.74.08-.73.08-.73 1.2.09 1.84 1.24 1.84 1.24 1.07 1.83 2.8 1.3 3.49 1 .1-.78.42-1.3.76-1.6-2.67-.3-5.47-1.33-5.47-5.93 0-1.31.47-2.38 1.24-3.22-.14-.3-.54-1.52.1-3.18 0 0 1.01-.32 3.3 1.23a11.5 11.5 0 0 1 3-.4c1.02 0 2.04.13 3 .4 2.28-1.55 3.29-1.23 3.29-1.23.64 1.66.24 2.88.12 3.18.77.84 1.23 1.91 1.23 3.22 0 4.61-2.81 5.63-5.48 5.92.43.37.81 1.1.81 2.22v3.29c0 .32.21.7.82.58C20.56 22.3 24 17.8 24 12.5 24 5.87 18.63.5 12 .5z"/></svg>💻 View Complete Java Code on GitHub</a></div>
+<hr>
+<h2>🔑 EXPECTED OUTPUT</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>╔═══════════════════════════════════════════════════════╗
+</span>║  PROJECT 30: Search in Rotated Sorted Array           ║
+║  Pattern: Modified Binary Search →                    ║
+║           Sorted-Half Identification →                ║
+║           Pivot-Aware Elimination                     ║
+╚═══════════════════════════════════════════════════════╝
+
+═══ TEST 1: Traced Search — Target in Right Half ═══
+Array:  [4, 5, 6, 7, 0, 1, 2]
+Target: 0
+──────────────────────────────────────────
+Step 1:
+  left=0 (val=4)  mid=3 (val=7)  right=6 (val=2)
+  [(L)4, 5, 6, (M)7, 0, 1, (R)2]
+  → Left half sorted: [4..7]
+  → Target 0 is NOT in [4, 7) → go RIGHT
+
+Step 2:
+  left=4 (val=0)  mid=5 (val=1)  right=6 (val=2)
+  [·, ·, ·, ·, (L)0, (M)1, (R)2]
+  → Left half sorted: [0..1]
+  → Target 0 is in [0, 1) → go LEFT
+
+Step 3:
+  left=4 (val=0)  mid=4 (val=0)  right=4 (val=0)
+  [·, ·, ·, ·, (LMR)0, ·, ·]
+  → nums[mid]=0 == target → FOUND at index 4
+
+═══ TEST 2: Traced Search — Target in Left Half ═══
+Array:  [4, 5, 6, 7, 0, 1, 2]
+Target: 5
+──────────────────────────────────────────
+Step 1:
+  left=0 (val=4)  mid=3 (val=7)  right=6 (val=2)
+  [(L)4, 5, 6, (M)7, 0, 1, (R)2]
+  → Left half sorted: [4..7]
+  → Target 5 is in [4, 7) → go LEFT
+
+Step 2:
+  left=0 (val=4)  mid=1 (val=5)  right=2 (val=6)
+  [(L)4, (M)5, (R)6, ·, ·, ·, ·]
+  → nums[mid]=5 == target → FOUND at index 1
+
+═══ TEST 3: Traced Search — Target Not Present ═══
+Array:  [4, 5, 6, 7, 0, 1, 2]
+Target: 3
+──────────────────────────────────────────
+Step 1:
+  left=0 (val=4)  mid=3 (val=7)  right=6 (val=2)
+  → Left half sorted: [4..7]
+  → Target 3 is NOT in [4, 7) → go RIGHT
+
+Step 2:
+  left=4 (val=0)  mid=5 (val=1)  right=6 (val=2)
+  → Left half sorted: [0..1]
+  → Target 3 is NOT in [0, 1) → go RIGHT
+
+Step 3:
+  left=6 (val=2)  mid=6 (val=2)  right=6 (val=2)
+  → nums[mid]=2 ≠ 3
+  → Left half sorted: [2..2]
+  → Target 3 is NOT in [2, 2) → go RIGHT
+  → left = 7 &gt; right = 6 → exit loop
+
+  → Search space exhausted → NOT FOUND
+
+═══ TEST 5: Standard vs Modified Binary Search ═══
+─── Case where standard search FAILS: ───
+Array:  [4, 5, 6, 7, 0, 1, 2]
+Target: 0
+Standard Binary Search: NOT FOUND
+Modified Binary Search: index 4
+Two-Pass Approach:      index 4
+Linear Scan (ground truth): index 4
+Standard correct? false
+Modified correct? true
+Two-pass correct? true
+
+═══ TEST 9: All Rotation Amounts ═══
+  Rotation 0: [0, 1, 2, 3, 4, 5, 6] → search(4)=4 (val=4) ✓
+  Rotation 1: [1, 2, 3, 4, 5, 6, 0] → search(4)=3 (val=4) ✓
+  Rotation 2: [2, 3, 4, 5, 6, 0, 1] → search(4)=2 (val=4) ✓
+  Rotation 3: [3, 4, 5, 6, 0, 1, 2] → search(4)=1 (val=4) ✓
+  Rotation 4: [4, 5, 6, 0, 1, 2, 3] → search(4)=0 (val=4) ✓
+  Rotation 5: [5, 6, 0, 1, 2, 3, 4] → search(4)=6 (val=4) ✓
+  Rotation 6: [6, 0, 1, 2, 3, 4, 5] → search(4)=5 (val=4) ✓
+
+═══ TEST 10: Related Variants ═══
+Array: [4, 5, 6, 7, 0, 1, 2]
+Minimum element:  0
+Maximum element:  7
+Rotation count:   4
+
+═══ TEST 11: Comprehensive Correctness Check ═══
+Array: [15, 18, 22, 35, 3, 5, 7, 10, 12]
+Passed: 21/21
+
+═══ TEST 12: Performance — Large Array ═══
+Array size: 10000000 elements
+Binary search: index=3000000 in ~2 microseconds
+Linear search: index=3000000 in ~8500 microseconds
+Both correct: true
+Speedup: ~4250x</code></pre></div>
+<hr>
+<h2>🧠 KEY TAKEAWAY</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>WHAT PROJECT 9 GAVE US:
+</span>→ Binary search on FULLY sorted array
+→ Simple comparison: target vs nums[mid] decides direction
+→ O(log n) by eliminating half each step
+
+WHAT PROJECT 30 ADDS:
+→ Binary search on PARTIALLY sorted (rotated) array
+→ Standard comparison FAILS — rotation breaks the assumption
+→ NEW TECHNIQUE: Identify the SORTED half first
+→ Use the sorted half's known range to make a reliable decision
+→ Still O(log n) — same elimination rate, different decision logic
+
+THE MODIFIED BINARY SEARCH MENTAL MODEL:
+
+  Standard BS:    "Is target left or right of mid?"
+                  → Works because EVERYTHING is sorted
+
+  Modified BS:    "Which half is sorted?"
+  (Rotated)       → "Is target in the sorted half's range?"
+                  → YES → search sorted half
+                  → NO  → search other half
+
+THE BROADER PRINCIPLE:
+→ Binary search works whenever you can RELIABLY eliminate half
+→ "Reliably" means you have enough INFORMATION to make the right choice
+→ In sorted array: the sort order IS the information
+→ In rotated array: the sorted HALF is the information
+→ The key skill is FINDING what information you have and USING it
+
+PATTERN RECOGNITION CHECKLIST:
+  ✓ Data has SOME sorted structure (even partial)
+  ✓ Need O(log n) performance
+  ✓ Can identify a region where standard comparison works
+  → MODIFIED BINARY SEARCH</code></pre></div>
+<hr>
+<h2>🌉 BRIDGE TO NEXT PROJECT</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>PROJECT 30 taught us:
+</span>→ Modified binary search when data is PARTIALLY sorted
+→ Identifying the sorted half to make decisions
+→ The array had a clear STRUCTURAL property (rotation)
+
+PROJECT 31 (Find Peak Element in an Array) will ask:
+→ What if the array is NOT sorted AT ALL?
+→ But it has a different property: values go UP then DOWN (or vary)
+→ A "peak" is an element greater than its neighbors
+→ Can we still use binary search?
+→ YES — by looking at the GRADIENT (increasing or decreasing at mid)
+
+The progression of binary search:
+  Project 9:  Fully sorted → compare target with mid
+  Project 30: Rotated sorted → identify sorted half → range check
+  Project 31: Unsorted with peak → compare mid with neighbors → gradient direction
+
+Each step relaxes the "sorted" requirement:
+  Fully sorted → Partially sorted → Not sorted at all
+
+Yet binary search STILL works — because we can STILL eliminate half.
+The INFORMATION changes:
+  Project 9:  "mid value tells us which side target is on"
+  Project 30: "sorted half's range tells us which side target is on"
+  Project 31: "gradient direction tells us which side has a peak"
+
+→ Binary search is NOT about sorting
+→ Binary search is about HALF-ELIMINATION
+→ Any property that lets you discard half the space → binary search applies</code></pre></div>
+<hr>
+<p><strong>Ready for Project 31: Find Peak Element in an Array (Modified Binary Search → Gradient-Based Elimination → No Strict Sorting Needed)?</strong></p>
+</div>
+</div>
+
+
+<!-- ========== data-index="5" ========== -->
+<div class="chat-message" data-index="5"></div>
+</div>
+<div class="bottom-nav">
+  <a href="project-29.html" class="nav-btn prev">← Prev</a>
+  <div class="nav-center">
+    <span class="nav-project-label">PROJECT 30 of 60</span>
+    <span class="nav-project-title">Search in a Rotated Sorted Array</span>
+    <span class="kbd-hint">← → arrow keys to navigate</span>
+  </div>
+  <a href="project-31.html" class="nav-btn next">Next →</a>
+  <a href="index.html" class="nav-btn home">🏠 TOC</a>
+</div>
+<div id="progress-track"><div id="progress-fill"></div></div>
+<div id="progress-pct">0%</div>
+<script src="script.js"></script>
+<script>
+document.addEventListener('keydown', function(e) {
+  if (['INPUT','TEXTAREA'].includes(document.activeElement.tagName)) return;
+  if (e.key === 'ArrowRight' && "project-31.html" !== null) window.location = "project-31.html";
+  if (e.key === 'ArrowLeft' && "project-29.html" !== null) window.location = "project-29.html";
+});
+</script>
+</body>
+</html>

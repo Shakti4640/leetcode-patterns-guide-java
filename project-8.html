@@ -1,0 +1,676 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PROJECT 8: Find the Missing Number (0 to N)</title>
+<link rel="icon" type="image/png" href="images/favicon.png">
+<link rel="stylesheet" href="styles.css">
+
+</head>
+<body>
+<div id="progress-bar-container"><div id="progress-bar" style="width:15%"></div></div>
+<div id="progress-label">15%</div>
+<div class="page-wrapper">
+<div class="chat-message"><div class="px-2"><h1>PROJECT 8: Find the Missing Number (0 to N)</h1>
+<h2>🎯 Cyclic Sort → Index-Value Mapping → In-Place Placement</h2>
+<hr>
+<h2>🧩 THE HYPOTHETICAL PROBLEM</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ You are given an array containing N distinct numbers
+</span>→ The numbers are taken from the range [0, N]
+→ This means ONE number from the range is MISSING
+→ Find and return the missing number
+→ Do it in O(N) time and O(1) extra space
+
+Example 1:
+  Input:  [3, 0, 1]
+  Range:  [0, 1, 2, 3]  (N = 3)
+  Output: 2
+  Why:    0 is present, 1 is present, 3 is present → 2 is missing
+
+Example 2:
+  Input:  [0, 1]
+  Range:  [0, 1, 2]  (N = 2)
+  Output: 2
+  Why:    0 and 1 are present → 2 is missing
+
+Example 3:
+  Input:  [9, 6, 4, 2, 3, 5, 7, 0, 1]
+  Range:  [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]  (N = 9)
+  Output: 8
+
+Example 4:
+  Input:  [0]
+  Range:  [0, 1]  (N = 1)
+  Output: 1
+
+Example 5:
+  Input:  [1]
+  Range:  [0, 1]  (N = 1)
+  Output: 0</code></pre></div>
+<hr>
+<h2>🔍 HOW TO APPROACH IT</h2>
+<h3>Step 1 — Understand the Index-Value Relationship</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ The array has N elements
+</span>→ The values come from range [0, N] → that's N+1 possible values
+→ But array has only N slots → exactly ONE value is missing
+
+→ KEY OBSERVATION: If no number were missing, value i would go at index i
+     Index: [0,  1,  2,  3,  4]
+     Value: [0,  1,  2,  3,  4]
+     → Perfect mapping: arr[i] == i for all i
+
+→ Since one number IS missing:
+     → We can still place most numbers at their "home" index
+     → The missing number's index will have a "wrong" occupant
+     → That index IS the missing number
+
+→ This is the CYCLIC SORT insight:
+     → Every value has a NATURAL HOME (its own index)
+     → Place each value at its home
+     → After placement, scan for the one that's NOT at home
+     → The empty home reveals the missing number</code></pre></div>
+<h3>Step 2 — Think About Other Approaches First</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>APPROACH 1: Sort then scan → O(N log N) time, O(1) space
+</span>  Sort the array
+  Walk through: if arr[i] != i → i is missing
+  → Works but O(N log N) is slower than required
+
+APPROACH 2: HashSet → O(N) time, O(N) space
+  Add all numbers to a HashSet
+  Check which number from 0 to N is not in the set
+  → Works but O(N) space violates the constraint
+
+APPROACH 3: Math formula → O(N) time, O(1) space
+  Expected sum = N × (N+1) / 2
+  Actual sum = sum of all array elements
+  Missing = Expected - Actual
+  → Works perfectly! Simple and elegant.
+  → BUT: doesn't teach us the Cyclic Sort pattern
+  → AND: can overflow for large N
+
+APPROACH 4: XOR trick → O(N) time, O(1) space (Project 10)
+  XOR all indices with all values → missing number remains
+  → Also works! We'll cover this in Project 10.
+
+APPROACH 5: Cyclic Sort → O(N) time, O(1) space
+  Place each number at its home index
+  Scan for the misplaced position
+  → This is what we're learning — it generalizes to MANY problems</code></pre></div>
+<h3>Step 3 — Why Learn Cyclic Sort When Math Works?</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ The math formula solves THIS specific problem elegantly
+</span>→ But consider these RELATED problems:
+     → Find ALL missing numbers in [1, N] → math doesn't help
+     → Find the DUPLICATE number → math gives the duplicate but not position
+     → Find ALL duplicates → math can't find multiple
+     → Find the FIRST missing positive → math doesn't apply
+
+→ Cyclic Sort solves ALL of these with the SAME technique
+→ It's a PATTERN, not a trick
+→ The math formula is a one-off solution
+→ Cyclic Sort is a reusable framework
+
+→ Learning Cyclic Sort here prepares us for:
+     → Project 21: Find ALL duplicate numbers
+     → And many other index-value mapping problems</code></pre></div>
+<h3>Step 4 — The Cyclic Sort Mechanism</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ The idea: SWAP each element to its correct position
+</span>
+→ For array [3, 0, 1]:
+     Index: [0, 1, 2]
+     
+     i=0: arr[0]=3 → 3 should be at index 3 → but index 3 doesn't exist (N=3)!
+          → 3 is the "extra" number → skip it for now → i++
+     
+     i=1: arr[1]=0 → 0 should be at index 0 → arr[0]=3 (not 0) → SWAP
+          After swap: arr = [0, 3, 1]
+          Now arr[1]=3 → 3 should be at index 3 → out of range → skip → i++
+     
+     i=2: arr[2]=1 → 1 should be at index 1 → arr[1]=3 (not 1) → SWAP
+          After swap: arr = [0, 1, 3]
+          Now arr[2]=3 → 3 should be at index 3 → out of range → skip → i++
+     
+     Final: arr = [0, 1, 3]
+     
+     Scan: arr[0]=0 ✓, arr[1]=1 ✓, arr[2]=3 ✗ (should be 2)
+     → Missing number = 2 ✓
+
+→ The KEY: after sorting, the number at the "wrong" index reveals the answer</code></pre></div>
+<h3>Step 5 — Visualize a Larger Example</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>Array: [9, 6, 4, 2, 3, 5, 7, 0, 1]    N = 9
+</span>
+Phase 1: CYCLIC SORT (place each number at its home)
+
+i=0: arr[0]=9 → home index=9 → out of range (array has indices 0-8) → SKIP → i++
+
+i=1: arr[1]=6 → home=6 → arr[6]=7 (not 6) → SWAP → arr = [9, 7, 4, 2, 3, 5, 6, 0, 1]
+     arr[1]=7 → home=7 → arr[7]=0 (not 7) → SWAP → arr = [9, 0, 4, 2, 3, 5, 6, 7, 1]
+     arr[1]=0 → home=0 → arr[0]=9 (not 0) → SWAP → arr = [0, 9, 4, 2, 3, 5, 6, 7, 1]
+     arr[1]=9 → home=9 → out of range → SKIP → i++
+
+i=2: arr[2]=4 → home=4 → arr[4]=3 (not 4) → SWAP → arr = [0, 9, 3, 2, 4, 5, 6, 7, 1]
+     arr[2]=3 → home=3 → arr[3]=2 (not 3) → SWAP → arr = [0, 9, 2, 3, 4, 5, 6, 7, 1]
+     arr[2]=2 → home=2 → arr[2]=2 ✓ → already home → i++
+
+i=3: arr[3]=3 → home=3 → already home ✓ → i++
+i=4: arr[4]=4 → already home ✓ → i++
+i=5: arr[5]=5 → already home ✓ → i++
+i=6: arr[6]=6 → already home ✓ → i++
+i=7: arr[7]=7 → already home ✓ → i++
+
+i=8: arr[8]=1 → home=1 → arr[1]=9 (not 1) → SWAP → arr = [0, 1, 2, 3, 4, 5, 6, 7, 9]
+     arr[8]=9 → home=9 → out of range → SKIP → i++
+
+Final: arr = [0, 1, 2, 3, 4, 5, 6, 7, 9]
+
+Phase 2: SCAN for mismatch
+  arr[0]=0 ✓
+  arr[1]=1 ✓
+  ...
+  arr[7]=7 ✓
+  arr[8]=9 ✗ → should be 8 → MISSING NUMBER = 8 ✓</code></pre></div>
+<hr>
+<h2>🛠️ HOW CAN WE SOLVE IT</h2>
+<h3>The Algorithm — Line by Line Logic</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>PHASE 1: CYCLIC SORT
+</span>  i = 0
+  WHILE i &lt; N:
+      correctIndex = arr[i]     ← where this number SHOULD live
+      IF correctIndex &lt; N AND arr[correctIndex] != arr[i]:
+          SWAP arr[i] and arr[correctIndex]
+          // DON'T increment i — check the new arr[i]
+      ELSE:
+          i++   ← either correct position, or out-of-range value (N)
+          
+PHASE 2: FIND THE MISSING NUMBER
+  FOR i = 0 to N-1:
+      IF arr[i] != i:
+          return i          ← this index's rightful occupant is missing
+  return N                  ← all indices matched → N itself is missing</code></pre></div>
+<h3>Why WHILE Loop with Conditional i++ (Not FOR Loop)?</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ When we SWAP arr[i] with arr[correctIndex]:
+</span>     → A NEW value lands at position i
+     → That new value might ALSO be at the wrong position
+     → We need to check arr[i] AGAIN before moving on
+     → If we increment i → we skip checking the new value → misplacement
+
+→ The WHILE loop with conditional i++ ensures:
+     → We only move forward when arr[i] is at its correct position
+     → Or when arr[i] is the special value N (has no home in range [0, N-1])
+     → Every swap puts ONE element in its correct home
+     → So we make at most N swaps total → O(N) time
+
+→ A FOR loop would blindly increment i → miss elements that need re-checking</code></pre></div>
+<hr>
+<h2>✅ WHAT SHOULD YOU DO</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ ALWAYS use a WHILE loop with conditional increment for Cyclic Sort
+</span>     → Swap → DON'T increment → check the swapped-in value
+     → Already correct or out of range → increment
+     → This ensures every element finds its home
+
+→ ALWAYS check that correctIndex is within valid range
+     → Value N has no home in an array of size N (indices 0 to N-1)
+     → Attempting to swap with index N → ArrayIndexOutOfBoundsException
+     → Skip values that point outside the array
+
+→ ALWAYS check arr[correctIndex] != arr[i] before swapping
+     → If arr[correctIndex] already has the correct value → don't swap
+     → Swapping equal values causes an INFINITE LOOP
+     → Example: arr[i]=3, correctIndex=3, arr[3]=3 → swap does nothing → stuck
+
+→ ALWAYS do a SECOND PASS to find the result
+     → After cyclic sort, the array is "mostly sorted"
+     → The ONE position where arr[i] != i → that's the missing number
+     → If all positions match → N is the missing number
+
+→ ALWAYS understand the TWO PHASES:
+     → Phase 1: PLACEMENT (cyclic sort — O(N) time)
+     → Phase 2: DETECTION (linear scan — O(N) time)
+     → Total: O(N) time, O(1) extra space</code></pre></div>
+<hr>
+<h2>🚫 WHAT SHOULD YOU NOT DO</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ DO NOT use a FOR loop for the cyclic sort phase
+</span>     BAD:
+       for (int i = 0; i &lt; n; i++) {
+           while (arr[i] != i &amp;&amp; arr[i] &lt; n) {
+               swap(arr, i, arr[i]);
+           }
+       }
+     → This actually WORKS (inner while handles re-checking)
+     → But the canonical pattern uses the outer WHILE + conditional i++
+     → The for+inner-while is equivalent but harder to reason about
+
+     STANDARD PATTERN:
+       int i = 0;
+       while (i &lt; n) {
+           if (arr[i] &lt; n &amp;&amp; arr[i] != arr[arr[i]]) {
+               swap(arr, i, arr[i]);
+           } else {
+               i++;
+           }
+       }
+
+→ DO NOT forget the correctIndex &lt; N check
+     → Value N has no home → must be skipped
+     → Without this check → ArrayIndexOutOfBoundsException
+
+→ DO NOT swap when arr[correctIndex] already equals arr[i]
+     → This creates an infinite loop
+     → The condition arr[i] != arr[arr[i]] prevents this
+     → It means: "the destination doesn't already have the right value"
+
+→ DO NOT try to use this on arrays with values outside [0, N]
+     → Cyclic sort assumes values MAP to valid indices
+     → Values like -1 or N+5 don't have "home" indices
+     → Need special handling or different approach
+
+→ DO NOT confuse Cyclic Sort with regular sorting algorithms
+     → Cyclic Sort is NOT a general-purpose sort
+     → It ONLY works when values have a natural index mapping
+     → It places elements at VALUE-determined positions
+     → Regular sorts place elements based on RELATIVE order</code></pre></div>
+<hr>
+<h2>🔀 WHEN TO USE THIS PATTERN</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>✓ Array contains numbers in a KNOWN RANGE (like [0,N] or [1,N])
+</span>✓ Each value has a NATURAL "home" index (value i belongs at index i)
+✓ You need to find MISSING or DUPLICATE numbers
+✓ O(1) extra space is required
+✓ Common variants:
+     → Find the missing number (this project)
+     → Find the duplicate number
+     → Find ALL missing numbers in [1, N] (Project 21)
+     → Find ALL duplicate numbers (Project 21)
+     → Find the first missing positive integer
+     → Find the corrupt pair (one missing, one duplicated)
+
+✓ The pattern signature:
+     → "Array of size N with values from a known range"
+     → "Find what's missing or duplicated"
+     → "O(1) space required"
+     → = CYCLIC SORT</code></pre></div>
+<hr>
+<h2>🚫 WHEN NOT TO USE THIS PATTERN</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>✗ Values don't map to valid array indices
+</span>     → Array = [100, 200, 300] → values are NOT indices
+     → No natural "home" for these values
+     → Cyclic sort doesn't apply
+
+✗ Values are not in a contiguous range
+     → Array has values from {1, 5, 10, 50} → gaps in the range
+     → Can't create index-value mapping
+     → Need different approach
+
+✗ Array has many duplicates with no clear "home" assignment
+     → If multiple elements want the same index → collision
+     → Cyclic sort handles ONE duplicate but not arbitrary duplicates
+
+✗ The problem doesn't involve finding missing/duplicate elements
+     → If you just need to sort → use a standard sort
+     → If you need to search → use binary search or hash
+     → Cyclic sort is specifically for the "index-value mapping" family
+
+✗ Values include negatives or very large numbers
+     → Negative values don't map to valid indices
+     → Values larger than array size don't have homes
+     → Special handling needed (the "first missing positive" variant)</code></pre></div>
+<hr>
+<h2>⚙️ HOW IT ONLY WORKS — Internal Mechanics</h2>
+<h3>The Index-Value Mapping Principle</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>CORE IDEA:
+</span>→ If array contains values from [0, N-1] (or [1, N]):
+     → Each value tells you WHERE IT SHOULD GO
+     → Value 5 should be at index 5
+     → Value 0 should be at index 0
+     → The value IS the address
+
+→ This creates a BIJECTION (one-to-one mapping):
+     → Value 0 ↔ Index 0
+     → Value 1 ↔ Index 1
+     → Value 2 ↔ Index 2
+     → ...
+     → Value N-1 ↔ Index N-1
+
+→ When one value is MISSING:
+     → Its index has no rightful occupant → it's "homeless"
+     → Some OTHER value occupies that index instead
+     → Finding the "homeless" index reveals the missing value
+
+→ When one value is DUPLICATED:
+     → Two copies want the same index → one is displaced
+     → The displaced copy ends up at the wrong index
+     → Finding the displaced value reveals the duplicate</code></pre></div>
+<h3>Why Cyclic Sort is O(N) Despite Nested Loops</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ The outer loop (while i &lt; n) runs at most 2N times
+</span>→ Each iteration either:
+     a. SWAPS and stays at i → puts one element in its home
+     b. INCREMENTS i → moves forward
+
+→ SWAPS: each element can be swapped to its home AT MOST once
+     → Once home, it's never moved again
+     → Total swaps across entire algorithm ≤ N
+
+→ INCREMENTS: each increment moves i forward by 1
+     → i goes from 0 to N → at most N increments
+
+→ Total iterations: swaps + increments ≤ N + N = 2N = O(N)
+
+→ ANALOGY: Imagine a mailroom with N mailboxes
+     → N letters arrive, each addressed to a specific box
+     → Pick up a letter from the counter (index i)
+     → If it's addressed to box 5 → put it in box 5
+     → Whatever was in box 5 → put it on the counter
+     → Keep going until the counter has a letter that's already delivered
+     → Then move to the next spot on the counter
+     → Each letter is delivered ONCE → total work = N deliveries</code></pre></div>
+<h3>The Swap Mechanism — Step by Step</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>Array: [3, 0, 1]    N = 3
+</span>
+SWAP OPERATION: swap arr[i] with arr[arr[i]]
+
+i=0: arr[0]=3 → correctIndex=3 → 3 &gt;= N → SKIP → i++
+
+i=1: arr[1]=0 → correctIndex=0 → arr[0]=3 (not 0) → SWAP arr[1] and arr[0]
+     Before: [3, 0, 1]
+     After:  [0, 3, 1]
+     arr[1]=3 → correctIndex=3 → 3 &gt;= N → SKIP → i++
+
+i=2: arr[2]=1 → correctIndex=1 → arr[1]=3 (not 1) → SWAP arr[2] and arr[1]
+     Before: [0, 3, 1]
+     After:  [0, 1, 3]
+     arr[2]=3 → correctIndex=3 → 3 &gt;= N → SKIP → i++
+
+Result: [0, 1, 3]
+→ Scan: arr[2]=3 ≠ 2 → missing = 2 ✓
+
+TOTAL SWAPS: 2 (for N=3 elements)
+→ Each swap placed exactly one element in its home
+→ Total work: O(N)</code></pre></div>
+<h3>Connection to Previous Projects</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>PROJECT 3 (Read/Write):
+</span>→ Two pointers for in-place FILTERING (keep/remove elements)
+→ The write pointer builds the result within the original array
+→ Elements move FORWARD only
+
+PROJECT 8 (Cyclic Sort):
+→ In-place REARRANGEMENT (move elements to correct positions)
+→ Each element moves to its VALUE-determined home
+→ Elements can move in ANY direction (not just forward)
+→ More powerful than read/write — full rearrangement capability
+
+BOTH share:
+→ O(1) extra space
+→ In-place modification of the original array
+→ Each element processed a bounded number of times
+
+PROJECT 7 (Fast/Slow):
+→ Detected CYCLES in linked lists
+→ Cyclic Sort has "cycles" in its name — is there a connection?
+→ YES: the swap chains form CYCLES in the permutation
+→ Element at index 0 goes to index 3, index 3 is out of range → cycle broken
+→ Element at index 1 goes to index 0, index 0 goes to index 1... wait
+→ Actually: the permutation [3,0,1] has cycles: (0→3)(1→0→3)(2→1→0→3)
+→ Cyclic sort UNRAVELS these cycles by following the chain</code></pre></div>
+<hr>
+<h2>⚠️ COMMON PITFALLS AND FAILURE MODES</h2>
+<h3>Pitfall 1: Infinite Loop When Duplicate Values Exist</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>Array: [1, 1]  (duplicate 1, missing 0)
+</span>
+i=0: arr[0]=1 → correctIndex=1 → arr[1]=1 → arr[i] == arr[correctIndex]!
+     If we don't check this → SWAP arr[0] and arr[1] → still [1, 1]
+     → Check again → still want to swap → INFINITE LOOP
+
+FIX: Check arr[i] != arr[arr[i]] before swapping
+     arr[0]=1, arr[arr[0]]=arr[1]=1 → arr[0] == arr[arr[0]] → DON'T SWAP → i++
+     
+→ This check prevents infinite loops with duplicates
+→ If the destination already has the correct value → skip</code></pre></div>
+<h3>Pitfall 2: Forgetting the Out-of-Range Check</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>Array: [3, 0, 1]  N=3 → value 3 exists but index 3 doesn't
+</span>
+i=0: arr[0]=3 → correctIndex=3 → arr[3] → ArrayIndexOutOfBoundsException!
+
+FIX: Check correctIndex &lt; N before accessing arr[correctIndex]
+     If value &gt;= N → it's the "extra" value (since range is [0,N] but array is size N)
+     → Skip it → i++</code></pre></div>
+<h3>Pitfall 3: Confusing [0,N] Range with [1,N] Range</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>PROBLEM A: Values in [0, N], array size N
+</span>  → Value i goes to index i
+  → Value N has no home (index N doesn't exist)
+  → After sort: arr[i] != i → return i; if all match → return N
+
+PROBLEM B: Values in [1, N], array size N
+  → Value i goes to index i-1 (shift by 1)
+  → OR: value i goes to index i, but index 0 is unused
+  → Need to adjust the mapping
+
+→ ALWAYS clarify: does the range start at 0 or 1?
+→ The mapping changes accordingly
+→ Getting this wrong → everything is off by 1</code></pre></div>
+<h3>Pitfall 4: Using the Wrong Swap Condition</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>WRONG: if (arr[i] != i) → swap
+</span>  → This says "if element is not at its home, swap it"
+  → But what if the element's home already has the right value?
+  → We'd swap and create a NEW misplacement
+
+RIGHT: if (arr[i] != arr[arr[i]]) → swap
+  → This says "if the destination doesn't have the correct value, swap"
+  → Only swap when the destination NEEDS the element
+  → If destination is already correct → skip</code></pre></div>
+<h3>Pitfall 5: Not Handling the "N is Missing" Case</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>Array: [0, 1, 2]  N=3 → all values 0,1,2 are present → 3 is missing
+</span>
+After cyclic sort: [0, 1, 2] → already sorted
+Scan: arr[0]=0 ✓, arr[1]=1 ✓, arr[2]=2 ✓ → all match
+
+→ If scan finds no mismatch → the missing number is N itself
+→ Must return N after the scan loop
+→ Forgetting this → returns wrong answer or no answer</code></pre></div>
+<hr>
+<h2>📈 SCALABILITY CONSIDERATIONS</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ N = 100:
+</span>     → All approaches work fine
+     → Math formula: 1 addition per element → 100 ops
+     → Cyclic sort: ~200 ops (swaps + increments)
+     → HashSet: 100 insertions + 101 lookups → 201 ops + O(N) space
+
+→ N = 10,000,000:
+     → Math formula: 10^7 ops, O(1) space → fastest
+     → Cyclic sort: ~2×10^7 ops, O(1) space → excellent
+     → HashSet: 10^7 ops + 10^7 × 40 bytes ≈ 400 MB → memory heavy
+     → Sort: 10^7 × log(10^7) ≈ 2.3×10^8 ops → slower
+
+→ N = 1,000,000,000 (10^9):
+     → Math formula: might overflow (N×(N+1)/2 overflows long for N~4×10^9)
+     → Cyclic sort: 2×10^9 ops → ~10 seconds → manageable
+     → HashSet: 40 GB memory → impossible on most machines
+
+→ For THIS specific problem: math formula wins
+→ For the GENERAL pattern (all missing, all duplicates): cyclic sort wins
+→ The investment in learning cyclic sort pays off across many problems</code></pre></div>
+<hr>
+<h2>🔍 INTERPRETABILITY CONSIDERATIONS</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ The mailbox metaphor makes cyclic sort intuitive:
+</span>     → Each number is a letter addressed to a specific mailbox
+     → We deliver each letter to its mailbox
+     → The empty mailbox reveals whose letter is missing
+
+→ The algorithm has TWO clear phases:
+     → Phase 1: SORT (deliver all letters)
+     → Phase 2: SCAN (find the empty mailbox)
+     → Each phase has a single, clear purpose
+
+→ The swap chain is traceable:
+     → At each step: "Element X is at position Y, it belongs at position X"
+     → "Position X currently has element Z, so we swap"
+     → "Now element Z is at position Y, where does IT belong?"
+     → Follow the chain until everyone is home
+
+→ Interview explanation:
+     → "Values map to indices — value i belongs at index i"
+     → "I swap each element to its correct position"
+     → "After sorting, the mismatched index reveals the missing number"
+     → "O(N) time because each element is swapped at most once"
+     → "O(1) space because everything is done in-place"</code></pre></div>
+<hr>
+<div class="github-btn-wrap"><a class="github-btn" href="https://github.com/Shakti4640/leetcode-patterns-guide-java/tree/main/project- (8)" target="_blank" rel="noopener"><svg viewBox="0 0 24 24"><path d="M12 .5C5.37.5 0 5.87 0 12.5c0 5.3 3.44 9.8 8.2 11.39.6.11.82-.26.82-.58v-2.03c-3.34.73-4.04-1.61-4.04-1.61-.55-1.39-1.34-1.76-1.34-1.76-1.09-.74.08-.73.08-.73 1.2.09 1.84 1.24 1.84 1.24 1.07 1.83 2.8 1.3 3.49 1 .1-.78.42-1.3.76-1.6-2.67-.3-5.47-1.33-5.47-5.93 0-1.31.47-2.38 1.24-3.22-.14-.3-.54-1.52.1-3.18 0 0 1.01-.32 3.3 1.23a11.5 11.5 0 0 1 3-.4c1.02 0 2.04.13 3 .4 2.28-1.55 3.29-1.23 3.29-1.23.64 1.66.24 2.88.12 3.18.77.84 1.23 1.91 1.23 3.22 0 4.61-2.81 5.63-5.48 5.92.43.37.81 1.1.81 2.22v3.29c0 .32.21.7.82.58C20.56 22.3 24 17.8 24 12.5 24 5.87 18.63.5 12 .5z"/></svg>💻 View Complete Java Code on GitHub</a></div>
+
+<hr>
+<h2>🔑 EXPECTED OUTPUT</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>╔══════════════════════════════════════════════════════╗
+</span>║  PROJECT 8: Find the Missing Number (0 to N)        ║
+║  Pattern: Cyclic Sort → Index-Value Mapping          ║
+╚══════════════════════════════════════════════════════╝
+
+═══ TEST 1: Basic Example ═══
+Input: [3, 0, 1]  N = 3
+Range: [0, 3]
+─────────────────────────────────────────────
+Phase 1: CYCLIC SORT
+  Step 1: i=0 arr[0]=3 → value 3 &gt;= N → no home → skip → i++
+  Step 2: i=1 arr[1]=0 → belongs at index 0 (currently 3) → SWAP
+           Array: [0, 3, 1]
+  Step 3: i=1 arr[1]=3 → value 3 &gt;= N → no home → skip → i++
+  Step 4: i=2 arr[2]=1 → belongs at index 1 (currently 3) → SWAP
+           Array: [0, 1, 3]
+  Step 5: i=2 arr[2]=3 → value 3 &gt;= N → no home → skip → i++
+
+After sort: [0, 1, 3]
+
+Phase 2: SCAN for mismatch
+  arr[0]=0 = 0 ✓
+  arr[1]=1 = 1 ✓
+  arr[2]=3 ≠ 2 → MISSING NUMBER = 2
+
+═══ TEST 5: Missing N (all 0 to N-1 present) ═══
+Input: [0, 1, 2]  N = 3
+Range: [0, 3]
+─────────────────────────────────────────────
+Phase 1: CYCLIC SORT
+  Step 1: i=0 arr[0]=0 → arr[0]=0 already correct → skip → i++
+  Step 2: i=1 arr[1]=1 → arr[1]=1 already correct → skip → i++
+  Step 3: i=2 arr[2]=2 → arr[2]=2 already correct → skip → i++
+
+After sort: [0, 1, 2]
+
+Phase 2: SCAN for mismatch
+  arr[0]=0 = 0 ✓
+  arr[1]=1 = 1 ✓
+  arr[2]=2 = 2 ✓
+  All match → MISSING NUMBER = 3
+
+═══ TEST 7: Correctness — All Four Approaches ═══
+  [3, 0, 1] → cyclic=2 math=2 xor=2 hash=2 ✓
+  [0, 1] → cyclic=2 math=2 xor=2 hash=2 ✓
+  [9, 6, 4, 2, 3, 5, 7, 0, 1] → cyclic=8 math=8 xor=8 hash=8 ✓
+  [1] → cyclic=0 math=0 xor=0 hash=0 ✓
+  [0] → cyclic=1 math=1 xor=1 hash=1 ✓
+  [0, 1, 2] → cyclic=3 math=3 xor=3 hash=3 ✓
+  [5, 3, 0, 1, 4] → cyclic=2 math=2 xor=2 hash=2 ✓
+  [2, 0, 4, 1, 5, 7, 3] → cyclic=6 math=6 xor=6 hash=6 ✓
+  Overall: ALL TESTS PASSED ✓
+
+═══ TEST 8: Variant — First Missing Positive ═══
+  [1, 2, 0] → 3
+  [3, 4, -1, 1] → 2
+  [7, 8, 9, 11, 12] → 1
+  [1, 2, 3, 4, 5] → 6
+  [2, 1] → 3
+  [1] → 2
+
+═══ TEST 9: Variant — Corrupt Pair (duplicate + missing) ═══
+  [3, 1, 2, 5, 2] → duplicate=2, missing=4
+  [1, 2, 3, 3] → duplicate=3, missing=4
+  [2, 2] → duplicate=2, missing=1
+  [1, 1] → duplicate=1, missing=2</code></pre></div>
+<hr>
+<h2>🧠 KEY TAKEAWAY</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>WHAT WE LEARNED:
+</span>→ Cyclic Sort exploits the RELATIONSHIP between values and indices
+→ Value i has a natural "home" at index i → we can PLACE it there
+→ After placement, mismatches reveal missing/duplicate numbers
+→ O(N) time (each element swapped at most once), O(1) extra space
+→ The WHILE loop with conditional increment is the standard pattern
+
+THE CYCLIC SORT TEMPLATE:
+  int i = 0;
+  while (i &lt; n) {
+      int correctIndex = VALUE_TO_INDEX(nums[i]);
+      if (correctIndex IS VALID &amp;&amp; nums[correctIndex] != nums[i]) {
+          swap(nums, i, correctIndex);
+          // DON'T increment i
+      } else {
+          i++;
+      }
+  }
+  // SCAN for mismatches → reveal missing/duplicate
+
+→ Change VALUE_TO_INDEX mapping for different ranges:
+     → [0, N]: correctIndex = nums[i]
+     → [1, N]: correctIndex = nums[i] - 1
+     → General: correctIndex = nums[i] - rangeStart
+
+THE PATTERN FAMILY:
+  → Find missing number (this project)
+  → Find duplicate number
+  → Find ALL missing numbers (Project 21)
+  → Find ALL duplicates (Project 21)
+  → Find first missing positive
+  → Find corrupt pair (one missing + one duplicate)
+
+ALL PHASE 1 PATTERNS SO FAR:
+  Projects 1-4:  Two Pointers (4 variants) → search, check, transform, merge
+  Projects 5-6:  Sliding Window (2 variants) → fixed metric, variable optimization
+  Project 7:     Fast &amp; Slow Pointers → cycle detection on linked lists
+  Project 8:     Cyclic Sort → index-value mapping for missing/duplicate problems</code></pre></div>
+<hr>
+<h2>🌉 BRIDGE TO NEXT PROJECT</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>PROJECT 8 taught us:
+</span>→ Values can be mapped to indices → placement-based problem solving
+→ In-place rearrangement using swaps → O(1) space
+
+PROJECT 9 (Classic Binary Search) introduces another FOUNDATIONAL pattern:
+→ MODIFIED BINARY SEARCH — the art of eliminating half the search space
+→ Given a SORTED array, find a target value in O(log N) time
+→ The key principle: at each step, HALF the remaining elements are irrelevant
+
+The connection:
+→ Project 1 used sorted order for TWO POINTER convergence
+→ Project 9 uses sorted order for BINARY ELIMINATION
+→ Both exploit sorted data — but in fundamentally different ways:
+     Two Pointers: narrow from BOTH ends → O(N) time
+     Binary Search: narrow from the MIDDLE → O(log N) time
+
+→ Binary search is one of the most POWERFUL tools in computer science
+→ It reduces search from O(N) to O(log N) → exponential improvement
+→ For N = 1,000,000: linear scan = 1M steps, binary search = 20 steps
+→ This is the foundation for Projects 26, 27, 30, 31 and many more</code></pre></div>
+<hr>
+<p><strong>Ready for Project 9: Classic Binary Search on Sorted Array (Modified Binary Search → Half-Elimination)?</strong></p>
+</div>
+</div>
+
+<!-- ========== data-index="19" ========== -->
+<div class="chat-message" data-index="19"></div>
+</div>
+<div class="bottom-nav">
+  <a href="project-7.html" class="nav-btn prev">← Prev</a>
+  <div class="nav-center">
+    <span class="nav-project-label">PROJECT 8 of 60</span>
+    <span class="nav-project-title">Find the Missing Number (0 to N)</span>
+    <span class="kbd-hint">← → arrow keys to navigate</span>
+  </div>
+  <a href="project-9.html" class="nav-btn next">Next →</a>
+  <a href="index.html" class="nav-btn home">🏠 TOC</a>
+</div>
+<div id="progress-track"><div id="progress-fill"></div></div>
+<div id="progress-pct">0%</div>
+<script src="script.js"></script>
+<script>
+document.addEventListener('keydown', function(e) {
+  if (['INPUT','TEXTAREA'].includes(document.activeElement.tagName)) return;
+  if (e.key === 'ArrowRight' && "project-9.html" !== null) window.location = "project-9.html";
+  if (e.key === 'ArrowLeft' && "project-7.html" !== null) window.location = "project-7.html";
+});
+</script>
+</body>
+</html>

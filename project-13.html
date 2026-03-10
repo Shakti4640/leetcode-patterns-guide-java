@@ -1,0 +1,614 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PROJECT 13: Fruits into Baskets</title>
+<link rel="icon" type="image/png" href="images/favicon.png">
+<link rel="stylesheet" href="styles.css">
+
+</head>
+<body>
+<div id="progress-bar-container"><div id="progress-bar" style="width:23%"></div></div>
+<div id="progress-label">23%</div>
+<div class="page-wrapper">
+<div class="chat-message"><div class="px-2"><h1>PROJECT 13: Fruits into Baskets</h1>
+<h2>🎯 Sliding Window → At-Most-K-Distinct Constraint → Disguised Problem Recognition</h2>
+<hr>
+<h2>🔗 DEPENDENCY CHAIN</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>Project 5  → Sliding Window → fixed-size → running sum
+</span>Project 6  → Sliding Window → variable-size → shrink when condition violated
+Project 12 → Sliding Window + HashMap → character frequency tracking → at most K distinct
+Project 13 → SAME algorithm as Project 12 with K=2
+             → applied to INTEGER ARRAY instead of string
+             → teaches the CRITICAL skill: recognizing disguised problems
+             → the algorithm is NOT new — the RECOGNITION is new</code></pre></div>
+<hr>
+<h2>🧩 THE HYPOTHETICAL PROBLEM</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ You are visiting a row of fruit trees arranged in a line
+</span>→ Each tree produces exactly ONE type of fruit
+→ The trees are represented as an integer array: fruits[i] = type of fruit at tree i
+→ You have TWO baskets
+→ Each basket can hold ONLY ONE type of fruit (unlimited quantity of that type)
+→ You must pick fruits from a CONTIGUOUS section of trees
+→ You start at any tree and pick from every tree moving RIGHT until you must stop
+→ You stop when you encounter a THIRD type of fruit (your baskets can't hold it)
+→ Find the MAXIMUM number of fruits you can collect
+
+Example 1:
+  Input:  fruits = [1, 2, 1]
+  Output: 3
+  → Pick all three → types {1, 2} → 2 baskets → fits ✓
+  → Total fruits: 3
+
+Example 2:
+  Input:  fruits = [0, 1, 2, 2]
+  Output: 3
+  → [1, 2, 2] → types {1, 2} → 2 baskets → 3 fruits ✓
+  → [0, 1, 2] → types {0, 1, 2} → 3 types → doesn't fit ✗
+
+Example 3:
+  Input:  fruits = [1, 2, 3, 2, 2]
+  Output: 4
+  → [2, 3, 2, 2] → types {2, 3} → 2 baskets → 4 fruits ✓
+
+Example 4:
+  Input:  fruits = [3, 3, 3, 1, 2, 1, 1, 2, 3, 3, 4]
+  Output: 5
+  → [1, 2, 1, 1, 2] → types {1, 2} → 2 baskets → 5 fruits ✓</code></pre></div>
+<hr>
+<h2>🔍 HOW TO APPROACH IT</h2>
+<h3>Step 1 — Strip Away the Story → Find the Core Problem</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>THE STORY SAYS:
+</span>  → "Row of fruit trees" → array of integers
+  → "Type of fruit" → integer value at each index
+  → "Two baskets, one type each" → at most 2 DISTINCT values
+  → "Contiguous section" → subarray (not subsequence)
+  → "Maximum fruits" → longest valid subarray
+
+THE CORE PROBLEM IS:
+  → Find the longest contiguous subarray with at most 2 distinct elements
+
+COMPARE WITH PROJECT 12:
+  → Project 12: longest SUBSTRING with at most K distinct CHARACTERS
+  → Project 13: longest SUBARRAY with at most 2 distinct INTEGERS
+  
+  Mapping:
+    substring → subarray          (same concept, different data type)
+    characters → integers          (same concept, different data type)
+    K → 2                          (specific value of K)
+    string → integer array         (same concept, different data type)
+
+→ This is Project 12 with K hardcoded to 2 and applied to integers
+→ The algorithm is IDENTICAL
+→ The ONLY new skill here is RECOGNIZING this equivalence</code></pre></div>
+<h3>Step 2 — Why Recognition Is the Hardest Part</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>IN AN INTERVIEW:
+</span>  → Nobody says "solve this sliding window problem with K=2 distinct"
+  → They say "you have baskets and fruit trees and..."
+  → Your job is to TRANSLATE the story into a known pattern
+
+THE TRANSLATION PROCESS:
+  1. Identify the DATA STRUCTURE: "row of trees" → array
+  2. Identify the CONSTRAINT: "two baskets, one type each" → at most 2 distinct
+  3. Identify the OBJECTIVE: "maximum fruits" → longest valid subarray
+  4. Identify the CONTIGUITY: "contiguous section" → sliding window applicable
+  5. MAP to known pattern: this is "Longest Subarray At Most K Distinct, K=2"
+
+COMMON DISGUISES FOR THE SAME PROBLEM:
+  → "Maximum length subarray with at most K types"
+  → "Longest sequence with at most 2 unique elements"
+  → "Maximum consecutive elements with limited variety"
+  → "Fruits into baskets" (this problem)
+  → "Pick candies with 2 bags"
+  → "Maximum cards of at most K colors in a row"
+  
+→ ALL the same algorithm → different costumes</code></pre></div>
+<h3>Step 3 — What Changes from Project 12</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>WHAT STAYS THE SAME (refer to Project 12 for details):
+</span>  → Sliding window expand/shrink skeleton
+  → HashMap frequency tracking
+  → Remove zero-count entries from map
+  → Amortized O(n) time complexity
+  → maxLength = max(maxLength, windowEnd - windowStart + 1)
+
+WHAT CHANGES:
+  1. Data type: char → int
+     → HashMap&lt;Character, Integer&gt; → HashMap&lt;Integer, Integer&gt;
+     → s.charAt(windowEnd) → fruits[windowEnd]
+     
+  2. K value: variable K → fixed 2
+     → charFrequency.size() &gt; k → fruitFrequency.size() &gt; 2
+     
+  3. Input: String → int[]
+     → s.length() → fruits.length
+     → Iteration over string indices → iteration over array indices
+
+→ The STRUCTURE is identical → only the TYPES change
+→ This is why learning PATTERNS beats learning SOLUTIONS
+→ One pattern → many problems</code></pre></div>
+<h3>Step 4 — Visual Walkthrough on Array Data</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>fruits = [3, 3, 3, 1, 2, 1, 1, 2, 3, 3, 4]    K = 2 (two baskets)
+</span>
+windowStart=0, windowEnd moving right:
+
+  End=0: fruit=3 → map={3:1} → size=1 ≤ 2 ✓ → len=1 → max=1
+         [3] 3 3 1 2 1 1 2 3 3 4
+
+  End=1: fruit=3 → map={3:2} → size=1 ≤ 2 ✓ → len=2 → max=2
+         [3 3] 3 1 2 1 1 2 3 3 4
+
+  End=2: fruit=3 → map={3:3} → size=1 ≤ 2 ✓ → len=3 → max=3
+         [3 3 3] 1 2 1 1 2 3 3 4
+
+  End=3: fruit=1 → map={3:3,1:1} → size=2 ≤ 2 ✓ → len=4 → max=4
+         [3 3 3 1] 2 1 1 2 3 3 4
+
+  End=4: fruit=2 → map={3:3,1:1,2:1} → size=3 &gt; 2 ✗ → SHRINK
+         [3 3 3 1 2] 1 1 2 3 3 4
+         
+         Shrink: remove fruits[0]=3 → map={3:2,1:1,2:1} → size=3 → continue
+         Shrink: remove fruits[1]=3 → map={3:1,1:1,2:1} → size=3 → continue
+         Shrink: remove fruits[2]=3 → map={1:1,2:1}     → size=2 → STOP
+         windowStart=3
+         
+         3 3 3 [1 2] 1 1 2 3 3 4 → len=2 → max=4
+
+  End=5: fruit=1 → map={1:2,2:1} → size=2 ≤ 2 ✓ → len=3 → max=4
+         3 3 3 [1 2 1] 1 2 3 3 4
+
+  End=6: fruit=1 → map={1:3,2:1} → size=2 ≤ 2 ✓ → len=4 → max=4
+         3 3 3 [1 2 1 1] 2 3 3 4
+
+  End=7: fruit=2 → map={1:3,2:2} → size=2 ≤ 2 ✓ → len=5 → max=5 ★
+         3 3 3 [1 2 1 1 2] 3 3 4
+
+  End=8: fruit=3 → map={1:3,2:2,3:1} → size=3 &gt; 2 ✗ → SHRINK
+         3 3 3 [1 2 1 1 2 3] 3 4
+         
+         Shrink: remove fruits[3]=1 → map={1:2,2:2,3:1} → size=3 → continue
+         Shrink: remove fruits[4]=2 → map={1:2,2:1,3:1} → size=3 → continue
+         Shrink: remove fruits[5]=1 → map={1:1,2:1,3:1} → size=3 → continue
+         Shrink: remove fruits[6]=1 → map={2:1,3:1}     → size=2 → STOP
+         windowStart=7
+         
+         3 3 3 1 2 1 1 [2 3] 3 4 → len=2 → max=5
+
+  End=9: fruit=3 → map={2:1,3:2} → size=2 ≤ 2 ✓ → len=3 → max=5
+         3 3 3 1 2 1 1 [2 3 3] 4
+
+  End=10: fruit=4 → map={2:1,3:2,4:1} → size=3 &gt; 2 ✗ → SHRINK
+          3 3 3 1 2 1 1 [2 3 3 4]
+          
+          Shrink: remove fruits[7]=2 → map={3:2,4:1} → size=2 → STOP
+          windowStart=8
+          
+          3 3 3 1 2 1 1 2 [3 3 4] → len=3 → max=5
+
+  FINAL: max = 5 → subarray [1, 2, 1, 1, 2] ✓</code></pre></div>
+<hr>
+<h2>🛠️ HOW CAN WE SOLVE IT</h2>
+<h3>The Algorithm</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ Refer to Project 12 for the full expand/shrink mechanics
+</span>→ Here we apply the SAME template with:
+     → int[] instead of String
+     → K = 2 (hardcoded)
+     → Integer keys in HashMap instead of Character keys
+
+1. Initialize HashMap&lt;Integer, Integer&gt;, windowStart=0, maxLength=0
+2. FOR windowEnd = 0 to fruits.length - 1:
+     a. EXPAND: fruitMap.put(fruits[windowEnd], count + 1)
+     b. SHRINK: while fruitMap.size() &gt; 2 → remove from left, windowStart++
+     c. UPDATE: maxLength = max(maxLength, windowEnd - windowStart + 1)
+3. RETURN maxLength</code></pre></div>
+<hr>
+<h2>✅ WHAT SHOULD YOU DO</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ ALWAYS translate the story into the core data structure problem FIRST
+</span>     → Write down: "This is longest subarray with at most 2 distinct elements"
+     → THEN code the known pattern
+     → Don't code while still thinking in terms of "baskets" and "trees"
+
+→ ALWAYS confirm the constraint mapping
+     → "Two baskets" → K=2 distinct types
+     → "Contiguous" → subarray → sliding window
+     → "Maximum" → maximize window length
+     → Each story element maps to a technical concept
+
+→ ALWAYS reuse the template from Project 12 directly
+     → Don't reinvent the algorithm
+     → Swap types (char→int, String→int[]) and fix K=2
+     → Pattern reuse is the ENTIRE point of learning patterns
+
+→ ALWAYS handle the edge case where array has ≤ 2 distinct elements
+     → Entire array is valid → return fruits.length
+     → The algorithm handles this naturally (never shrinks) but know it mentally
+
+→ ALWAYS mention the pattern recognition in interviews
+     → "I recognize this as the 'longest subarray with at most K distinct' pattern"
+     → "K is 2 in this case — the two baskets"
+     → Shows interviewer you have pattern fluency → huge positive signal</code></pre></div>
+<hr>
+<h2>🚫 WHAT SHOULD YOU NOT DO</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ DO NOT get trapped in the story
+</span>     → "Baskets" and "fruit trees" are DECORATION
+     → Spending time modeling Basket objects, Tree objects → wasted time
+     → Strip to the math → solve the math → done
+
+→ DO NOT use a different algorithm because the problem "looks different"
+     → "This is about fruits, not characters, so maybe I need a different approach"
+     → NO → same pattern → same algorithm → different data types
+
+→ DO NOT hardcode for exactly 2 types in a non-generalizable way
+     WRONG: track only type1 and type2 in separate variables
+     → Works for K=2 but teaches nothing
+     → Can't extend to K=3 without rewriting
+     → HashMap approach works for ANY K
+
+     CORRECT: use HashMap with size check &gt; 2
+     → Same code works if K changes to 3, 5, 10
+     → Generalizable → reusable → professional
+
+→ DO NOT repeat the detailed explanation from Project 12
+     → In interviews: "This uses the same sliding window with HashMap technique"
+     → In code: same structure, different types
+     → In this guide: we focus on RECOGNITION, not re-explanation
+
+→ DO NOT forget that fruits are integers, not characters
+     → HashMap&lt;Integer, Integer&gt; not HashMap&lt;Character, Integer&gt;
+     → fruits[windowEnd] not s.charAt(windowEnd)
+     → Small but causes compilation errors if mixed up</code></pre></div>
+<hr>
+<h2>🔀 WHEN TO USE THIS PATTERN</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>All the criteria from Project 12 apply (refer there)
+</span>
+ADDITIONALLY — recognize these disguised forms:
+
+✓ "Two baskets / two bags / two containers" → K=2
+✓ "At most K types / kinds / categories" → K distinct
+✓ "Longest stretch / run / sequence" → longest contiguous subarray
+✓ "Maximum items you can collect" → maximize window length
+✓ Any problem with:
+     → Array/string input ✓
+     → Contiguity requirement ✓
+     → Limit on diversity/variety ✓
+     → Maximize length ✓
+     = SLIDING WINDOW + HASHMAP + AT MOST K DISTINCT</code></pre></div>
+<hr>
+<h2>🚫 WHEN NOT TO USE THIS PATTERN</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>All the criteria from Project 12 apply (refer there)
+</span>
+ADDITIONALLY:
+
+✗ "Pick fruits from any trees, not necessarily contiguous"
+     → Non-contiguous → not a sliding window problem
+     → Use greedy or DP instead
+
+✗ "Each basket has a capacity limit (max 5 fruits per basket)"
+     → Additional constraint beyond distinct count
+     → Need modified algorithm tracking both count AND capacity
+
+✗ "Minimize the number of trees visited to get all fruit types"
+     → MINIMIZE (not maximize) + ALL types (not limited types)
+     → Different problem entirely → possibly minimum window substring (Project 33)</code></pre></div>
+<hr>
+<h2>⚙️ HOW IT ONLY WORKS — Internal Mechanics</h2>
+<h3>Mechanic 1: The Disguise Taxonomy</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>Problems come in DISGUISES. Learning to strip disguises is a META-SKILL.
+</span>
+LEVEL 1 DISGUISE (easy to recognize):
+  → "Find longest substring with at most K distinct characters"
+  → Almost verbatim description of the algorithm → direct mapping
+
+LEVEL 2 DISGUISE (moderate — this problem):
+  → "Fruits into baskets" / "Pick candies with bags"
+  → Story wrapping around the same math
+  → Need to TRANSLATE: baskets=distinct limit, contiguous=subarray, maximum=longest
+
+LEVEL 3 DISGUISE (hard):
+  → "Replace at most K characters to make longest uniform substring"
+  → Doesn't mention "distinct" at all
+  → But equivalent: window is valid if (window_size - max_freq_char ≤ K)
+  → Still sliding window, but the VALIDITY CONDITION is disguised
+  → (This is Project 34 — Longest Repeating Character Replacement)
+
+THE RECOGNITION PROCESS:
+  1. What is the INPUT? → array or string → candidate for sliding window
+  2. Is CONTIGUITY required? → yes → sliding window confirmed
+  3. What is the CONSTRAINT? → limited diversity → "at most K distinct"
+  4. What is the OBJECTIVE? → maximize/minimize → longest/shortest window
+  5. MAP to pattern → solve with known template</code></pre></div>
+<h3>Mechanic 2: Why K=2 Doesn't Simplify the Algorithm</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>You COULD solve K=2 without a HashMap:
+</span>  → Track just two variables: type1, type2
+  → Track their last-seen positions
+  → When a third type appears, jump windowStart to min(lastSeen) + 1
+
+This "optimized K=2" approach:
+  → Avoids HashMap overhead
+  → Is slightly faster in practice
+  → BUT is specific to K=2 → can't extend to K=3
+
+The HashMap approach:
+  → Works for ANY K
+  → Is the GENERAL PATTERN
+  → Slight overhead but same O(n) complexity
+  → Is what you should code in interviews (shows pattern mastery)
+
+EXCEPTION: if the interviewer specifically asks to optimize for K=2
+  → Then show the specialized approach as a follow-up
+  → But start with the general approach first</code></pre></div>
+<h3>Mechanic 3: Array vs String — Implementation Differences</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>STRING (Project 12):
+</span>  → s.charAt(windowEnd) → returns char
+  → HashMap&lt;Character, Integer&gt;
+  → s.length() for bounds
+  → Characters have known small domain (26, 128, or 256)
+
+ARRAY (Project 13):
+  → fruits[windowEnd] → returns int
+  → HashMap&lt;Integer, Integer&gt;
+  → fruits.length for bounds
+  → Integers have potentially LARGE domain (up to 10^9 distinct values)
+
+WHY THIS MATTERS FOR OPTIMIZATION:
+  → String: can use int[26] or int[128] array instead of HashMap
+    → O(1) lookup guaranteed (no hash collisions)
+    → Significant speedup (2-5x)
+  
+  → Array with large values: CANNOT use array-based optimization
+    → Values like 100000 would need int[100001] → wastes memory
+    → Values could be negative → no valid array index
+    → MUST use HashMap
+
+→ The HashMap approach is UNIVERSAL → works for both
+→ The array optimization is a STRING-SPECIFIC bonus</code></pre></div>
+<h3>Time and Space Complexity</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ Identical to Project 12 (refer there for full proof)
+</span>→ TIME: O(n) — each element added once, removed at most once
+→ SPACE: O(K) = O(2) = O(1) — at most 3 entries before shrink triggers
+→ For K=2 specifically: HashMap holds at most 3 entries at any time
+→ Effectively O(1) space (excluding input and output)</code></pre></div>
+<hr>
+<h2>⚠️ COMMON PITFALLS AND FAILURE MODES</h2>
+<h3>Pitfall 1: Thinking It's a Different Problem</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>"Fruits? Baskets? This doesn't look like sliding window..."
+</span>→ STOP → translate the story → recognize the pattern
+
+Developers who memorize solutions instead of patterns:
+  → See "fruits" → never encountered this exact problem → stuck
+  
+Developers who learn patterns:
+  → See "contiguous + limited types + maximize" → sliding window + K distinct
+  → Solved in 2 minutes
+
+→ This pitfall is about MINDSET, not technique</code></pre></div>
+<h3>Pitfall 2: Using the Wrong K</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>"Two baskets" → K = 2 ✓
+</span>"Two baskets, each holding one type" → still K = 2 ✓
+
+But watch for variations:
+  "Three baskets" → K = 3
+  "One basket" → K = 1
+  "N baskets" → K = N
+
+→ Always confirm K from the problem statement
+→ Don't assume K=2 just because this problem uses it</code></pre></div>
+<h3>Pitfall 3: Assuming Fruits Start from 0 or Are Sequential</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>fruits = [5, 100, 5, 100, 200]
+</span>→ Fruit types: 5, 100, 200 → NOT sequential, NOT starting from 0
+→ HashMap handles this perfectly (keys are arbitrary integers)
+→ Array-based optimization would need int[201] → wasteful
+
+→ Don't assume anything about the value range
+→ HashMap is the safe choice for integer arrays</code></pre></div>
+<h3>Pitfall 4: Returning the Subarray Instead of the Length</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ Problem asks for MAXIMUM NUMBER of fruits → an integer (length)
+</span>→ Not the subarray itself
+→ Don't waste time building the result subarray unless asked
+
+→ If asked for the subarray: track maxStart alongside maxLength
+→ Same technique as Project 12's "return actual substring" variant</code></pre></div>
+<hr>
+<h2>📈 SCALABILITY CONSIDERATIONS</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ Identical to Project 12 (refer there)
+</span>→ O(n) scales linearly
+→ n = 1,000,000 → ~2ms → handles LeetCode constraints easily
+
+SPECIFIC TO THIS PROBLEM:
+→ LeetCode constraint: 1 ≤ fruits.length ≤ 10^5
+→ n² brute force: 10^10 → too slow
+→ Sliding window: 10^5 → instant
+→ The pattern is NECESSARY for this constraint range</code></pre></div>
+<hr>
+<h2>🔍 INTERPRETABILITY CONSIDERATIONS</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>INTERVIEW NARRATIVE:
+</span>  → "This problem is asking for the longest subarray with at most 2 distinct elements"
+  → "I recognize this as the 'at most K distinct' sliding window pattern with K=2"
+  → "I'll use a HashMap to track fruit type frequencies in my current window"
+  → "When I have more than 2 types, I shrink from the left"
+  → "Time O(n), Space O(1) since K is constant"
+
+THE RECOGNITION STATEMENT IS THE KEY:
+  → Saying "I recognize this as..." shows pattern fluency
+  → It tells the interviewer you've seen and categorized many problems
+  → It shows you can GENERALIZE — not just memorize
+  → This is the #1 differentiator between junior and senior problem solvers</code></pre></div>
+<hr>
+<div class="github-btn-wrap"><a class="github-btn" href="https://github.com/Shakti4640/leetcode-patterns-guide-java/tree/main/project- (13)" target="_blank" rel="noopener"><svg viewBox="0 0 24 24"><path d="M12 .5C5.37.5 0 5.87 0 12.5c0 5.3 3.44 9.8 8.2 11.39.6.11.82-.26.82-.58v-2.03c-3.34.73-4.04-1.61-4.04-1.61-.55-1.39-1.34-1.76-1.34-1.76-1.09-.74.08-.73.08-.73 1.2.09 1.84 1.24 1.84 1.24 1.07 1.83 2.8 1.3 3.49 1 .1-.78.42-1.3.76-1.6-2.67-.3-5.47-1.33-5.47-5.93 0-1.31.47-2.38 1.24-3.22-.14-.3-.54-1.52.1-3.18 0 0 1.01-.32 3.3 1.23a11.5 11.5 0 0 1 3-.4c1.02 0 2.04.13 3 .4 2.28-1.55 3.29-1.23 3.29-1.23.64 1.66.24 2.88.12 3.18.77.84 1.23 1.91 1.23 3.22 0 4.61-2.81 5.63-5.48 5.92.43.37.81 1.1.81 2.22v3.29c0 .32.21.7.82.58C20.56 22.3 24 17.8 24 12.5 24 5.87 18.63.5 12 .5z"/></svg>💻 View Complete Java Code on GitHub</a></div>
+
+<hr>
+<h2>🔑 EXPECTED OUTPUT</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>╔════════════════════════════════════════════════════╗
+</span>║  PROJECT 13: Fruits into Baskets                   ║
+║  Pattern: Sliding Window → Disguised K=2 Distinct  ║
+╚════════════════════════════════════════════════════╝
+
+═══ DISGUISE DEMONSTRATION ═══
+
+  All these are the SAME algorithm (at most K=2 distinct):
+
+  DISGUISE 1: 'Fruits into Baskets'
+  Input: fruits = [1, 2, 1, 2, 3]
+  → Max fruits with 2 baskets: 4
+
+  DISGUISE 2: 'Longest subarray with ≤2 distinct'
+  Input: arr = [1, 2, 1, 2, 3]
+  → Longest subarray: 4
+
+  DISGUISE 3: 'Max candies with 2 bags'
+  Input: candies = [1, 2, 1, 2, 3]
+  → Max candies: 4
+
+  → ALL THREE return 4 → same algorithm → different stories
+
+═══ TEST 1: Basic Example (Traced) ═══
+  Fruits: [1, 2, 1]  (K=2 baskets)
+  ─────────────────────────────────────────
+  EXPAND → end=0 fruit=1 window=[1] map={1=1} types=1
+  → valid size=1 maxFruits=1
+
+  EXPAND → end=1 fruit=2 window=[1, 2] map={1=1, 2=1} types=2
+  → valid size=2 maxFruits=2
+
+  EXPAND → end=2 fruit=1 window=[1, 2, 1] map={1=2, 2=1} types=2
+  → valid size=3 maxFruits=3
+
+  ★ RESULT: 3
+
+═══ TEST 2: Third Type Forces Shrink (Traced) ═══
+  Fruits: [0, 1, 2, 2]  (K=2 baskets)
+  ─────────────────────────────────────────
+  EXPAND → end=0 fruit=0 window=[0] map={0=1} types=1
+  → valid size=1 maxFruits=1
+
+  EXPAND → end=1 fruit=1 window=[0, 1] map={0=1, 1=1} types=2
+  → valid size=2 maxFruits=2
+
+  EXPAND → end=2 fruit=2 window=[0, 1, 2] map={0=1, 1=1, 2=1} types=3
+  SHRINK → removed type 0 start=1 window=[1, 2] map={1=1, 2=1} types=2
+  → valid size=2 maxFruits=2
+
+  EXPAND → end=3 fruit=2 window=[1, 2, 2] map={1=1, 2=2} types=2
+  → valid size=3 maxFruits=3
+
+  ★ RESULT: 3
+
+═══ TEST 5: Edge Cases ═══
+  Single element [5]: 1
+  Two same [3,3]: 2
+  Two different [1,2]: 2
+  All same [7,7,7,7,7]: 5
+  Alternating [1,2,1,2,1,2]: 6
+  All different [1,2,3,4,5]: 2
+  Large values [100000,200000,100000]: 3
+
+═══ TEST 6: Return Actual Subarray ═══
+  Input: [1,2,1] → Subarray: [1,2,1] (length=3)
+  Input: [0,1,2,2] → Subarray: [1,2,2] (length=3)
+  Input: [1,2,3,2,2] → Subarray: [2,3,2,2] (length=4)
+  Input: [3,3,3,1,2,1,1,2,3,3,4] → Subarray: [1,2,1,1,2] (length=5)
+
+═══ TEST 7: Generalized K Values ═══
+  Array: [1,2,3,4,1,2,3,1,2,1]
+  K=1 → max length: 1
+  K=2 → max length: 4
+  K=3 → max length: 7
+  K=4 → max length: 10
+  K=5 → max length: 10
+
+═══ TEST 8: Correctness Verification ═══
+  [1,2,1] → SW=3 Brute=3 OptK2=3 ✓
+  [0,1,2,2] → SW=3 Brute=3 OptK2=3 ✓
+  [1,2,3,2,2] → SW=4 Brute=4 OptK2=4 ✓
+  [3,3,3,1,2,1,1,2,3,3,4] → SW=5 Brute=5 OptK2=5 ✓
+  [1,1,1,1] → SW=4 Brute=4 OptK2=4 ✓
+  [1,2,3,4,5] → SW=2 Brute=2 OptK2=2 ✓
+  [1,2,1,2,1,2,1] → SW=7 Brute=7 OptK2=7 ✓
+  [5,5,1,5,1,5,5] → SW=7 Brute=7 OptK2=7 ✓
+  All passed: true</code></pre></div>
+<hr>
+<h2>🧠 KEY TAKEAWAY</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>WHAT WE LEARNED:
+</span>→ This project taught RECOGNITION more than TECHNIQUE
+→ The technique is identical to Project 12
+→ The skill is: "I see baskets and fruits → I think at most K distinct"
+→ Pattern recognition is a META-SKILL that multiplies your problem-solving power
+
+THE DISGUISE STRIPPING PROCESS:
+  1. READ the story → identify nouns (array, types, baskets, contiguous)
+  2. MAP nouns to concepts → (input data, distinct limit, window constraint)
+  3. MATCH to known pattern → sliding window + at most K distinct
+  4. CODE the known template → swap types, fix K, done
+
+WHY THIS PROJECT EXISTS:
+  → NOT to teach a new algorithm (it's the same as Project 12)
+  → TO teach the TRANSLATION from story to pattern
+  → TO show that ONE algorithm solves MANY problems
+  → TO build confidence: "I've seen this before in a different form"
+
+THE PATTERN REUSE CHAIN:
+  Project 5:  Sliding Window skeleton → fixed size → sum tracking
+  Project 6:  Same skeleton → variable size → sum condition
+  Project 12: Same skeleton → variable size → HashMap condition → K distinct
+  Project 13: Same skeleton → same condition → K=2 → DISGUISED as fruits
+  
+→ FOUR projects → ONE skeleton → increasingly complex state → increasingly clever disguises
+→ This is how patterns COMPOUND into mastery</code></pre></div>
+<hr>
+<h2>🌉 BRIDGE TO NEXT PROJECT</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>PROJECT 13 reinforced:
+</span>→ Sliding Window + HashMap for "at most K distinct"
+→ Pattern recognition across disguised problems
+→ K was given as a fixed constant (2)
+
+PROJECT 14 (Merge Overlapping Intervals) shifts to a NEW pattern family:
+→ No more sliding windows → we move to INTERVAL PROCESSING
+→ Given a list of intervals like [[1,3], [2,6], [8,10], [15,18]]
+→ Merge overlapping intervals → [[1,6], [8,10], [15,18]]
+→ Requires SORTING by start time → then SCANNING for overlaps
+
+THE CONNECTION:
+  → Project 14 uses SORTING as its foundation (like Project 11 used sorting)
+  → But instead of finding pairs that sum to zero
+  → We find intervals that OVERLAP and merge them
+  → This introduces the INTERVAL PROCESSING pattern family
+  → Intervals appear everywhere: calendar scheduling, resource allocation, etc.
+
+THE BIGGER PICTURE:
+  Projects 1-4:   Two Pointers family
+  Projects 5-6:   Sliding Window basics
+  Projects 11:    Two Pointers advanced (3Sum)
+  Projects 12-13: Sliding Window + HashMap (at most K distinct)
+  Project 14:     NEW FAMILY → Merge Intervals → sort-then-scan pattern
+  
+→ We keep building new pattern families while deepening existing ones</code></pre></div>
+<hr>
+<p><strong>Ready for Project 14: Merge Overlapping Intervals (Sort-then-Scan → Overlap Detection Logic)?</strong></p>
+</div>
+</div>
+
+<!-- ========== data-index="13" ========== -->
+<div class="chat-message" data-index="13"></div>
+</div>
+<div class="bottom-nav">
+  <a href="project-12.html" class="nav-btn prev">← Prev</a>
+  <div class="nav-center">
+    <span class="nav-project-label">PROJECT 13 of 60</span>
+    <span class="nav-project-title">Fruits into Baskets</span>
+    <span class="kbd-hint">← → arrow keys to navigate</span>
+  </div>
+  <a href="project-14.html" class="nav-btn next">Next →</a>
+  <a href="index.html" class="nav-btn home">🏠 TOC</a>
+</div>
+<div id="progress-track"><div id="progress-fill"></div></div>
+<div id="progress-pct">0%</div>
+<script src="script.js"></script>
+<script>
+document.addEventListener('keydown', function(e) {
+  if (['INPUT','TEXTAREA'].includes(document.activeElement.tagName)) return;
+  if (e.key === 'ArrowRight' && "project-14.html" !== null) window.location = "project-14.html";
+  if (e.key === 'ArrowLeft' && "project-12.html" !== null) window.location = "project-12.html";
+});
+</script>
+</body>
+</html>

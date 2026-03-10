@@ -1,0 +1,920 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PROJECT 43: Climbing Stairs / Fibonacci Sequence</title>
+<link rel="icon" type="image/png" href="images/favicon.png">
+<link rel="stylesheet" href="styles.css">
+
+</head>
+<body>
+<div id="progress-bar-container"><div id="progress-bar" style="width:72%"></div></div>
+<div id="progress-label">72%</div>
+<div class="page-wrapper">
+<div class="chat-message"><div class="px-2"><h1>PROJECT 43: Climbing Stairs / Fibonacci Sequence</h1>
+<h2>🎯 Dynamic Programming → Overlapping Subproblems → Memoization vs Tabulation</h2>
+<hr>
+<h2>🧩 THE HYPOTHETICAL PROBLEM</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ You are climbing a staircase with N steps
+</span>→ Each time you can climb either 1 step OR 2 steps
+→ How many DISTINCT ways can you reach the top?
+
+Example 1:
+  Input:  n = 2
+  Output: 2
+  Explanation:
+    Way 1: 1 step + 1 step
+    Way 2: 2 steps
+    
+Example 2:
+  Input:  n = 3
+  Output: 3
+  Explanation:
+    Way 1: 1 + 1 + 1
+    Way 2: 1 + 2
+    Way 3: 2 + 1
+
+Example 3:
+  Input:  n = 5
+  Output: 8
+  Explanation:
+    1+1+1+1+1
+    1+1+1+2
+    1+1+2+1
+    1+2+1+1
+    2+1+1+1
+    1+2+2
+    2+1+2
+    2+2+1
+    → 8 ways total
+
+Example 4:
+  Input:  n = 10
+  Output: 89
+
+Example 5:
+  Input:  n = 45
+  Output: 1,836,311,903
+  (Try computing THIS with backtracking...)</code></pre></div>
+<hr>
+<h2>🔍 HOW TO APPROACH IT</h2>
+<h3>Step 1 — Try Backtracking First (From Project 42)</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>Project 42 taught us: explore all paths with pruning.
+</span>Let's try that here.
+
+DECISION TREE for n = 5:
+  At each step: choose 1 or 2
+
+                            n=5
+                        /         \
+                    take 1        take 2
+                     n=4           n=3
+                   /     \       /     \
+                 t1       t2   t1       t2
+                 n=3      n=2  n=2      n=1
+                / \      / \   / \       |
+              t1  t2   t1  t2 t1  t2    t1
+              n=2 n=1  n=1 n=0 n=1 n=0  n=0
+              /\   |    |   ✓   |   ✓    ✓
+            t1 t2 t1   t1     t1
+            n=1 n=0 n=0 n=0  n=0
+             |   ✓   ✓   ✓    ✓
+            t1
+            n=0
+             ✓
+
+Count the leaves where n=0: 8 ✓
+
+THIS WORKS! But look at the REDUNDANCY:
+  → n=3 appears 2 times
+  → n=2 appears 3 times
+  → n=1 appears 5 times
+  → n=0 appears 8 times
+  → We're computing the SAME thing over and over!</code></pre></div>
+<h3>Step 2 — Identify the Problem: Overlapping Subproblems</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>Let's define: ways(n) = number of ways to climb n steps
+</span>
+RECURRENCE:
+  ways(n) = ways(n-1) + ways(n-2)
+  
+  WHY? From step n, you could have arrived from:
+    → Step n-1 (took 1 step) → there are ways(n-1) ways to reach n-1
+    → Step n-2 (took 2 steps) → there are ways(n-2) ways to reach n-2
+    → Total ways to reach n = sum of both
+
+BASE CASES:
+  ways(0) = 1  (one way to stay at ground: do nothing)
+  ways(1) = 1  (one way: take 1 step)
+
+THIS IS THE FIBONACCI SEQUENCE:
+  ways(0) = 1
+  ways(1) = 1
+  ways(2) = 2   (= 1 + 1)
+  ways(3) = 3   (= 2 + 1)
+  ways(4) = 5   (= 3 + 2)
+  ways(5) = 8   (= 5 + 3)
+  ways(6) = 13  (= 8 + 5)
+  ...
+
+THE CALL TREE for ways(5):
+
+                        ways(5)
+                       /        \
+                  ways(4)      ways(3)
+                 /      \      /      \
+            ways(3)  ways(2) ways(2) ways(1)
+            /    \    /   \   /   \     |
+        ways(2) ways(1) w(1) w(0) w(1) w(0)  1
+        /   \     |      |    |    |    |
+      w(1) w(0)   1      1    1    1    1
+       |    |
+       1    1
+
+TOTAL CALLS: 15 (for n=5)
+UNIQUE SUBPROBLEMS: 6 (ways(0) through ways(5))
+REDUNDANT CALLS: 9 → 60% waste!
+
+For n=45:
+  Total calls without caching: ~3.6 BILLION
+  Unique subproblems: 46
+  Redundancy: 99.9999987% waste!
+  
+THIS is why backtracking/plain recursion is catastrophically slow for this problem.</code></pre></div>
+<h3>Step 3 — The Two Pillars of Dynamic Programming</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>Dynamic Programming applies when a problem has BOTH:
+</span>
+PILLAR 1: OPTIMAL SUBSTRUCTURE
+  → The solution to the big problem is built from solutions to smaller problems
+  → ways(5) = ways(4) + ways(3)
+  → ways(4) = ways(3) + ways(2)
+  → Each problem decomposes into SMALLER instances of itself
+  → The "structure" of the solution is preserved at each level
+
+PILLAR 2: OVERLAPPING SUBPROBLEMS
+  → The SAME smaller problems appear MULTIPLE times
+  → ways(3) is needed by ways(5) AND ways(4)
+  → ways(2) is needed by ways(4) AND ways(3)
+  → If each subproblem were unique → plain recursion would be fine
+  → Overlap means we're WASTING work by re-computing
+
+WHEN BOTH PILLARS EXIST → use Dynamic Programming:
+  → Solve each subproblem ONCE
+  → STORE (cache) the result
+  → REUSE the cached result when the same subproblem appears again
+  → Transform exponential → polynomial (or even linear)</code></pre></div>
+<h3>Step 4 — Two Approaches to DP</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>APPROACH A: MEMOIZATION (Top-Down)
+</span>  → Start from the BIG problem (ways(n))
+  → Recurse into smaller problems
+  → Before computing: check if already cached → return cached value
+  → After computing: store result in cache
+  → "Remember what you've already computed"
+  → Natural extension of recursion → easy to write
+
+APPROACH B: TABULATION (Bottom-Up)
+  → Start from the SMALLEST problems (ways(0), ways(1))
+  → Build UP to the big problem
+  → Fill a table iteratively: dp[0], dp[1], dp[2], ..., dp[n]
+  → No recursion needed → iterative loop
+  → "Build the answer brick by brick"
+
+COMPARISON:
+  ┌──────────────────┬────────────────────┬────────────────────┐
+  │ Aspect           │ Memoization        │ Tabulation         │
+  ├──────────────────┼────────────────────┼────────────────────┤
+  │ Direction        │ Top-down           │ Bottom-up          │
+  │ Implementation   │ Recursion + cache  │ Iterative loop     │
+  │ Computes         │ Only needed states │ ALL states 0..n    │
+  │ Stack usage      │ O(n) recursion     │ O(1) stack         │
+  │ Code style       │ More natural       │ More efficient     │
+  │ Risk             │ Stack overflow     │ None               │
+  │ Space optimize?  │ Harder             │ Easy (rolling)     │
+  └──────────────────┴────────────────────┴────────────────────┘
+
+FOR THIS PROBLEM:
+  → Both give O(n) time, O(n) space
+  → Tabulation can be optimized to O(1) space (only need last 2 values)
+  → Tabulation is preferred for this simple 1D problem</code></pre></div>
+<h3>Step 5 — The Space Optimization Insight</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>TABULATION with full table:
+</span>  dp[0] = 1
+  dp[1] = 1
+  dp[2] = dp[1] + dp[0] = 2
+  dp[3] = dp[2] + dp[1] = 3
+  dp[4] = dp[3] + dp[2] = 5
+  dp[5] = dp[4] + dp[3] = 8
+
+OBSERVATION: dp[i] only depends on dp[i-1] and dp[i-2]
+  → We don't need the ENTIRE table
+  → We only need the LAST TWO values
+  → Use two variables instead of an array
+
+SPACE-OPTIMIZED:
+  prev2 = 1  (dp[0])
+  prev1 = 1  (dp[1])
+  
+  For i = 2 to n:
+    current = prev1 + prev2
+    prev2 = prev1
+    prev1 = current
+  
+  Answer = prev1
+
+  → O(1) space instead of O(n)!
+  → This is called "rolling variables" or "space-optimized DP"
+
+THIS PATTERN OF SPACE OPTIMIZATION IS UNIVERSAL:
+  → If dp[i] depends only on dp[i-1] → keep 1 variable
+  → If dp[i] depends on dp[i-1] and dp[i-2] → keep 2 variables
+  → If dp[i] depends on dp[i-1][j] (2D) → keep 1 row
+  → We'll see this again in Projects 44, 50, 51</code></pre></div>
+<hr>
+<h2>🛠️ HOW CAN WE SOLVE IT</h2>
+<h3>The Algorithm — All Three Approaches</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>APPROACH 1: Plain Recursion (exponential — DON'T USE)
+</span>  ways(n):
+    if n &lt;= 1: return 1
+    return ways(n-1) + ways(n-2)
+
+APPROACH 2: Memoization (top-down DP)
+  memo = new HashMap or array of size n+1
+  ways(n):
+    if n &lt;= 1: return 1
+    if memo[n] exists: return memo[n]
+    memo[n] = ways(n-1) + ways(n-2)
+    return memo[n]
+
+APPROACH 3: Tabulation (bottom-up DP)
+  dp = new array of size n+1
+  dp[0] = 1, dp[1] = 1
+  for i = 2 to n:
+    dp[i] = dp[i-1] + dp[i-2]
+  return dp[n]
+
+APPROACH 4: Space-optimized Tabulation
+  prev2 = 1, prev1 = 1
+  for i = 2 to n:
+    current = prev1 + prev2
+    prev2 = prev1
+    prev1 = current
+  return prev1</code></pre></div>
+<hr>
+<h2>✅ WHAT SHOULD YOU DO</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ ALWAYS identify the two DP pillars before applying DP
+</span>     → Optimal substructure: can I express f(n) in terms of f(smaller)?
+     → Overlapping subproblems: do the same sub-problems appear repeatedly?
+     → If BOTH → DP is the right approach
+
+→ ALWAYS define the RECURRENCE RELATION clearly
+     → This is the mathematical heart of any DP solution
+     → ways(n) = ways(n-1) + ways(n-2)
+     → Write this down BEFORE coding
+     → The code is just a translation of the recurrence
+
+→ ALWAYS define BASE CASES explicitly
+     → What are the smallest subproblems with known answers?
+     → ways(0) = 1, ways(1) = 1
+     → Missing or wrong base cases → entire solution is wrong
+
+→ ALWAYS consider space optimization
+     → Look at the recurrence: how many previous states are needed?
+     → Fibonacci: needs i-1 and i-2 → only 2 variables needed
+     → Knapsack (Project 44): needs entire previous row → 1D array
+     → Interviewers love when you mention space optimization
+
+→ ALWAYS start with memoization if the recurrence is complex
+     → Memoization is easier to get right (natural recursion)
+     → Convert to tabulation later if needed
+     → For interviews: memoization first → optimize to tabulation</code></pre></div>
+<hr>
+<h2>🚫 WHAT SHOULD YOU NOT DO</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ DO NOT use plain recursion without memoization
+</span>     → Exponential time: O(2^n)
+     → n=45 → 3.6 billion calls → minutes to compute
+     → n=50 → exceeds time limit on ANY platform
+     → ALWAYS cache results
+
+→ DO NOT forget base cases
+     → Missing base case → infinite recursion → stack overflow
+     → Wrong base case → wrong answer propagated upward
+     → Test with n=0 and n=1 to verify base cases
+
+→ DO NOT confuse the problem direction
+     → "Climbing stairs" → building up from bottom (step 0) to top (step n)
+     → Recurrence looks backward: "how did I get here?"
+     → From step n, I came from step n-1 or step n-2
+     → ways(n) = ways(n-1) + ways(n-2)
+     → NOT ways(n) = ways(n+1) + ways(n+2) → wrong direction
+
+→ DO NOT use long when int suffices (or forget to use long when needed)
+     → For n=45: answer = 1,836,311,903 → fits in int (max ~2.1 billion)
+     → For n=46: answer = 2,971,215,073 → OVERFLOWS int!
+     → If problem allows n &gt; 45 → use long
+     → LeetCode's climbing stairs: n ≤ 45 → int is fine
+     → BUT: always check constraints
+
+→ DO NOT apply DP when greedy works
+     → DP is for COUNTING or OPTIMIZING
+     → If a simple greedy gives the answer → DP is overkill
+     → Project 40 (Jump Game) uses greedy → no need for DP there
+
+→ DO NOT apply DP when there are no overlapping subproblems
+     → If each subproblem is unique → plain recursion = DP
+     → Memoization adds overhead for no benefit
+     → Binary search, merge sort → divide and conquer, NOT DP</code></pre></div>
+<hr>
+<h2>🔀 WHEN TO USE DYNAMIC PROGRAMMING</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>✓ Problem asks "HOW MANY ways" → counting
+</span>✓ Problem asks "MINIMUM/MAXIMUM cost/value" → optimization
+✓ Problem has OPTIMAL SUBSTRUCTURE (big = f(smaller))
+✓ Problem has OVERLAPPING SUBPROBLEMS (same sub-problems repeat)
+✓ Problem can be expressed as a RECURRENCE RELATION
+✓ Brute force recursion has EXPONENTIAL time complexity
+
+SIGNATURE PHRASES:
+  → "How many distinct ways..."
+  → "What is the minimum number of..."
+  → "What is the maximum profit..."
+  → "Is it possible to..." (yes/no → boolean DP)
+  → "Find the longest/shortest..."
+
+DP DIMENSIONS:
+  1D DP: State is a single variable (n)
+     → Climbing stairs, Fibonacci, coin change
+  2D DP: State is two variables (i, j)
+     → Knapsack, LCS, edit distance (Projects 44, 50, 51)
+  3D+ DP: Three or more state variables
+     → Rare in interviews but exists in competitive programming</code></pre></div>
+<hr>
+<h2>🚫 WHEN NOT TO USE DYNAMIC PROGRAMMING</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>✗ Need ALL actual solutions enumerated (not just count/optimal)
+</span>     → Backtracking (Project 42) is necessary
+     → DP gives the COUNT but not the actual combinations
+     → To recover solutions from DP → backtrack through the DP table
+
+✗ No overlapping subproblems
+     → Each subproblem is unique → memoization doesn't help
+     → Examples: merge sort, binary search
+     → These are "divide and conquer" — not DP
+
+✗ Greedy gives the optimal answer with proof
+     → Greedy is O(n) or O(n log n) → faster than most DP
+     → DP is O(n * something) → unnecessary overhead
+     → Examples: activity selection (Project 19), jump game (Project 49)
+
+✗ State space is too large
+     → If the number of unique states is exponential
+     → DP can't help — it stores one result per state
+     → Example: traveling salesman with 50 cities → 2^50 states → too many
+
+✗ Problem has no natural substructure
+     → If f(n) doesn't decompose into f(smaller)
+     → DP doesn't apply
+     → Need different algorithmic paradigm</code></pre></div>
+<hr>
+<h2>⚙️ HOW IT ONLY WORKS — Internal Mechanics</h2>
+<h3>The Recursion Tree With and Without Memoization</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>WITHOUT MEMOIZATION (ways(6)):
+</span>
+                            ways(6)
+                          /         \
+                    ways(5)         ways(4)
+                   /      \        /      \
+              ways(4)   ways(3) ways(3)  ways(2)
+              /    \    /    \   /    \   /    \
+          w(3) w(2) w(2) w(1) w(2) w(1) w(1) w(0)
+          ...  ...  ...        ...
+
+Total calls: 25 for n=6
+Pattern: Total calls ≈ 2^n (exponential)
+
+WITH MEMOIZATION (ways(6)):
+
+  ways(6) → not cached → compute
+    ways(5) → not cached → compute
+      ways(4) → not cached → compute
+        ways(3) → not cached → compute
+          ways(2) → not cached → compute
+            ways(1) → base case → return 1
+            ways(0) → base case → return 1
+          → ways(2) = 2 → CACHE
+          ways(1) → base case → return 1
+        → ways(3) = 3 → CACHE
+        ways(2) → CACHED → return 2 immediately!
+      → ways(4) = 5 → CACHE
+      ways(3) → CACHED → return 3 immediately!
+    → ways(5) = 8 → CACHE
+    ways(4) → CACHED → return 5 immediately!
+  → ways(6) = 13 → CACHE
+
+Total calls: 11 (linear!)
+Cached lookups saved: 14 redundant computations</code></pre></div>
+<h3>Tabulation — The Table Filling Process</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>n = 8
+</span>
+Step-by-step table building:
+
+Index:  0   1   2   3   4   5   6   7   8
+─────────────────────────────────────────────
+dp[0] = 1   (base case)
+dp[1] = 1   (base case)
+dp[2] = dp[1] + dp[0] = 1 + 1 = 2
+dp[3] = dp[2] + dp[1] = 2 + 1 = 3
+dp[4] = dp[3] + dp[2] = 3 + 2 = 5
+dp[5] = dp[4] + dp[3] = 5 + 3 = 8
+dp[6] = dp[5] + dp[4] = 8 + 5 = 13
+dp[7] = dp[6] + dp[5] = 13 + 8 = 21
+dp[8] = dp[7] + dp[6] = 21 + 13 = 34
+
+Answer: dp[8] = 34
+
+Table: [1, 1, 2, 3, 5, 8, 13, 21, 34]
+         ↑  ↑
+       base cases
+
+NOTICE:
+  → We fill LEFT to RIGHT
+  → Each cell depends ONLY on the two cells to its left
+  → No "looking ahead" → purely sequential
+  → This is why tabulation is iterative (no recursion needed)</code></pre></div>
+<h3>Space Optimization — Rolling Variables</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>Instead of array dp[0..n], use two variables:
+</span>
+n = 8:
+
+  prev2 = 1 (dp[0])
+  prev1 = 1 (dp[1])
+
+  i=2: current = 1 + 1 = 2  → prev2=1, prev1=2
+  i=3: current = 2 + 1 = 3  → prev2=2, prev1=3
+  i=4: current = 3 + 2 = 5  → prev2=3, prev1=5
+  i=5: current = 5 + 3 = 8  → prev2=5, prev1=8
+  i=6: current = 8 + 5 = 13 → prev2=8, prev1=13
+  i=7: current = 13 + 8 = 21 → prev2=13, prev1=21
+  i=8: current = 21 + 13 = 34 → prev2=21, prev1=34
+
+  Answer = prev1 = 34 ✓
+
+WHAT'S HAPPENING:
+  → At each step, prev2 and prev1 "slide forward"
+  → They represent a WINDOW of size 2 over the DP table
+  → Old values beyond the window are DISCARDED
+  → We never need them again → O(1) space!
+
+THE PATTERN:
+  → prev2 = dp[i-2]
+  → prev1 = dp[i-1]
+  → current = prev1 + prev2 = dp[i]
+  → Shift: prev2 ← prev1, prev1 ← current
+  → Repeat</code></pre></div>
+<h3>Time Complexity Comparison</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>┌──────────────────────┬───────────┬─────────┬─────────────┐
+</span>│ Approach             │ Time      │ Space   │ Stack Depth │
+├──────────────────────┼───────────┼─────────┼─────────────┤
+│ Plain Recursion      │ O(2^n)    │ O(n)    │ O(n)        │
+│ Memoization          │ O(n)      │ O(n)    │ O(n)        │
+│ Tabulation (array)   │ O(n)      │ O(n)    │ O(1)        │
+│ Tabulation (rolling) │ O(n)      │ O(1)    │ O(1)        │
+└──────────────────────┴───────────┴─────────┴─────────────┘
+
+THE TRANSFORMATION:
+  Plain recursion → Memoization: TIME drops from O(2^n) to O(n)
+  Memoization → Tabulation: STACK drops from O(n) to O(1)
+  Tabulation → Rolling: SPACE drops from O(n) to O(1)
+
+EACH STEP IS AN OPTIMIZATION OF THE PREVIOUS.
+This progression is the STANDARD DP development workflow.</code></pre></div>
+<h3>Why This is Fibonacci</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>CLIMBING STAIRS:
+</span>  ways(0) = 1
+  ways(1) = 1
+  ways(n) = ways(n-1) + ways(n-2)
+
+FIBONACCI:
+  fib(0) = 0
+  fib(1) = 1
+  fib(n) = fib(n-1) + fib(n-2)
+
+DIFFERENCE: Only the base cases differ slightly.
+  → Climbing stairs: 1, 1, 2, 3, 5, 8, 13, 21, 34...
+  → Fibonacci:       0, 1, 1, 2, 3, 5, 8, 13, 21...
+  → Climbing stairs is Fibonacci shifted by one position
+  → climbStairs(n) = fib(n+1)
+
+MANY problems reduce to Fibonacci-like recurrences:
+  → Tiling a 2×n board with 1×2 tiles
+  → Number of binary strings without consecutive 1's
+  → Number of ways to decode a message
+  → All have the form: f(n) = f(n-1) + f(n-2)
+  → The BASE CASES and MEANING differ, but the STRUCTURE is identical</code></pre></div>
+<hr>
+<h2>⚠️ COMMON PITFALLS AND FAILURE MODES</h2>
+<h3>Pitfall 1: Integer Overflow</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>Fibonacci grows FAST:
+</span>  fib(46) = 1,836,311,903   → fits in int
+  fib(47) = 2,971,215,073   → OVERFLOWS int (max 2,147,483,647)
+
+For climbing stairs (n ≤ 45 on LeetCode):
+  → int is safe
+
+For general Fibonacci:
+  → Use long for n &gt; 46
+  → Use BigInteger for n &gt; 92 (overflows long)
+
+ALWAYS CHECK THE CONSTRAINTS:
+  → What is the maximum n?
+  → Does the answer fit in int? long?
+  → Some problems ask for "answer modulo 10^9+7" → prevents overflow</code></pre></div>
+<h3>Pitfall 2: Wrong Base Cases</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>WRONG:
+</span>  dp[0] = 0  (should be 1 — one way to stand at ground: do nothing)
+  dp[1] = 1  (correct)
+  dp[2] = dp[1] + dp[0] = 1 + 0 = 1  → WRONG! Should be 2.
+
+CORRECT:
+  dp[0] = 1
+  dp[1] = 1
+  dp[2] = dp[1] + dp[0] = 1 + 1 = 2 ✓
+
+BASE CASE REASONING:
+  → dp[0] = 1: There is exactly ONE way to be at step 0 (start there)
+  → dp[1] = 1: There is exactly ONE way to reach step 1 (one 1-step)
+  → Some people define dp[1] = 1, dp[2] = 2 and start loop from 3
+  → Both work — just be consistent</code></pre></div>
+<h3>Pitfall 3: Off-by-One in Loop Bounds</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>WRONG:
+</span>  for (int i = 2; i &lt; n; i++) {  // stops at n-1 → dp[n] never computed
+      dp[i] = dp[i-1] + dp[i-2];
+  }
+  return dp[n];  // dp[n] is still 0!
+
+CORRECT:
+  for (int i = 2; i &lt;= n; i++) {  // goes UP TO AND INCLUDING n
+      dp[i] = dp[i-1] + dp[i-2];
+  }
+  return dp[n];  // dp[n] is correctly computed ✓</code></pre></div>
+<h3>Pitfall 4: Memoization Without Checking Cache First</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>WRONG:
+</span>  int ways(int n, int[] memo) {
+      if (n &lt;= 1) return 1;
+      memo[n] = ways(n-1, memo) + ways(n-2, memo);  // always recomputes!
+      return memo[n];
+  }
+
+CORRECT:
+  int ways(int n, int[] memo) {
+      if (n &lt;= 1) return 1;
+      if (memo[n] != 0) return memo[n];  // CHECK CACHE FIRST
+      memo[n] = ways(n-1, memo) + ways(n-2, memo);
+      return memo[n];
+  }
+
+WITHOUT THE CHECK: memoization degrades to plain recursion → O(2^n)
+The cache EXISTS but is never READ → useless.</code></pre></div>
+<h3>Pitfall 5: Space Optimization Variable Swap Order</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>WRONG:
+</span>  for (int i = 2; i &lt;= n; i++) {
+      prev2 = prev1;           // overwrites prev2 BEFORE using it!
+      prev1 = prev1 + prev2;   // now prev2 == prev1 → wrong sum
+  }
+
+CORRECT:
+  for (int i = 2; i &lt;= n; i++) {
+      int current = prev1 + prev2;  // compute FIRST using both old values
+      prev2 = prev1;                // THEN shift
+      prev1 = current;
+  }
+
+ALTERNATIVE (no temp variable):
+  for (int i = 2; i &lt;= n; i++) {
+      prev1 = prev1 + prev2;  // prev1 becomes current
+      prev2 = prev1 - prev2;  // prev2 becomes old prev1
+  }
+  → Works but less readable — prefer the temp variable approach</code></pre></div>
+<h3>Pitfall 6: Confusing "Number of Ways" vs "Minimum Steps"</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>CLIMBING STAIRS: "How many WAYS to reach step n?"
+</span>  → ADD the ways from each option: ways(n) = ways(n-1) + ways(n-2)
+
+MINIMUM COST STAIRS: "What is the MINIMUM cost to reach step n?"
+  → CHOOSE the better option: minCost(n) = min(minCost(n-1), minCost(n-2)) + cost[n]
+
+DIFFERENT OPERATIONS:
+  → Counting → SUM of sub-solutions
+  → Optimization → MIN or MAX of sub-solutions
+  → Both use DP, but the recurrence COMBINES sub-solutions differently</code></pre></div>
+<hr>
+<h2>📈 SCALABILITY CONSIDERATIONS</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>SCENARIO 1: Small n (n ≤ 20)
+</span>  → Even plain recursion works: 2^20 ≈ 1 million calls → fast
+  → But DP is trivially better → no reason not to use it
+
+SCENARIO 2: Medium n (n ≤ 45)
+  → Plain recursion: 2^45 ≈ 35 trillion → IMPOSSIBLY slow
+  → DP: 45 iterations → microseconds
+  → The difference is ASTRONOMICAL
+
+SCENARIO 3: Large n (n ≤ 10^6)
+  → Tabulation with rolling variables: O(n) time, O(1) space
+  → 10^6 iterations → ~1 millisecond → trivial
+  → Need long to avoid overflow (or modular arithmetic)
+
+SCENARIO 4: Very large n (n ≤ 10^18)
+  → Even O(n) is too slow: 10^18 iterations → years
+  → Need MATRIX EXPONENTIATION: O(log n) time
+  → [F(n+1), F(n)] = [[1,1],[1,0]]^n * [F(1), F(0)]
+  → Fast matrix power using repeated squaring
+  → Beyond typical interviews but good to know exists
+
+MODULAR ARITHMETIC:
+  → For very large n, answers are astronomically large numbers
+  → Problems often ask for "answer mod 10^9 + 7"
+  → Apply modulo at each step: dp[i] = (dp[i-1] + dp[i-2]) % MOD
+  → Prevents overflow AND gives the required answer</code></pre></div>
+<hr>
+<h2>🔍 INTERPRETABILITY CONSIDERATIONS</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>MENTAL MODEL — "Building a Pyramid of Answers"
+</span>
+MEMOIZATION (Top-Down):
+  → Start at the TOP of the pyramid (big problem)
+  → "I need ways(5) → I need ways(4) and ways(3)"
+  → "I need ways(4) → I need ways(3) and ways(2)"
+  → Eventually hit the BOTTOM (base cases)
+  → Build answers UPWARD, caching as you go
+  → Like asking a chain of friends: "Hey, do you know the answer?"
+  → If friend already knows → instant response (cached)
+  → If not → friend asks THEIR friends → eventually someone knows
+
+TABULATION (Bottom-Up):
+  → Start at the BOTTOM of the pyramid (base cases)
+  → "I know ways(0)=1 and ways(1)=1"
+  → "Therefore ways(2)=2, ways(3)=3, ways(4)=5, ways(5)=8"
+  → Build answers layer by layer going UP
+  → Like building a brick wall: each brick rests on the two below it
+  → No questions asked — just systematic construction
+
+SPACE OPTIMIZATION:
+  → "I only need the last two bricks to place the next one"
+  → Don't need to keep the entire wall — just the top edge
+  → Discard old bricks as you go up
+
+DEBUGGING:
+  → Print the DP table (or rolling variables) at each step
+  → Verify each value = sum of the two previous values
+  → Compare against known Fibonacci numbers
+  → If value seems wrong → check base cases and loop bounds</code></pre></div>
+<hr>
+<div class="github-btn-wrap"><a class="github-btn" href="https://github.com/Shakti4640/leetcode-patterns-guide-java/tree/main/project- (43)" target="_blank" rel="noopener"><svg viewBox="0 0 24 24"><path d="M12 .5C5.37.5 0 5.87 0 12.5c0 5.3 3.44 9.8 8.2 11.39.6.11.82-.26.82-.58v-2.03c-3.34.73-4.04-1.61-4.04-1.61-.55-1.39-1.34-1.76-1.34-1.76-1.09-.74.08-.73.08-.73 1.2.09 1.84 1.24 1.84 1.24 1.07 1.83 2.8 1.3 3.49 1 .1-.78.42-1.3.76-1.6-2.67-.3-5.47-1.33-5.47-5.93 0-1.31.47-2.38 1.24-3.22-.14-.3-.54-1.52.1-3.18 0 0 1.01-.32 3.3 1.23a11.5 11.5 0 0 1 3-.4c1.02 0 2.04.13 3 .4 2.28-1.55 3.29-1.23 3.29-1.23.64 1.66.24 2.88.12 3.18.77.84 1.23 1.91 1.23 3.22 0 4.61-2.81 5.63-5.48 5.92.43.37.81 1.1.81 2.22v3.29c0 .32.21.7.82.58C20.56 22.3 24 17.8 24 12.5 24 5.87 18.63.5 12 .5z"/></svg>💻 View Complete Java Code on GitHub</a></div>
+
+<hr>
+<h2>🔑 EXPECTED OUTPUT</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>╔═══════════════════════════════════════════════════════════╗
+</span>║  PROJECT 43: Climbing Stairs / Fibonacci                  ║
+║  Pattern: Dynamic Programming → Memoization / Tabulation  ║
+╚═══════════════════════════════════════════════════════════╝
+
+═══ TEST 1: Tabulation Trace (n=8) ═══
+Climbing 8 stairs
+═══════════════════════════════════════════
+TABULATION (Bottom-Up):
+  dp[0] = 1 (base)
+  dp[1] = 1 (base)
+  dp[2] = dp[1](1) + dp[0](1) = 2
+  dp[3] = dp[2](2) + dp[1](1) = 3
+  dp[4] = dp[3](3) + dp[2](2) = 5
+  dp[5] = dp[4](5) + dp[3](3) = 8
+  dp[6] = dp[5](8) + dp[4](5) = 13
+  dp[7] = dp[6](13) + dp[5](8) = 21
+  dp[8] = dp[7](21) + dp[6](13) = 34
+  Table: [1, 1, 2, 3, 5, 8, 13, 21, 34]
+  Answer: 34
+
+SPACE-OPTIMIZED (Rolling Variables):
+  Initial: prev2=1 (dp[0]), prev1=1 (dp[1])
+  i=2: current = 1 + 1 = 2 → prev2=1, prev1=2
+  i=3: current = 2 + 1 = 3 → prev2=2, prev1=3
+  i=4: current = 3 + 2 = 5 → prev2=3, prev1=5
+  i=5: current = 5 + 3 = 8 → prev2=5, prev1=8
+  i=6: current = 8 + 5 = 13 → prev2=8, prev1=13
+  i=7: current = 13 + 8 = 21 → prev2=13, prev1=21
+  i=8: current = 21 + 13 = 34 → prev2=21, prev1=34
+  Answer: 34
+
+═══ TEST 2: Memoization Trace (n=6) ═══
+MEMOIZATION (Top-Down) for n=6:
+  ways(6) = ways(5) + ways(4) → computing...
+    ways(5) = ways(4) + ways(3) → computing...
+      ways(4) = ways(3) + ways(2) → computing...
+        ways(3) = ways(2) + ways(1) → computing...
+          ways(2) = ways(1) + ways(0) → computing...
+            ways(1) = 1 (base case)
+            ways(0) = 1 (base case)
+          ways(2) = 1 + 1 = 2 → CACHED
+          ways(1) = 1 (base case)
+        ways(3) = 2 + 1 = 3 → CACHED
+        ways(2) = 2 (CACHED ✓)
+      ways(4) = 3 + 2 = 5 → CACHED
+      ways(3) = 3 (CACHED ✓)
+    ways(5) = 5 + 3 = 8 → CACHED
+    ways(4) = 5 (CACHED ✓)
+  ways(6) = 8 + 5 = 13 → CACHED
+  Answer: 13
+
+═══ TEST 4: Exponential vs Linear — Call Counts ═══
+┌───────┬──────────────────┬─────────────────┬─────────────┐
+│   n   │ Recursive Calls  │ Memo Lookups    │ Tab Steps   │
+├───────┼──────────────────┼─────────────────┼─────────────┤
+│     5 │               15 │               6 │           4 │
+│    10 │              177 │              11 │           9 │
+│    15 │             1973 │              16 │          14 │
+│    20 │            21891 │              21 │          19 │
+│    25 │           242785 │              26 │          24 │
+│    30 │          2692537 │              31 │          29 │
+└───────┴──────────────────┴─────────────────┴─────────────┘
+Notice: Recursive calls DOUBLE with each +5 in n (exponential)
+        Memo and Tab grow LINEARLY
+
+═══ TEST 8: Minimum Cost Climbing Stairs ═══
+Costs: [10, 15, 20]
+Min cost: 15
+(Optimal: start at step 1 (cost 15), jump 2 to top = 15)
+
+Costs: [1, 100, 1, 1, 1, 100, 1, 1, 100, 1]
+Min cost: 6
+(Optimal: take cheap steps, skip expensive ones = 6)
+
+═══ TEST 9: Large n with Modulo ═══
+  n=100 → 782204094 (mod 10^9+7) in 3 μs
+  n=1000 → 517691607 (mod 10^9+7) in 8 μs
+  n=10000 → 468172346 (mod 10^9+7) in 40 μs
+  n=100000 → 295027285 (mod 10^9+7) in 350 μs
+  n=1000000 → 586268941 (mod 10^9+7) in 3200 μs
+
+═══ TEST 10: Edge Cases ═══
+n=0: 1 (one way: do nothing)
+n=1: 1 (one way: take 1 step)
+n=2: 2 (1+1 or 2)
+n=45: 1836311903 (max for int)</code></pre></div>
+<hr>
+<h2>📊 THE COMPLETE DP DEVELOPMENT WORKFLOW</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>STEP 1: IDENTIFY
+</span>  → Does this have optimal substructure? ✓
+  → Does this have overlapping subproblems? ✓
+  → Can I write a recurrence relation? ✓
+
+STEP 2: DEFINE
+  → State: what variable(s) describe a subproblem?
+       → Here: n (the number of remaining steps)
+  → Recurrence: how does the big problem relate to smaller ones?
+       → Here: ways(n) = ways(n-1) + ways(n-2)
+  → Base cases: what are the smallest subproblems?
+       → Here: ways(0) = 1, ways(1) = 1
+
+STEP 3: IMPLEMENT (Memoization)
+  → Write the recursive solution
+  → Add a cache (array or HashMap)
+  → Check cache before computing
+  → Store result in cache after computing
+  → Verify correctness
+
+STEP 4: OPTIMIZE (Tabulation)
+  → Convert recursion to iteration
+  → Fill table from base cases upward
+  → Eliminate recursion stack overhead
+
+STEP 5: SPACE-OPTIMIZE (Rolling Variables)
+  → Identify: how many previous states does current state need?
+  → Replace array with that many variables
+  → Achieve O(1) space if possible
+
+THIS WORKFLOW APPLIES TO ALL DP PROBLEMS:
+  → Project 44 (Knapsack): 2D state → 2D table → 1D table
+  → Project 50 (LCS): 2D state → 2D table → 1D table
+  → Project 51 (Edit Distance): 2D state → 2D table → 1D table
+  → The PATTERN is universal — the STATE DEFINITION changes</code></pre></div>
+<hr>
+<h2>📊 CONNECTING BACKTRACKING AND DP</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>┌───────────────────┬──────────────────────┬──────────────────────┐
+</span>│ Aspect            │ Backtracking (P42)   │ DP (P43)             │
+├───────────────────┼──────────────────────┼──────────────────────┤
+│ Question          │ "What ARE all ways?" │ "How MANY ways?"     │
+│ Output            │ List of combinations │ A single number      │
+│ Explores          │ Every valid path     │ Each state once      │
+│ Time              │ O(exponential)       │ O(n) or O(n*m)       │
+│ Space             │ O(output size)       │ O(n) or O(1)         │
+│ Pruning           │ Cut dead branches    │ N/A (no branching)   │
+│ Overlap handling  │ Re-explores same     │ Caches &amp; reuses      │
+│ When to use       │ Need actual items    │ Need count/optimal   │
+└───────────────────┴──────────────────────┴──────────────────────┘
+
+EXAMPLE:
+  "How many ways to make change for $8 with coins [2,3,5]?"
+  → DP: dp[8] = 3 → instant answer
+  
+  "What ARE the ways to make change for $8 with coins [2,3,5]?"
+  → Backtracking: [[2,2,2,2], [2,3,3], [3,5]] → must enumerate
+
+IF YOU NEED BOTH:
+  → Use DP for the count
+  → Use backtracking (with DP pruning) for enumeration
+  → Or: build DP table → backtrack THROUGH the table to recover solutions</code></pre></div>
+<hr>
+<h2>🧠 KEY TAKEAWAY</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>WHAT WE LEARNED:
+</span>→ Dynamic Programming transforms exponential problems into polynomial ones
+→ TWO PILLARS: optimal substructure + overlapping subproblems
+→ TWO APPROACHES: memoization (top-down) vs tabulation (bottom-up)
+→ SPACE OPTIMIZATION: rolling variables reduce O(n) → O(1)
+→ The development workflow: identify → define → memo → tab → space-optimize
+
+THE RECURRENCE IS EVERYTHING:
+→ Once you have the recurrence relation → the code writes itself
+→ ways(n) = ways(n-1) + ways(n-2) → entire solution in 5 lines
+→ The hard part is FINDING the recurrence, not CODING it
+→ Practice = pattern recognition for recurrences
+
+THE DP MINDSET:
+→ "Don't re-compute what you've already computed"
+→ "Build big answers from small answers"
+→ "Each subproblem is solved exactly ONCE"
+→ This transforms thinking from "explore everything" to "compute systematically"
+
+FIBONACCI AS THE FOUNDATION:
+→ Simplest possible DP: 1D state, 2 dependencies, trivial recurrence
+→ Every DP concept (memo, tab, rolling) is visible here
+→ Understanding THIS deeply → ready for 2D DP (Projects 44, 50, 51)</code></pre></div>
+<hr>
+<h2>🌉 BRIDGE TO NEXT PROJECT</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>PROJECT 43 taught us:
+</span>→ 1D Dynamic Programming: state is a SINGLE variable (n)
+→ Recurrence depends on 1-2 previous states
+→ Table is a 1D array → optimizable to O(1) space
+→ Problem type: "how many ways" → SUM of sub-solutions
+
+PROJECT 44 (0/1 Knapsack) will ask:
+→ What if the state needs TWO variables to describe?
+→ You have N items, each with weight and value
+→ You have a knapsack with capacity W
+→ Maximize total value without exceeding capacity
+→ State: dp[i][w] = max value using first i items with capacity w
+
+THE KEY DIFFERENCES:
+  ┌──────────────────────┬──────────────────────┬──────────────────────┐
+  │ Aspect               │ Project 43           │ Project 44           │
+  │                      │ (Climbing Stairs)    │ (0/1 Knapsack)       │
+  ├──────────────────────┼──────────────────────┼──────────────────────┤
+  │ State dimension      │ 1D (just n)          │ 2D (item i, cap w)   │
+  │ Table shape          │ 1D array             │ 2D grid              │
+  │ Recurrence           │ SUM (counting ways)  │ MAX (optimization)   │
+  │ Decision at each step│ Take 1 or 2 steps    │ Include or exclude   │
+  │ Space optimization   │ 2 variables → O(1)   │ 1D array → O(W)     │
+  │ Constraint           │ Reach step n         │ Don't exceed W       │
+  └──────────────────────┴──────────────────────┴──────────────────────┘
+
+THE PROGRESSION OF DP COMPLEXITY:
+  Project 43: 1D state → 1D table → O(1) space → COUNTING
+  Project 44: 2D state → 2D table → O(W) space → OPTIMIZATION
+  Project 45: 1D state but HYBRID with binary search → LIS
+  Project 50: 2D state → 2D table → O(n) space → STRING MATCHING
+  Project 51: 2D state → 2D table → O(n) space → STRING TRANSFORMATION
+
+Each project adds ONE new dimension:
+  43 → the DP framework itself (memo, tab, rolling)
+  44 → 2D state + include/exclude decision
+  45 → DP + binary search hybrid
+  50 → DP on two strings (diagonal transitions)
+  51 → DP with three choices per cell (insert/delete/replace)
+
+→ From counting steps → to optimizing value under constraints
+→ From 1D thinking → to 2D grid navigation
+→ The FRAMEWORK stays identical — the STATE SPACE grows</code></pre></div>
+<hr>
+<p><strong>Ready for Project 44: 0/1 Knapsack Problem (Dynamic Programming → 2D State Table → Include/Exclude Decision)?</strong></p>
+</div>
+</div>
+
+<!-- ========== data-index="19" ========== -->
+<div class="chat-message" data-index="19"></div>
+</div>
+<div class="bottom-nav">
+  <a href="project-42.html" class="nav-btn prev">← Prev</a>
+  <div class="nav-center">
+    <span class="nav-project-label">PROJECT 43 of 60</span>
+    <span class="nav-project-title">Climbing Stairs / Fibonacci Sequence</span>
+    <span class="kbd-hint">← → arrow keys to navigate</span>
+  </div>
+  <a href="project-44.html" class="nav-btn next">Next →</a>
+  <a href="index.html" class="nav-btn home">🏠 TOC</a>
+</div>
+<div id="progress-track"><div id="progress-fill"></div></div>
+<div id="progress-pct">0%</div>
+<script src="script.js"></script>
+<script>
+document.addEventListener('keydown', function(e) {
+  if (['INPUT','TEXTAREA'].includes(document.activeElement.tagName)) return;
+  if (e.key === 'ArrowRight' && "project-44.html" !== null) window.location = "project-44.html";
+  if (e.key === 'ArrowLeft' && "project-42.html" !== null) window.location = "project-42.html";
+});
+</script>
+</body>
+</html>

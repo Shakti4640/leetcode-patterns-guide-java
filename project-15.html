@@ -1,0 +1,777 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PROJECT 15: Middle of a Linked List</title>
+<link rel="icon" type="image/png" href="images/favicon.png">
+<link rel="stylesheet" href="styles.css">
+
+</head>
+<body>
+<div id="progress-bar-container"><div id="progress-bar" style="width:26%"></div></div>
+<div id="progress-label">26%</div>
+<div class="page-wrapper">
+<div class="chat-message"><div class="px-2"><h1>PROJECT 15: Middle of a Linked List</h1>
+<h2>🎯 Fast &amp; Slow Pointers → Half-Speed Traversal → Single-Pass Midpoint</h2>
+<hr>
+<h2>🔗 DEPENDENCY CHAIN</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>Project 1  → Two Pointers → two variables scanning data simultaneously
+</span>Project 7  → Fast &amp; Slow Pointers → speed differential on linked list → cycle detection
+Project 14 → Merge Intervals → sort-then-scan → sequential processing
+Project 15 → Fast &amp; Slow Pointers REVISITED → midpoint finding
+             → same speed differential technique from Project 7
+             → different PURPOSE: not detecting cycles, but finding POSITION
+             → the simplest non-trivial linked list operation
+             → foundation for merge sort on linked lists, palindrome checks, etc.</code></pre></div>
+<hr>
+<h2>🧩 THE HYPOTHETICAL PROBLEM</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ You are given a SINGLY LINKED LIST
+</span>→ Find the MIDDLE node
+→ Return the middle node (not just its value)
+→ If the list has EVEN number of nodes → return the SECOND middle node
+
+Example 1 (Odd length):
+  Input:  1 → 2 → 3 → 4 → 5
+  Output: Node with value 3
+  → 5 nodes → middle is the 3rd → value 3
+
+Example 2 (Even length):
+  Input:  1 → 2 → 3 → 4 → 5 → 6
+  Output: Node with value 4
+  → 6 nodes → two middles: 3 and 4 → return the SECOND middle → value 4
+
+Example 3 (Single node):
+  Input:  1
+  Output: Node with value 1
+  → Only one node → it IS the middle
+
+Example 4 (Two nodes):
+  Input:  1 → 2
+  Output: Node with value 2
+  → Two nodes → second middle → value 2
+
+WHY THIS MATTERS:
+  → Finding the middle is a BUILDING BLOCK for many algorithms:
+    → Merge sort on linked list → split list at middle → sort each half
+    → Palindrome check → reverse second half → compare with first half
+    → Balanced binary tree from sorted list → middle becomes root
+  → It's also the simplest application of fast/slow pointers for POSITION</code></pre></div>
+<hr>
+<h2>🔍 HOW TO APPROACH IT</h2>
+<h3>Step 1 — The Linked List Constraint</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>ARRAY:
+</span>  → Length is known → arr.length
+  → Middle index = length / 2
+  → Direct access: arr[length / 2]
+  → O(1) time → trivial
+
+LINKED LIST:
+  → Length is NOT known upfront
+  → NO random access → can't jump to index i
+  → Must TRAVERSE from head to reach any node
+  → To find length: traverse entire list → O(n)
+  → To find middle: traverse to length/2 → O(n)
+  → Two-pass approach: first count, then traverse to middle → 2 passes
+
+CAN WE DO IT IN ONE PASS?
+  → Yes → Fast &amp; Slow Pointers
+  → The speed differential automatically finds the middle
+  → No counting needed → no second pass needed</code></pre></div>
+<h3>Step 2 — Revisiting Fast &amp; Slow from Project 7</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>PROJECT 7 (Cycle Detection):
+</span>  → Fast moves 2 steps, Slow moves 1 step
+  → If cycle exists → they MEET inside the cycle
+  → If no cycle → fast reaches the end (null)
+  → The MEETING was the signal → "cycle exists"
+
+PROJECT 15 (Midpoint Finding):
+  → Fast moves 2 steps, Slow moves 1 step
+  → When fast reaches the END → slow is at the MIDDLE
+  → The POSITION of slow when fast finishes is the answer
+  → No cycle involved → fast always reaches the end
+
+SAME TECHNIQUE, DIFFERENT QUESTION:
+  Project 7:  "Do they meet?" → boolean answer (cycle or not)
+  Project 15: "Where is slow when fast finishes?" → positional answer (middle node)</code></pre></div>
+<h3>Step 3 — Why Fast=2x Speed Gives the Middle</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>INTUITION:
+</span>  → Fast pointer covers TWICE the distance of slow pointer
+  → When fast reaches the END (distance = n)
+  → Slow has covered n/2 → exactly the MIDDLE
+
+FORMAL:
+  → List has n nodes (indexed 0 to n-1)
+  → Each step: fast advances 2, slow advances 1
+  → After k steps: fast is at position 2k, slow is at position k
+  → Fast reaches end when 2k ≈ n → k ≈ n/2
+  → At that moment: slow is at position k ≈ n/2 → THE MIDDLE
+
+VISUAL (Odd length — 5 nodes):
+  Step 0: slow=0, fast=0
+    [S/F] → 2 → 3 → 4 → 5
+
+  Step 1: slow=1, fast=2
+    1 → [S] → [F] → 4 → 5
+
+  Step 2: slow=2, fast=4
+    1 → 2 → [S] → 4 → [F]
+
+  Fast is at last node → STOP
+  Slow is at node 2 (value 3) → MIDDLE ✓
+
+VISUAL (Even length — 6 nodes):
+  Step 0: slow=0, fast=0
+    [S/F] → 2 → 3 → 4 → 5 → 6
+
+  Step 1: slow=1, fast=2
+    1 → [S] → [F] → 4 → 5 → 6
+
+  Step 2: slow=2, fast=4
+    1 → 2 → [S] → 4 → [F] → 6
+
+  Step 3: slow=3, fast=6 (past end → null)
+    1 → 2 → 3 → [S] → 5 → 6 → [F=null]
+
+  Fast is null → STOP
+  Slow is at node 3 (value 4) → SECOND MIDDLE ✓</code></pre></div>
+<h3>Step 4 — The Termination Condition</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>WHEN DOES FAST STOP?
+</span>
+Case 1: ODD number of nodes (fast lands ON the last node)
+  1 → 2 → 3 → 4 → 5
+  
+  Fast positions: 0, 2, 4 (last node)
+  fast.next = null → can't move 2 more → STOP
+  
+  Condition: fast.next == null
+
+Case 2: EVEN number of nodes (fast goes PAST the last node)
+  1 → 2 → 3 → 4 → 5 → 6
+  
+  Fast positions: 0, 2, 4, then tries to go to 6 → position 6 is null
+  fast = null → STOP
+  
+  Condition: fast == null
+
+COMBINED LOOP CONDITION:
+  while (fast != null &amp;&amp; fast.next != null)
+  
+  → fast != null: handles even-length case (fast went past end)
+  → fast.next != null: handles odd-length case (fast is on last node)
+  → BOTH checks are necessary
+  → Order matters: fast != null must be checked FIRST (short-circuit)
+    → If fast is null, fast.next would be NullPointerException
+    → Java's &amp;&amp; short-circuits → if fast is null, fast.next is never evaluated ✓</code></pre></div>
+<h3>Step 5 — First Middle vs Second Middle</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>For EVEN-length lists, there are TWO middle nodes:
+</span>  1 → 2 → [3] → [4] → 5 → 6
+              ↑       ↑
+         1st middle  2nd middle
+
+THE STANDARD ALGORITHM (as described) returns the SECOND middle:
+  → After 3 steps: slow is at node 3 (value 4) → second middle
+
+TO GET THE FIRST MIDDLE INSTEAD:
+  → Start fast ONE STEP AHEAD: fast = head.next
+  → OR change the loop condition slightly
+  → OR use a "previous slow" pointer
+
+  Method: Start fast at head.next
+    Step 0: slow=0 (head), fast=1 (head.next)
+      [S] → [F] → 3 → 4 → 5 → 6
+
+    Step 1: slow=1, fast=3
+      1 → [S] → 3 → [F] → 5 → 6
+
+    Step 2: slow=2, fast=5
+      1 → 2 → [S] → 4 → 5 → [F]
+
+    fast.next = null → STOP
+    Slow is at node 2 (value 3) → FIRST MIDDLE ✓
+
+WHY THE PROBLEM USUALLY ASKS FOR SECOND MIDDLE:
+  → More useful for splitting the list into two halves
+  → First half: head to node before middle
+  → Second half: middle to end
+  → Second middle gives a clean split for merge sort</code></pre></div>
+<hr>
+<h2>🛠️ HOW CAN WE SOLVE IT</h2>
+<h3>The Algorithm</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>1. Initialize:
+</span>     → slow = head
+     → fast = head
+
+2. WHILE fast is not null AND fast.next is not null:
+     → slow = slow.next        (move 1 step)
+     → fast = fast.next.next   (move 2 steps)
+
+3. RETURN slow → this is the middle node</code></pre></div>
+<h3>The Two-Pass Alternative (for comparison)</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>1. FIRST PASS: Count the total number of nodes
+</span>     → Traverse entire list → count = n
+
+2. SECOND PASS: Traverse to position n/2
+     → Move a pointer n/2 steps from head
+
+3. RETURN the node at position n/2
+
+→ This is correct but requires TWO passes
+→ Fast/slow does it in ONE pass
+→ Both are O(n) time, but one pass is more elegant
+→ In streaming scenarios (data arriving one node at a time), one pass is NECESSARY</code></pre></div>
+<hr>
+<h2>✅ WHAT SHOULD YOU DO</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ ALWAYS check BOTH conditions: fast != null &amp;&amp; fast.next != null
+</span>     → fast != null → handles even-length lists
+     → fast.next != null → handles odd-length lists
+     → Missing either → NullPointerException for certain list lengths
+
+→ ALWAYS check fast != null BEFORE fast.next != null
+     → Java short-circuit evaluation: if fast is null, second condition is skipped
+     → Reversed order: fast.next != null checked first → NPE when fast is null
+
+→ ALWAYS clarify which middle is needed for even-length lists
+     → "Second middle" (standard): both pointers start at head
+     → "First middle": fast starts at head.next (or use prev pointer)
+     → The problem statement will specify → read carefully
+
+→ ALWAYS handle the edge case of single-node list
+     → head.next is null → fast.next is null → loop doesn't execute
+     → Return head → correct (single node is its own middle)
+
+→ ALWAYS remember: this is a BUILDING BLOCK, not just a standalone problem
+     → Finding the middle enables: merge sort, palindrome check, reorder list
+     → Master this → unlock multiple advanced problems</code></pre></div>
+<hr>
+<h2>🚫 WHAT SHOULD YOU NOT DO</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ DO NOT traverse the list to count length first (unless required)
+</span>     → Two-pass approach works but wastes a traversal
+     → Fast/slow is more elegant and equally fast
+     → In interviews, fast/slow shows you know the technique
+
+→ DO NOT use a counter variable alongside a single pointer
+     WRONG APPROACH:
+       int count = 0;
+       ListNode current = head;
+       while (current != null) { count++; current = current.next; }
+       current = head;
+       for (int i = 0; i &lt; count / 2; i++) current = current.next;
+       return current;
+     
+     → Works but doesn't demonstrate pattern knowledge
+     → Also requires two traversals → less efficient in practice
+
+→ DO NOT convert to an array then find middle
+     → Tempting: put all nodes in ArrayList → return list.get(size/2)
+     → Works but uses O(n) extra space
+     → Fast/slow uses O(1) extra space
+     → Converting to array defeats the purpose of linked list operations
+
+→ DO NOT forget that linked list traversal is ONE-DIRECTIONAL
+     → Singly linked list: can only move FORWARD
+     → Can't go backward to "previous node" without storing it
+     → If you need the node BEFORE middle → use a "prev" variable
+
+→ DO NOT modify the list structure while finding the middle
+     → Finding middle is a READ operation → don't break links
+     → The list should be intact after finding the middle
+     → Modification comes in separate operations (reverse, split, etc.)</code></pre></div>
+<hr>
+<h2>🔀 WHEN TO USE THIS PATTERN</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>✓ Finding the MIDDLE of a linked list
+</span>     → The direct application
+
+✓ SPLITTING a linked list into two halves
+     → Find middle → cut at middle → two separate lists
+     → Used in merge sort for linked lists
+
+✓ Checking if a linked list is a PALINDROME
+     → Find middle → reverse second half → compare with first half
+     → Fast/slow finds the split point
+
+✓ REORDERING a linked list (L0→Ln→L1→Ln-1→...)
+     → Find middle → reverse second half → interleave both halves
+
+✓ Any problem requiring the HALFWAY POINT of a sequential structure
+     → Where random access is not available
+     → Where length is unknown upfront
+
+✓ STREAMING data where you need the median position
+     → Process elements one at a time → maintain middle pointer
+     → (Though for running median, two heaps are better → Project 35)</code></pre></div>
+<hr>
+<h2>🚫 WHEN NOT TO USE THIS PATTERN</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>✗ Data is in an ARRAY (not linked list)
+</span>     → Array has random access → middle = arr[arr.length / 2] → O(1)
+     → Fast/slow on arrays is unnecessary overhead
+
+✗ You need the middle VALUE of a sorted sequence (median)
+     → Median finding is a different problem
+     → For unsorted arrays: quickselect algorithm → O(n) average
+     → For streaming data: two heaps → Project 35
+     → Fast/slow finds the positional middle, not the value-based median
+
+✗ Linked list is DOUBLY linked
+     → Can traverse from both ends simultaneously → regular two pointers
+     → No need for speed differential
+     → Start one pointer at head, one at tail → move inward
+
+✗ You need to find a position OTHER than the middle
+     → 1/3 point: fast moves 3x, slow moves 1x
+     → 1/4 point: fast moves 4x, slow moves 1x
+     → Generalizable but unusual → specific problems may need this
+
+✗ The list has a CYCLE
+     → Fast/slow for midpoint assumes no cycle
+     → With a cycle, fast never reaches null → infinite loop
+     → Must detect cycle first (Project 7) → handle separately</code></pre></div>
+<hr>
+<h2>⚙️ HOW IT ONLY WORKS — Internal Mechanics</h2>
+<h3>Mechanic 1: The Speed Ratio Mathematics</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>SETUP:
+</span>  → List of n nodes: node_0, node_1, ..., node_(n-1)
+  → slow starts at node_0, moves 1 step per iteration
+  → fast starts at node_0, moves 2 steps per iteration
+
+AFTER k ITERATIONS:
+  → slow is at node_k
+  → fast is at node_(2k)
+
+TERMINATION (odd n, e.g., n=5):
+  → fast reaches node_(n-1) → the last node
+  → fast.next == null → stop
+  → At this point: 2k = n-1 → k = (n-1)/2
+  → slow is at node_((n-1)/2) = node_2 → THE MIDDLE ✓
+
+  Verify: n=5 → k=(5-1)/2=2 → slow at node_2 → 3rd node → middle ✓
+
+TERMINATION (even n, e.g., n=6):
+  → fast reaches node_(n-2), then moves 2 → goes past node_(n-1) → null
+  → fast == null → stop
+  → At this point: 2k = n → k = n/2
+  → slow is at node_(n/2) = node_3 → THE SECOND MIDDLE ✓
+
+  Verify: n=6 → k=6/2=3 → slow at node_3 → 4th node → second middle ✓
+
+THE MATH GUARANTEES:
+  → Odd n: slow ends at (n-1)/2 → exact middle
+  → Even n: slow ends at n/2 → second of two middles
+  → Both are correct per the problem definition</code></pre></div>
+<h3>Mechanic 2: Why Both Null Checks Are Necessary</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>SCENARIO: Even length (n=4)
+</span>  1 → 2 → 3 → 4
+
+  Step 0: slow=node_0(1), fast=node_0(1)
+  Step 1: slow=node_1(2), fast=node_2(3)
+  Step 2: slow=node_2(3), fast=node_4(null)
+
+  At step 2: fast = null
+  → If we only checked fast.next != null:
+    → fast.next would be null.next → NullPointerException!
+  → The fast != null check CATCHES this case
+
+SCENARIO: Odd length (n=5)
+  1 → 2 → 3 → 4 → 5
+
+  Step 0: slow=node_0(1), fast=node_0(1)
+  Step 1: slow=node_1(2), fast=node_2(3)
+  Step 2: slow=node_2(3), fast=node_4(5)
+
+  At step 2: fast = node_4, fast.next = null
+  → If we only checked fast != null:
+    → fast is not null → loop continues
+    → fast.next.next → null.next → NullPointerException!
+  → The fast.next != null check CATCHES this case
+
+BOTH CHECKS TOGETHER:
+  while (fast != null &amp;&amp; fast.next != null)
+  → Handles ALL list lengths correctly
+  → Short-circuit evaluation prevents NPE</code></pre></div>
+<h3>Mechanic 3: One Pass vs Two Pass — Practical Difference</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>TWO-PASS APPROACH:
+</span>  Pass 1: head → ... → null (count = n)        → touches n nodes
+  Pass 2: head → ... → middle                  → touches n/2 nodes
+  Total nodes touched: n + n/2 = 3n/2
+
+ONE-PASS (Fast/Slow):
+  Slow: head → ... → middle                    → touches n/2 nodes
+  Fast: head → ... → end                       → touches n nodes
+  Total nodes touched: n + n/2 = 3n/2
+
+SAME TOTAL WORK! Both are O(n).
+
+BUT:
+  → Two-pass requires the list to be TRAVERSABLE TWICE
+  → In a streaming scenario → data comes once → can't re-traverse
+  → One-pass works on streaming data
+  → One-pass also has better CACHE behavior (data accessed in one sweep)
+  → One-pass is preferred in interviews (shows technique knowledge)</code></pre></div>
+<h3>Mechanic 4: The ListNode Structure in Java</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>Definition (standard LeetCode):
+</span>
+  class ListNode {
+      int val;
+      ListNode next;
+      
+      ListNode() {}
+      ListNode(int val) { this.val = val; }
+      ListNode(int val, ListNode next) { 
+          this.val = val; 
+          this.next = next; 
+      }
+  }
+
+KEY PROPERTIES:
+  → Each node stores ONE value and ONE pointer
+  → The pointer goes to the NEXT node only (singly linked)
+  → The last node's next is null → signals end of list
+  → The head pointer is the entry point → no access without it
+  → No "previous" pointer → can't go backward
+  → No "length" property → must count by traversing
+
+MEMORY MODEL:
+  head → [val:1|next:→] → [val:2|next:→] → [val:3|next:null]
+  
+  → Each node is a separate object on the heap
+  → Pointers (references) connect them
+  → Nodes are NOT contiguous in memory (unlike arrays)
+  → This means NO random access → must follow pointers sequentially</code></pre></div>
+<h3>Time and Space Complexity</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>TIME: O(n)
+</span>  → Fast pointer traverses the entire list (n nodes)
+  → Slow pointer traverses half the list (n/2 nodes)
+  → Total: O(n) + O(n/2) = O(n)
+
+SPACE: O(1)
+  → Two pointer variables: slow and fast
+  → No additional data structures
+  → No recursion → no stack frames
+  → Truly constant extra space</code></pre></div>
+<hr>
+<h2>⚠️ COMMON PITFALLS AND FAILURE MODES</h2>
+<h3>Pitfall 1: NullPointerException on Fast Pointer</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>WRONG:
+</span>  while (fast.next != null) {    // crashes when fast IS null (even length)
+      slow = slow.next;
+      fast = fast.next.next;
+  }
+
+ALSO WRONG:
+  while (fast != null) {         // crashes when fast.next is null (odd length)
+      slow = slow.next;
+      fast = fast.next.next;     // fast.next.next when fast.next is null → NPE
+  }
+
+CORRECT:
+  while (fast != null &amp;&amp; fast.next != null) {
+      slow = slow.next;
+      fast = fast.next.next;
+  }
+
+→ BOTH conditions needed
+→ Order matters (fast != null FIRST due to short-circuit)</code></pre></div>
+<h3>Pitfall 2: Wrong Middle for Even-Length Lists</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>List: 1 → 2 → 3 → 4
+</span>
+Standard algorithm (both start at head):
+  Step 1: slow=2, fast=3
+  Step 2: slow=3, fast=null → STOP
+  Returns node 3 (value 3) → SECOND MIDDLE ✓
+
+If problem asks for FIRST middle (node 2):
+  → Need to start fast at head.next
+  
+  Step 0: slow=1(head), fast=2(head.next)
+  Step 1: slow=2, fast=4
+  fast.next = null → STOP
+  Returns node 2 (value 2) → FIRST MIDDLE ✓
+
+→ Clarify WHICH middle the problem wants
+→ LeetCode 876 asks for second middle → standard algorithm
+→ Merge sort split typically wants first middle → start fast ahead</code></pre></div>
+<h3>Pitfall 3: Empty List</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>Input: head = null
+</span>
+  while (fast != null &amp;&amp; fast.next != null)
+  → fast is null → condition is false → loop doesn't execute
+  → return slow → slow is null
+
+→ Returning null for empty list is CORRECT
+→ But add a guard if the caller expects non-null:
+
+  if (head == null) return null;
+  // or throw new IllegalArgumentException("List is empty");</code></pre></div>
+<h3>Pitfall 4: List With Cycle</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>If the list has a CYCLE:
+</span>  → Fast pointer NEVER reaches null
+  → Loop runs forever → infinite loop → program hangs
+
+→ Fast/slow for MIDPOINT assumes NO CYCLE
+→ If cycle is possible → detect cycle first (Project 7)
+→ Then handle accordingly (break the cycle, or return error)
+
+→ In most problems, the input is guaranteed cycle-free
+→ But be aware of this assumption</code></pre></div>
+<h3>Pitfall 5: Confusing Node with Value</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>WRONG: return slow.val;
+</span>→ Returns the VALUE at the middle node (an integer)
+→ But the problem asks for the NODE itself
+
+CORRECT: return slow;
+→ Returns the actual ListNode object
+→ Caller can access slow.val, slow.next, etc.
+
+→ Read the problem: "return the middle node" → return the node
+→ "return the value of the middle node" → return slow.val
+→ Usually the node is returned (more useful for chaining operations)</code></pre></div>
+<hr>
+<h2>📈 SCALABILITY CONSIDERATIONS</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>LIST LENGTH SCALING:
+</span>→ n = 100         → 150 pointer moves → instant
+→ n = 10,000      → 15,000 pointer moves → instant
+→ n = 1,000,000   → 1,500,000 pointer moves → ~2ms
+→ n = 100,000,000 → 150,000,000 pointer moves → ~300ms
+
+COMPARISON WITH ALTERNATIVES:
+  → Two-pass (count + traverse): same O(n) → but 50% more node accesses
+  → Array conversion: O(n) time + O(n) space → much worse on space
+  → Fast/slow: O(n) time + O(1) space → optimal on both dimensions
+
+CACHE BEHAVIOR:
+  → Linked list nodes are scattered in memory (not contiguous)
+  → Each node access is potentially a cache miss
+  → Minimizing node accesses matters more for linked lists than arrays
+  → Fast/slow touches 3n/2 nodes → same as two-pass
+  → But in one sweep → slightly better cache prediction
+
+PRACTICAL NOTE:
+  → For very large lists (millions of nodes), memory allocation/GC is the bottleneck
+  → The algorithm itself is never the performance issue
+  → Linked lists are inherently slower than arrays due to pointer chasing
+  → Use arrays when possible → linked lists only when insertion/deletion is frequent</code></pre></div>
+<hr>
+<h2>🔍 INTERPRETABILITY CONSIDERATIONS</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>MENTAL MODEL:
+</span>  → Imagine two runners on a track
+  → Runner A runs at normal speed
+  → Runner B runs at double speed
+  → When Runner B finishes the race → Runner A is exactly halfway
+  → This is intuitive and easy to explain
+
+DEBUGGING:
+  → Print slow.val and fast.val at each step
+  → You can see slow advancing steadily and fast jumping ahead
+  → When fast stops → slow's position is the answer
+  → Very easy to trace and verify
+
+INTERVIEW COMMUNICATION:
+  → "I use two pointers: slow moves one step, fast moves two steps"
+  → "When fast reaches the end, slow is at the middle"
+  → "This works because fast covers twice the distance of slow"
+  → "Time: O(n), Space: O(1), single pass"
+  → Clean, concise, impressive
+
+CODE READABILITY:
+  → The algorithm is 5 lines of code
+  → Variable names (slow, fast) are self-documenting
+  → The loop condition (fast != null &amp;&amp; fast.next != null) is a recognizable pattern
+  → Any experienced developer recognizes this immediately</code></pre></div>
+<hr>
+<div class="github-btn-wrap"><a class="github-btn" href="https://github.com/Shakti4640/leetcode-patterns-guide-java/tree/main/project- (15)" target="_blank" rel="noopener"><svg viewBox="0 0 24 24"><path d="M12 .5C5.37.5 0 5.87 0 12.5c0 5.3 3.44 9.8 8.2 11.39.6.11.82-.26.82-.58v-2.03c-3.34.73-4.04-1.61-4.04-1.61-.55-1.39-1.34-1.76-1.34-1.76-1.09-.74.08-.73.08-.73 1.2.09 1.84 1.24 1.84 1.24 1.07 1.83 2.8 1.3 3.49 1 .1-.78.42-1.3.76-1.6-2.67-.3-5.47-1.33-5.47-5.93 0-1.31.47-2.38 1.24-3.22-.14-.3-.54-1.52.1-3.18 0 0 1.01-.32 3.3 1.23a11.5 11.5 0 0 1 3-.4c1.02 0 2.04.13 3 .4 2.28-1.55 3.29-1.23 3.29-1.23.64 1.66.24 2.88.12 3.18.77.84 1.23 1.91 1.23 3.22 0 4.61-2.81 5.63-5.48 5.92.43.37.81 1.1.81 2.22v3.29c0 .32.21.7.82.58C20.56 22.3 24 17.8 24 12.5 24 5.87 18.63.5 12 .5z"/></svg>💻 View Complete Java Code on GitHub</a></div>
+
+<hr>
+<h2>🔑 EXPECTED OUTPUT</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>╔═══════════════════════════════════════════════════╗
+</span>║  PROJECT 15: Middle of a Linked List              ║
+║  Pattern: Fast &amp; Slow Pointers → Midpoint Finding ║
+╚═══════════════════════════════════════════════════╝
+
+═══ TEST 1: Odd Length (5 nodes) — Visual ═══
+  List: 1 → 2 → 3 → 4 → 5  (length=5)
+  ─────────────────────────────────────────
+  Step 0:
+    [1]→[2]→[3]→[4]→[5]
+    S/F
+
+  Step 1:
+    [1]→[2]→[3]→[4]→[5]
+         S        F
+
+  Step 2:
+    [1]→[2]→[3]→[4]→[5]
+              S             F
+
+  ★ Middle: node 2 (value=3)
+
+═══ TEST 2: Even Length (6 nodes) — Visual ═══
+  List: 1 → 2 → 3 → 4 → 5 → 6  (length=6)
+  ─────────────────────────────────────────
+  Step 0:
+    [1]→[2]→[3]→[4]→[5]→[6]
+    S/F
+
+  Step 1:
+    [1]→[2]→[3]→[4]→[5]→[6]
+         S        F
+
+  Step 2:
+    [1]→[2]→[3]→[4]→[5]→[6]
+              S             F
+
+  Step 3:
+    [1]→[2]→[3]→[4]→[5]→[6]→null
+                   S              F
+
+  ★ Middle: node 3 (value=4)
+
+═══ TEST 4: First Middle vs Second Middle ═══
+  List length=2 → 1st middle=1 → 2nd middle=2
+  List length=4 → 1st middle=2 → 2nd middle=3
+  List length=6 → 1st middle=3 → 2nd middle=4
+  List length=8 → 1st middle=4 → 2nd middle=5
+
+═══ TEST 5: Fast/Slow vs Two-Pass Correctness ═══
+  Lengths 1-20: ALL ✓ PASSED
+
+═══ TEST 6: Split at Middle ═══
+  Original: 1 → 2 → 3 → 4 → 5
+  First half:  1 → 2 → 3
+  Second half: 4 → 5
+
+  Original: 1 → 2 → 3 → 4 → 5 → 6
+  First half:  1 → 2 → 3
+  Second half: 4 → 5 → 6
+
+═══ TEST 7: Delete Middle Node ═══
+  Before: 1 → 2 → 3 → 4 → 5
+  After:  1 → 2 → 4 → 5
+
+  Before: 1 → 2 → 3 → 4
+  After:  1 → 2 → 4
+
+═══ TEST 8: Palindrome Check (Middle as Building Block) ═══
+  1 → 2 → 3 → 2 → 1
+  → Palindrome: true
+  1 → 2 → 2 → 1
+  → Palindrome: true
+  1 → 2 → 3 → 4 → 5
+  → Palindrome: false
+  1
+  → Palindrome: true
+  1 → 1
+  → Palindrome: true
+  1 → 2
+  → Palindrome: false
+
+═══ TEST 10: Middle Position Summary ═══
+  ┌────────┬────────────────────────┬────────┐
+  │ Length │ List                   │ Middle │
+  ├────────┼────────────────────────┼────────┤
+  │   1    │ 1                      │   1    │
+  │   2    │ 1→2                    │   2    │
+  │   3    │ 1→2→3                  │   2    │
+  │   4    │ 1→2→3→4                │   3    │
+  │   5    │ 1→2→3→4→5              │   3    │
+  │   6    │ 1→2→3→4→5→6            │   4    │
+  │   7    │ 1→2→3→4→5→6→7          │   4    │
+  │   8    │ 1→2→3→4→5→6→7→8        │   5    │
+  └────────┴────────────────────────┴────────┘</code></pre></div>
+<hr>
+<h2>🧠 KEY TAKEAWAY</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>WHAT WE LEARNED:
+</span>→ Fast &amp; Slow pointers find the MIDDLE of a linked list in one pass
+→ The 2:1 speed ratio means when fast finishes, slow is halfway
+→ Two null checks needed: fast != null AND fast.next != null
+→ Second middle (standard) vs first middle (start fast ahead)
+→ This is a BUILDING BLOCK for split, palindrome, reorder, merge sort
+
+EVOLUTION OF FAST &amp; SLOW POINTERS:
+  Project 7:  Fast &amp; Slow → CYCLE DETECTION
+              → "Do they meet?" → boolean answer
+              → Pointers in a cycle eventually converge
+  
+  Project 15: Fast &amp; Slow → MIDPOINT FINDING
+              → "Where is slow when fast finishes?" → positional answer
+              → Speed differential automatically locates the center
+  
+  Project 20: Fast &amp; Slow → CYCLE ENTRY DETECTION
+              → "Where does the cycle start?" → combines both ideas
+              → Mathematical proof gives exact meeting point
+
+SAME TECHNIQUE → THREE DIFFERENT APPLICATIONS:
+  → The fast/slow skeleton is identical in all three
+  → Only the QUESTION asked and POST-PROCESSING differs
+  → This is the essence of pattern-based thinking
+
+WHY LINKED LIST PROBLEMS NEED SPECIAL TECHNIQUES:
+  → No random access → can't jump to index i
+  → No known length → must discover structure through traversal
+  → No backward traversal (singly linked) → must plan ahead
+  → Pointer manipulation → careful ordering of operations
+  → These constraints FORCE creative techniques like fast/slow
+
+BUILDING BLOCK CHAIN:
+  Find Middle → Split List → Merge Sort on Linked List
+  Find Middle → Reverse Second Half → Palindrome Check
+  Find Middle → Reverse Second Half → Reorder List (L0→Ln→L1→Ln-1→...)
+  → Mastering middle-finding unlocks an entire family of linked list problems</code></pre></div>
+<hr>
+<h2>🌉 BRIDGE TO NEXT PROJECT</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>PROJECT 15 used:
+</span>→ Fast &amp; Slow pointers to find the middle → READ operation on linked list
+→ We didn't MODIFY the list structure (except in variants)
+→ The palindrome variant PREVIEWED list reversal → a helper function was used
+
+PROJECT 16 (Reverse a Linked List) will teach:
+→ How to REVERSE a linked list in-place
+→ The Prev/Curr/Next pointer dance
+→ Each node's pointer is redirected to point BACKWARD instead of forward
+→ This is a WRITE operation → we MODIFY the list structure
+
+THE CONNECTION:
+  → Project 15 READS the list (finds middle, doesn't change links)
+  → Project 16 WRITES the list (reverses all links)
+  → Together they form the foundation for complex linked list operations
+  → Palindrome check = find middle (Project 15) + reverse half (Project 16)
+  → Merge sort = find middle (Project 15) + reverse nothing + merge two halves
+
+THE BIGGER LINKED LIST PICTURE:
+  Project 7:  Detect cycle → fast/slow → boolean answer
+  Project 15: Find middle → fast/slow → positional answer
+  Project 16: Reverse list → prev/curr/next → structural modification
+  Project 20: Find cycle start → fast/slow + math → entry point
+  Project 23: Reverse sub-portion → boundary stitching → surgical modification
+
+→ Each project adds a new OPERATION to your linked list toolkit
+→ Complex problems combine multiple operations</code></pre></div>
+<hr>
+<p><strong>Ready for Project 16: Reverse a Linked List (In-place Reversal → Prev/Curr/Next Pointer Dance → No Extra Space)?</strong></p>
+</div>
+</div>
+
+<!-- ========== data-index="17" ========== -->
+<div class="chat-message" data-index="17"></div>
+</div>
+<div class="bottom-nav">
+  <a href="project-14.html" class="nav-btn prev">← Prev</a>
+  <div class="nav-center">
+    <span class="nav-project-label">PROJECT 15 of 60</span>
+    <span class="nav-project-title">Middle of a Linked List</span>
+    <span class="kbd-hint">← → arrow keys to navigate</span>
+  </div>
+  <a href="project-16.html" class="nav-btn next">Next →</a>
+  <a href="index.html" class="nav-btn home">🏠 TOC</a>
+</div>
+<div id="progress-track"><div id="progress-fill"></div></div>
+<div id="progress-pct">0%</div>
+<script src="script.js"></script>
+<script>
+document.addEventListener('keydown', function(e) {
+  if (['INPUT','TEXTAREA'].includes(document.activeElement.tagName)) return;
+  if (e.key === 'ArrowRight' && "project-16.html" !== null) window.location = "project-16.html";
+  if (e.key === 'ArrowLeft' && "project-14.html" !== null) window.location = "project-14.html";
+});
+</script>
+</body>
+</html>

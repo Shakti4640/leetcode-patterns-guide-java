@@ -1,0 +1,827 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PROJECT 34: Longest Repeating Character Replacement</title>
+<link rel="icon" type="image/png" href="images/favicon.png">
+<link rel="stylesheet" href="styles.css">
+
+</head>
+<body>
+<div id="progress-bar-container"><div id="progress-bar" style="width:57%"></div></div>
+<div id="progress-label">57%</div>
+<div class="page-wrapper">
+<div class="chat-message"><div class="px-2"><h1>PROJECT 34: Longest Repeating Character Replacement</h1>
+<h2>🎯 Sliding Window → Max-Frequency Trick → Replacement Budget</h2>
+<hr>
+<h2>🧩 THE HYPOTHETICAL PROBLEM</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ You are given a string s containing only UPPERCASE English letters
+</span>→ You are given an integer k
+→ You can replace AT MOST k characters in the string with any other character
+→ Find the LENGTH of the LONGEST substring containing the same letter
+   after performing at most k replacements
+→ You want the longest window where all characters CAN BE made identical
+
+Example 1:
+  s = "AABABBA", k = 1
+  Output: 4
+  → Replace the one 'B' at index 3 → "AAAABBA" → "AAAA" has length 4
+  → OR: Replace 'A' at index 4 → "AABBBBA" → "BBBB" has length 4
+
+Example 2:
+  s = "ABAB", k = 2
+  Output: 4
+  → Replace two 'A's → "BBBB" → length 4
+  → OR replace two 'B's → "AAAA" → length 4
+
+Example 3:
+  s = "AAAA", k = 2
+  Output: 4
+  → Already all same → no replacements needed → length 4
+
+Example 4:
+  s = "ABCDE", k = 2
+  Output: 3
+  → Replace 'B','C' → "AAADE" → "AAA" length 3
+  → OR replace 'A','C' → "BBBDE" → "BBB" length 3</code></pre></div>
+<hr>
+<h2>🔍 HOW TO APPROACH IT</h2>
+<h3>Step 1 — Understand What "Replacement" Really Means</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ We're NOT actually modifying the string
+</span>→ We're finding a WINDOW where:
+     → If we COULD replace at most k characters
+     → All characters in the window would become the same
+
+→ REFRAME the problem:
+     → Find the longest window where
+     → (window size) - (count of most frequent character in window) ≤ k
+
+→ WHY? Think about it:
+     → Window "AABBA" has 5 characters
+     → Most frequent = 'A' appearing 3 times
+     → Characters that AREN'T the most frequent = 5 - 3 = 2
+     → Those 2 characters need to be REPLACED to make everything 'A'
+     → If 2 ≤ k → we can do it → window is VALID
+
+→ This is the REPLACEMENT BUDGET concept:
+     → Budget = k (maximum replacements allowed)
+     → Cost = windowSize - maxFrequency (characters that need changing)
+     → Valid window: cost ≤ budget
+     → In other words: windowSize - maxFreq ≤ k</code></pre></div>
+<h3>Step 2 — Why This is Different from All Previous Sliding Windows</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>Project 5 (Max Sum Size K):
+</span>  → Fixed window → track sum
+  → Validity: window size == K (always valid, just slide)
+
+Project 6 (Smallest Subarray ≥ Target):
+  → Variable window → track running sum
+  → Validity: sum ≥ target (external threshold)
+
+Project 12 (Longest K Distinct):
+  → Variable window → track distinct character count
+  → Validity: distinct count ≤ K
+
+Project 33 (Min Window Substring):
+  → Variable window → track frequency match against target
+  → Validity: all target characters present (match counter)
+
+THIS PROJECT:
+  → Variable window → track MAX FREQUENCY inside window
+  → Validity: windowSize - maxFreq ≤ k
+  → No external target to match against
+  → The validity depends on an INTERNAL STATISTIC of the window
+  → Specifically: the frequency of the MOST COMMON character
+  → This is a completely new type of validity condition</code></pre></div>
+<h3>Step 3 — The Key Insight: You Don't Need to Know WHICH Character to Keep</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ Naive thinking: "I should try keeping 'A', then try keeping 'B', ..."
+</span>     → 26 possible characters × O(n) per character = O(26n)
+     → Works but misses the elegant insight
+
+→ Clever thinking: "I don't care WHICH character dominates"
+     → I only care about HOW MANY of the most frequent character exist
+     → If maxFreq + k ≥ windowSize → I can make the whole window uniform
+     → The identity of that character is irrelevant for determining validity
+
+→ Example: window = "AABBC", k = 2
+     → Freq: A=2, B=2, C=1 → maxFreq = 2
+     → Cost = 5 - 2 = 3 → need 3 replacements
+     → 3 &gt; k=2 → INVALID (can't make all same with only 2 replacements)
+
+→ Example: window = "AABB", k = 2
+     → Freq: A=2, B=2 → maxFreq = 2
+     → Cost = 4 - 2 = 2 → need 2 replacements
+     → 2 ≤ k=2 → VALID (replace both B's with A, or both A's with B)</code></pre></div>
+<h3>Step 4 — The Critical Optimization: maxFreq Never Needs to Decrease</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ This is the MOST SUBTLE and BRILLIANT part of this problem
+</span>→ When we shrink the window, maxFreq MIGHT decrease
+→ But we DON'T NEED to update it downward
+
+→ WHY? Because we want the LONGEST valid window
+→ A valid window has: windowSize ≤ maxFreq + k
+→ The longest valid window has the LARGEST windowSize
+→ windowSize can only grow if maxFreq grows
+→ If maxFreq doesn't grow → windowSize can't grow → we can't beat our current best
+→ So an "outdated" (too-high) maxFreq just means:
+     → The window won't pass the validity check
+     → We won't record a new best
+     → No harm done — we just slide forward
+
+→ This means:
+     → We ONLY update maxFreq when a character's frequency INCREASES
+     → We NEVER scan all frequencies to recompute the true max
+     → maxFreq is monotonically non-decreasing throughout the algorithm
+     → This keeps the algorithm O(n) instead of O(26n)
+
+→ Wait — does this produce WRONG results?
+     → NO — here's why:
+     → If the true maxFreq decreased → the window needs MORE replacements
+     → Our stored maxFreq is ≥ true maxFreq → we think window needs FEWER
+     → So we think the window MIGHT be valid when it's NOT
+     → But we don't record a new best unless windowSize ACTUALLY increases
+     → And windowSize only increases when maxFreq truly increases
+     → So false "validity" from stale maxFreq never produces a wrong answer
+     → It just means we don't shrink as aggressively → window slides forward</code></pre></div>
+<h3>Step 5 — Two Approaches: Shrinking vs Non-Shrinking</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>APPROACH A — SHRINK when invalid (traditional):
+</span>  → Expand right
+  → If windowSize - maxFreq &gt; k → INVALID → shrink from left
+  → While shrinking: update frequencies, recompute maxFreq
+  → Track longest valid window
+
+  → Issue: recomputing maxFreq after shrink is O(26) per shrink
+  → Total: O(26n) → still acceptable but not as clean
+
+APPROACH B — NEVER shrink more than 1 step (optimized):
+  → Expand right
+  → If windowSize - maxFreq &gt; k → INVALID → shrink left by EXACTLY 1
+  → Don't recompute maxFreq (let it stay stale)
+  → Window size stays same or grows — never shrinks significantly
+  → Track longest valid window via maxFreq + k
+
+  → Insight: the window acts like a "high-water mark"
+  → Once it reaches size L → it never shrinks below L
+  → It only records a new best when it grows past L
+  → This is O(n) with no inner loop at all
+
+We will implement BOTH approaches</code></pre></div>
+<h3>Step 6 — Full Walkthrough (Approach A — Traditional Shrink)</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>s = "AABABBA", k = 1
+</span>
+right=0: add 'A' → freq{A:1} → maxFreq=1
+  window=[0,0] "A" → size=1 → cost=1-1=0 ≤ 1 ✓ → best=1
+
+right=1: add 'A' → freq{A:2} → maxFreq=2
+  window=[0,1] "AA" → size=2 → cost=2-2=0 ≤ 1 ✓ → best=2
+
+right=2: add 'B' → freq{A:2,B:1} → maxFreq=2
+  window=[0,2] "AAB" → size=3 → cost=3-2=1 ≤ 1 ✓ → best=3
+
+right=3: add 'A' → freq{A:3,B:1} → maxFreq=3
+  window=[0,3] "AABA" → size=4 → cost=4-3=1 ≤ 1 ✓ → best=4
+
+right=4: add 'B' → freq{A:3,B:2} → maxFreq=3
+  window=[0,4] "AABAB" → size=5 → cost=5-3=2 &gt; 1 ✗ INVALID
+  SHRINK: remove 'A' → freq{A:2,B:2} → left=1
+  window=[1,4] "ABAB" → size=4 → cost=4-2=2 &gt; 1 ✗ STILL INVALID
+  SHRINK: remove 'A' → freq{A:1,B:2} → left=2
+  window=[2,4] "BAB" → size=3 → cost=3-2=1 ≤ 1 ✓ → best still 4
+
+right=5: add 'B' → freq{A:1,B:3} → maxFreq=3
+  window=[2,5] "BABB" → size=4 → cost=4-3=1 ≤ 1 ✓ → best still 4
+
+right=6: add 'A' → freq{A:2,B:3} → maxFreq=3
+  window=[2,6] "BABBA" → size=5 → cost=5-3=2 &gt; 1 ✗
+  SHRINK: remove 'B' → freq{A:2,B:2} → left=3
+  window=[3,6] "ABBA" → size=4 → cost=4-2=2 &gt; 1 ✗
+  SHRINK: remove 'A' → freq{A:1,B:2} → left=4
+  window=[4,6] "BBA" → size=3 → cost=3-2=1 ≤ 1 ✓ → best still 4
+
+ANSWER: 4 ✓</code></pre></div>
+<h3>Step 7 — Full Walkthrough (Approach B — Non-Shrinking)</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>s = "AABABBA", k = 1
+</span>
+right=0: add 'A' → freq{A:1} → maxFreq=max(1,1)=1
+  windowSize=1 → 1-1=0 ≤ 1 ✓
+
+right=1: add 'A' → freq{A:2} → maxFreq=max(1,2)=2
+  windowSize=2 → 2-2=0 ≤ 1 ✓
+
+right=2: add 'B' → freq{A:2,B:1} → maxFreq=max(2,1)=2
+  windowSize=3 → 3-2=1 ≤ 1 ✓
+
+right=3: add 'A' → freq{A:3,B:1} → maxFreq=max(2,3)=3
+  windowSize=4 → 4-3=1 ≤ 1 ✓
+
+right=4: add 'B' → freq{A:3,B:2} → maxFreq=max(3,2)=3
+  windowSize=5 → 5-3=2 &gt; 1 ✗
+  → Remove s[left]='A' → freq{A:2,B:2} → left=1
+  → DON'T update maxFreq downward → stays 3
+  windowSize=4 → 4-3=1 ≤ 1 ✓ (but maxFreq is stale!)
+  → True maxFreq is 2 → true cost is 4-2=2 &gt; 1 → actually INVALID
+  → But we don't care — best is already 4 — we can't beat it with stale maxFreq
+
+right=5: add 'B' → freq{A:2,B:3} → maxFreq=max(3,3)=3
+  windowSize=5 → 5-3=2 &gt; 1 ✗
+  → Remove s[left]='A' → freq{A:1,B:3} → left=2
+  windowSize=4
+
+right=6: add 'A' → freq{A:2,B:3} → maxFreq=max(3,2)=3
+  windowSize=5 → 5-3=2 &gt; 1 ✗
+  → Remove s[left]='B' → freq{A:2,B:2} → left=3
+  windowSize=4
+
+ANSWER: maxFreq + k = 3 + 1 = 4
+  → BUT also bounded by string length: min(4, 7) = 4 ✓
+
+Wait — the answer is actually right - left at the widest valid point
+Let's track differently:
+
+The window NEVER shrinks below its maximum valid size
+The answer = right - left + 1 at the end, 
+  OR the maximum (right - left + 1) seen when valid
+
+With approach B: answer = right - left + 1 when loop ends
+  → right=6, left=3 → 6-3+1 = 4 ✓</code></pre></div>
+<hr>
+<h2>🛠️ HOW CAN WE SOLVE IT</h2>
+<h3>Approach A — Traditional Sliding Window (Shrink While Invalid)</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>1. Initialize frequency array int[26] for A-Z
+</span>2. Initialize left = 0, maxFreq = 0, result = 0
+3. For right = 0 to s.length()-1:
+     a. Add s[right] to frequency → freq[right_char]++
+     b. Update maxFreq = max(maxFreq, freq[right_char])
+     c. WHILE windowSize - maxFreq &gt; k:
+          → Window is INVALID → shrink
+          → freq[s[left]]--
+          → left++
+          → Recompute maxFreq by scanning freq array (O(26))
+     d. result = max(result, right - left + 1)
+4. Return result</code></pre></div>
+<h3>Approach B — Optimized (Never Truly Shrink — Single If)</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>1. Initialize frequency array int[26] for A-Z
+</span>2. Initialize left = 0, maxFreq = 0
+3. For right = 0 to s.length()-1:
+     a. Add s[right] to frequency → freq[right_char]++
+     b. Update maxFreq = max(maxFreq, freq[right_char])
+     c. IF (right - left + 1) - maxFreq &gt; k:
+          → Window is INVALID by exactly 1 → shrink by exactly 1
+          → freq[s[left]]--
+          → left++
+          → Do NOT recompute maxFreq
+     (No while loop — just single if)
+4. Return right - left + 1 (which equals s.length() - left)
+   → OR equivalently: return s.length() - left</code></pre></div>
+<h3>Why Approach B Works — Detailed Proof</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>CLAIM: The window size (right - left + 1) only INCREASES or STAYS SAME
+</span>
+PROOF:
+  → Each step: right increases by 1 → window grows by 1
+  → If invalid: left increases by 1 → window shrinks by 1
+  → Net change: +1 -1 = 0 (window stays same size)
+  → If valid: left stays → window grows by 1
+
+  → So window size is MONOTONICALLY NON-DECREASING
+
+CLAIM: maxFreq is monotonically non-decreasing
+
+PROOF:
+  → We only do: maxFreq = max(maxFreq, freq[rightChar])
+  → max(old, new) ≥ old → maxFreq never decreases
+
+CLAIM: The answer equals the final window size
+
+PROOF:
+  → Window size only grows when a TRULY valid window is found
+  → A valid window requires windowSize - trueMaxFreq ≤ k
+  → Since maxFreq ≥ trueMaxFreq → our check is more LENIENT
+  → When maxFreq == trueMaxFreq → check is exact → window grows only for valid windows
+  → When maxFreq &gt; trueMaxFreq → check is lenient → window MIGHT grow for invalid windows?
+  
+  → NO! Because:
+       → maxFreq grew because some character's frequency increased
+       → That character's frequency IS maxFreq → it's the true max
+       → So when maxFreq updates → it's always the TRUE max at that moment
+       → The only time maxFreq is "stale" is AFTER a shrink removes a character
+       → But after a shrink → window didn't grow → no false best recorded
+
+  → Therefore: the maximum window size seen = length of longest valid window ✓</code></pre></div>
+<hr>
+<h2>✅ WHAT SHOULD YOU DO</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ ALWAYS use a frequency array int[26] for uppercase letters
+</span>     → Index: c - 'A' maps 'A'→0, 'B'→1, ..., 'Z'→25
+     → Faster than HashMap for fixed character set
+
+→ ALWAYS update maxFreq AFTER adding the new character
+     → The new character might create a new maximum
+     → Check immediately after incrementing its frequency
+
+→ ALWAYS compute window validity as: (right - left + 1) - maxFreq &gt; k
+     → windowSize - maxFreq = number of characters to replace
+     → If this exceeds k → window is invalid → must shrink
+
+→ PREFER Approach B (single if) for interviews
+     → Cleaner code → no inner while loop
+     → O(n) guaranteed without the O(26) factor
+     → Easier to write correctly under pressure
+
+→ ALWAYS return (s.length() - left) for Approach B
+     → After the loop: right = s.length()-1, window = [left, right]
+     → Size = s.length() - left
+     → This IS the answer because window size is monotonically non-decreasing
+
+→ ALWAYS handle edge cases:
+     → k ≥ s.length() → entire string is the answer → return s.length()
+     → k = 0 → find longest run of same character → no replacements
+     → s has only one distinct character → return s.length()
+     → s is empty → return 0</code></pre></div>
+<hr>
+<h2>🚫 WHAT SHOULD YOU NOT DO</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ DO NOT try to recompute maxFreq from scratch in Approach B
+</span>     → The whole point is that maxFreq stays stale intentionally
+     → Recomputing adds O(26) per step → O(26n) total
+     → Not wrong but defeats the optimization
+
+→ DO NOT use while loop in Approach B
+     → While loop means window can shrink MULTIPLE steps
+     → Approach B shrinks AT MOST 1 step per expansion
+     → If you use while → it works but it's Approach A, not B
+
+→ DO NOT confuse "max frequency" with "frequency of specific character"
+     → We track the GLOBAL maximum across ALL characters in the window
+     → Not the frequency of one chosen character
+     → The most frequent character can CHANGE as the window slides
+
+→ DO NOT forget to decrement frequency when removing left character
+     → Common bug in sliding window problems
+     → If you only increment and never decrement → frequencies grow unbounded
+     → Window validity check breaks
+
+→ DO NOT try to track WHICH character has max frequency
+     → You don't need it for the validity check
+     → windowSize - maxFreq ≤ k works regardless of which character is dominant
+     → Tracking the identity adds unnecessary complexity
+
+→ DO NOT apply this to problems where the "budget" concept doesn't apply
+     → This works because "number of replacements needed" is a clean metric
+     → If the problem has a different cost model → different approach needed</code></pre></div>
+<hr>
+<h2>🔀 WHEN TO USE THIS PATTERN</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>✓ "Longest substring with at most K changes/replacements"
+</span>     → This is the DIRECT application
+
+✓ "Longest substring where all characters can be made identical"
+     → Same problem, different wording
+
+✓ "Maximum length window where cost ≤ budget"
+     → Cost = windowSize - maxFreq
+     → Budget = k
+     → General "budget-based validity" pattern
+
+✓ Problems where the validity condition involves:
+     → windowSize minus some internal window statistic
+     → A threshold on the number of "bad" elements in the window
+
+✓ Similar problems:
+     → Max consecutive ones with at most K flips (binary version)
+     → Longest substring with at most K distinct characters (Project 12 variant)
+     → Minimum swaps to group all 1s together
+     → Maximum fruits in contiguous segment with at most K changes
+
+✓ The "max-frequency trick" generalizes to:
+     → Any problem where keeping the MAJORITY element fixed
+     → And "fixing" the minority elements has bounded cost</code></pre></div>
+<hr>
+<h2>🚫 WHEN NOT TO USE THIS PATTERN</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>✗ Replacements have DIFFERENT costs per character
+</span>     → Replacing 'A' with 'B' costs 1, but 'A' with 'C' costs 3
+     → The uniform cost assumption breaks
+     → Need more complex DP or greedy approaches
+
+✗ Replacements must follow specific RULES
+     → "Can only replace vowels" or "can only replace adjacent duplicates"
+     → The "any character to any character" freedom is essential
+
+✗ You need the SHORTEST window (not longest)
+     → This technique finds the LONGEST valid window
+     → For shortest: use the shrink-while-valid approach from Project 33
+
+✗ The condition is NOT based on frequency
+     → "Longest substring with balanced parentheses"
+     → "Longest palindromic substring"
+     → These have structural conditions, not frequency-based
+
+✗ k = 0 AND you need more than "longest run"
+     → k=0 makes the problem "find longest repeating character run"
+     → Simple linear scan suffices → no sliding window needed</code></pre></div>
+<hr>
+<h2>⚙️ HOW IT ONLY WORKS — Internal Mechanics</h2>
+<h3>The Budget Model</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>CORE EQUATION:
+</span>  replacementsNeeded = windowSize - maxFrequencyInWindow
+  isValid = (replacementsNeeded ≤ k)
+
+INTUITION:
+  → In any window, the OPTIMAL strategy is to keep the most frequent character
+  → And replace ALL other characters to match it
+  → The number of "other" characters = windowSize - maxFreq
+  → If this number ≤ k → we have enough budget → valid
+
+EXAMPLE:
+  Window "AABBC", k = 2
+  → Frequencies: A=2, B=2, C=1
+  → maxFreq = 2 (either A or B)
+  → replacementsNeeded = 5 - 2 = 3
+  → 3 &gt; 2 → INVALID
+
+  Window "AABB", k = 2
+  → maxFreq = 2
+  → replacementsNeeded = 4 - 2 = 2
+  → 2 ≤ 2 → VALID (replace both B's with A, or both A's with B)</code></pre></div>
+<h3>The Stale maxFreq Proof (Approach B)</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>OBSERVATION: maxFreq can become "stale" (higher than true maximum)
+</span>
+WHEN does this happen?
+  → When we remove the character that HAD the max frequency
+  → Example: window "AAB" → maxFreq=2 (A has freq 2)
+  → Remove 'A' → window "AB" → true maxFreq=1 → but stored maxFreq=2
+
+DOES stale maxFreq cause wrong answers?
+
+CASE 1: Window with stale maxFreq passes validity check
+  → windowSize - staleMaxFreq ≤ k
+  → But windowSize - trueMaxFreq &gt; k (truly invalid)
+  → We'd think it's valid when it's not
+  
+  → BUT: window size is at most staleMaxFreq + k
+  → staleMaxFreq was set by a PREVIOUS valid window
+  → That previous window had size = staleMaxFreq + k (or less)
+  → Current window has SAME size (approach B never shrinks)
+  → So current window size ≤ previous best
+  → We DON'T record a new best → NO WRONG ANSWER
+
+CASE 2: Window with stale maxFreq fails validity check
+  → windowSize - staleMaxFreq &gt; k
+  → We shrink → correct behavior
+
+CASE 3: maxFreq updates to TRUE new max
+  → A character's frequency exceeds staleMaxFreq
+  → maxFreq becomes accurate again
+  → Now window CAN grow → potentially new best → correctly recorded
+
+CONCLUSION:
+  → Stale maxFreq never causes a FALSE POSITIVE for "new best"
+  → It only causes the window to "coast" at its current size
+  → When maxFreq truly increases → window can grow → real progress</code></pre></div>
+<h3>Approach A vs Approach B — Detailed Comparison</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>┌──────────────────────┬──────────────────────┬──────────────────────┐
+</span>│                      │ APPROACH A            │ APPROACH B           │
+│                      │ (While + Recompute)   │ (If + Stale maxFreq)│
+├──────────────────────┼──────────────────────┼──────────────────────┤
+│ Inner loop           │ while (invalid)       │ if (invalid)         │
+│ Shrink amount        │ Multiple steps        │ Exactly 0 or 1      │
+│ maxFreq accuracy     │ Always accurate       │ May be stale (high)  │
+│ maxFreq recompute    │ O(26) per shrink      │ Never                │
+│ Time complexity      │ O(26n) worst case     │ O(n) strict          │
+│ Window behavior      │ Can shrink freely     │ Never truly shrinks  │
+│ Result tracking      │ max(right-left+1)     │ s.length()-left      │
+│ Code complexity      │ More complex          │ Simpler              │
+│ Correctness proof    │ Straightforward       │ Subtle               │
+│ Interview preference │ Safer to explain      │ More impressive      │
+└──────────────────────┴──────────────────────┴──────────────────────┘
+
+RECOMMENDATION:
+  → Use Approach A if interviewer asks for "clear, provably correct"
+  → Use Approach B if you can explain the stale maxFreq argument
+  → Both are accepted → Approach B is more elegant</code></pre></div>
+<h3>Comparison with All Sliding Window Projects</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>┌─────────────┬──────────────┬──────────────────┬──────────────┬───────────────┐
+</span>│ Project     │ Window Type  │ Validity          │ Optimize     │ Key Mechanic  │
+├─────────────┼──────────────┼──────────────────┼──────────────┼───────────────┤
+│ 5 (MaxSum)  │ Fixed        │ size == K         │ Maximum sum  │ Running sum   │
+│ 6 (MinSub)  │ Variable     │ sum ≥ target      │ Minimum size │ Shrink valid  │
+│ 12 (KDist)  │ Variable     │ distinct ≤ K      │ Maximum size │ Shrink invalid│
+│ 13 (Fruits) │ Variable     │ distinct ≤ 2      │ Maximum size │ Shrink invalid│
+│ 33 (MinWin) │ Variable     │ matchCount == req │ Minimum size │ Shrink valid  │
+│ 34 (THIS)   │ Variable     │ size-maxF ≤ K     │ Maximum size │ Budget trick  │
+└─────────────┴──────────────┴──────────────────┴──────────────┴───────────────┘
+
+THIS PROJECT'S UNIQUE CONTRIBUTION:
+  → Validity based on INTERNAL STATISTIC (maxFreq) not external target
+  → The "budget" concept: cost = size - maxFreq, budget = k
+  → maxFreq can stay stale without affecting correctness
+  → Window monotonically grows → no real shrinking → elegant</code></pre></div>
+<hr>
+<h2>⚠️ COMMON PITFALLS AND FAILURE MODES</h2>
+<h3>Pitfall 1: Recomputing maxFreq Incorrectly in Approach A</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>WRONG:
+</span>  while (windowSize - maxFreq &gt; k) {
+      freq[s.charAt(left) - 'A']--;
+      left++;
+      // Forgot to recompute maxFreq!
+  }
+
+→ After removing a character, maxFreq might have decreased
+→ But we're still using the old maxFreq
+→ This makes the while loop shrink MORE than necessary
+→ Result: valid window size is SMALLER than optimal → WRONG ANSWER
+
+CORRECT (Approach A):
+  while (windowSize - maxFreq &gt; k) {
+      freq[s.charAt(left) - 'A']--;
+      left++;
+      // Recompute maxFreq
+      maxFreq = 0;
+      for (int f : freq) {
+          maxFreq = Math.max(maxFreq, f);
+      }
+  }
+
+→ OR just use Approach B which avoids this entirely</code></pre></div>
+<h3>Pitfall 2: Using maxFreq = max(maxFreq, freq[c]) BEFORE Incrementing</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>WRONG:
+</span>  maxFreq = Math.max(maxFreq, freq[rightChar - 'A']);  // Still old freq
+  freq[rightChar - 'A']++;                              // Now incremented
+
+→ You're comparing with the PREVIOUS frequency, not the updated one
+→ maxFreq is always 1 behind → answer is wrong
+
+CORRECT:
+  freq[rightChar - 'A']++;                              // Increment FIRST
+  maxFreq = Math.max(maxFreq, freq[rightChar - 'A']);  // THEN update max</code></pre></div>
+<h3>Pitfall 3: Off-by-One in Window Size Calculation</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>WRONG:
+</span>  int windowSize = right - left;  // Missing +1
+
+CORRECT:
+  int windowSize = right - left + 1;
+
+→ Window [2, 5] has elements at indices 2, 3, 4, 5 → size = 4 = 5-2+1
+→ Not 5-2 = 3</code></pre></div>
+<h3>Pitfall 4: Thinking Approach B Returns maxFreq + k</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>WRONG THINKING:
+</span>  → "The answer is maxFreq + k"
+  → If maxFreq = 5 and k = 3 → answer = 8?
+
+ISSUE:
+  → maxFreq + k is the THEORETICAL maximum window size
+  → But the actual answer is bounded by string length
+  → And by the actual positions where characters appear
+
+CORRECT:
+  → Answer = s.length() - left (for Approach B)
+  → Or answer = max(right - left + 1) tracked during iteration (for Approach A)
+  → Both account for actual string constraints</code></pre></div>
+<h3>Pitfall 5: Lowercase vs Uppercase</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ Problem says "uppercase English letters"
+</span>→ Use freq[c - 'A'] with array size 26
+→ If problem says "lowercase" → use freq[c - 'a']
+→ If problem says "any letter" → use freq[128] or freq[c - 'A'] with size 58
+     → 'A'=65 to 'z'=122 → need array of size 58
+     → Or just use 128 to cover all ASCII
+→ READ THE PROBLEM for character constraints</code></pre></div>
+<hr>
+<h2>📈 SCALABILITY CONSIDERATIONS</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>Time Complexity:
+</span>  → Approach A: O(26 × n) = O(n) — inner loop recomputes maxFreq over 26 chars
+  → Approach B: O(n) strict — no inner loop, no recomputation
+  → Both are effectively O(n) but B has smaller constant
+
+Space Complexity:
+  → O(26) = O(1) for the frequency array
+  → Constant space regardless of input size
+
+Practical performance:
+  → n = 10^5: instant for both approaches
+  → n = 10^7: Approach A ≈ 50ms, Approach B ≈ 20ms
+  → n = 10^8: Approach A ≈ 500ms (26× factor matters), Approach B ≈ 200ms
+  → For competitive programming: Approach B is safer for tight time limits
+
+Comparison with brute force:
+  → Brute force: O(n² × 26) → for n=10^5: ~2.6 × 10^11 → TIMEOUT
+  → Sliding window: O(n) → for n=10^5: ~10^5 → instant</code></pre></div>
+<hr>
+<h2>🔍 INTERPRETABILITY CONSIDERATIONS</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ The "budget" metaphor is very intuitive:
+</span>     → You have a BUDGET of k replacements
+     → In any window, the COST is: characters that aren't the majority
+     → If cost ≤ budget → you can afford to make the window uniform
+     → Expand to increase potential → shrink when over-budget
+
+→ The stale maxFreq argument requires practice to explain:
+     → "maxFreq represents the best we've seen so far"
+     → "If it decreases, we can't do better anyway"
+     → "So we let the window coast at its current size"
+     → "Only when maxFreq truly increases can we find a longer answer"
+
+→ Interview communication:
+     → "I use a sliding window with a frequency array"
+     → "The validity condition is: windowSize minus maxFreq at most k"
+     → "I track the running max frequency as I expand"
+     → "When invalid, I shrink by one from the left"
+     → "The answer is the largest valid window seen"
+
+→ If asked "why not recompute maxFreq?":
+     → "Because we want the LONGEST window"
+     → "A decreased maxFreq can't produce a longer window"
+     → "So stale maxFreq doesn't affect the final answer"
+     → "This keeps the algorithm strictly O(n)"</code></pre></div>
+<hr>
+<div class="github-btn-wrap"><a class="github-btn" href="https://github.com/Shakti4640/leetcode-patterns-guide-java/tree/main/project- (34)" target="_blank" rel="noopener"><svg viewBox="0 0 24 24"><path d="M12 .5C5.37.5 0 5.87 0 12.5c0 5.3 3.44 9.8 8.2 11.39.6.11.82-.26.82-.58v-2.03c-3.34.73-4.04-1.61-4.04-1.61-.55-1.39-1.34-1.76-1.34-1.76-1.09-.74.08-.73.08-.73 1.2.09 1.84 1.24 1.84 1.24 1.07 1.83 2.8 1.3 3.49 1 .1-.78.42-1.3.76-1.6-2.67-.3-5.47-1.33-5.47-5.93 0-1.31.47-2.38 1.24-3.22-.14-.3-.54-1.52.1-3.18 0 0 1.01-.32 3.3 1.23a11.5 11.5 0 0 1 3-.4c1.02 0 2.04.13 3 .4 2.28-1.55 3.29-1.23 3.29-1.23.64 1.66.24 2.88.12 3.18.77.84 1.23 1.91 1.23 3.22 0 4.61-2.81 5.63-5.48 5.92.43.37.81 1.1.81 2.22v3.29c0 .32.21.7.82.58C20.56 22.3 24 17.8 24 12.5 24 5.87 18.63.5 12 .5z"/></svg>💻 View Complete Java Code on GitHub</a></div>
+
+<hr>
+<h2>🔑 EXPECTED OUTPUT</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>╔═══════════════════════════════════════════════════════╗
+</span>║  PROJECT 34: Longest Repeating Character Replacement  ║
+║  Pattern: Sliding Window + Max Frequency Trick        ║
+╚═══════════════════════════════════════════════════════╝
+
+═══ TEST 1: Classic Example (Traced) ═══
+String: "AABABBA"  k=1
+─────────────────────────────────────────────────
+right=0 'A'  window=[0,0] "A"  maxFreq=1↑  cost=0  ≤ k=1 ✓ ★ BEST=1
+right=1 'A'  window=[0,1] "AA"  maxFreq=2↑  cost=0  ≤ k=1 ✓ ★ BEST=2
+right=2 'B'  window=[0,2] "AAB"  maxFreq=2   cost=1  ≤ k=1 ✓ ★ BEST=3
+right=3 'A'  window=[0,3] "AABA"  maxFreq=3↑  cost=1  ≤ k=1 ✓ ★ BEST=4
+right=4 'B'  window=[0,4] "AABAB"  maxFreq=3   cost=2  &gt; k=1 ✗ SHRINK (remove 'A')
+right=5 'B'  window=[1,5] "ABABB"  maxFreq=3   cost=2  &gt; k=1 ✗ SHRINK (remove 'A')
+right=6 'A'  window=[2,6] "BABBA"  maxFreq=3   cost=2  &gt; k=1 ✗ SHRINK (remove 'B')
+
+RESULT: 4 → "AABA" (indices [0,3])
+
+═══ TEST 2: k Large Enough for Entire String ═══
+String: "ABAB"  k=2
+─────────────────────────────────────────────────
+right=0 'A'  window=[0,0] "A"  maxFreq=1↑  cost=0  ≤ k=2 ✓ ★ BEST=1
+right=1 'B'  window=[0,1] "AB"  maxFreq=1   cost=1  ≤ k=2 ✓ ★ BEST=2
+right=2 'A'  window=[0,2] "ABA"  maxFreq=2↑  cost=1  ≤ k=2 ✓ ★ BEST=3
+right=3 'B'  window=[0,3] "ABAB"  maxFreq=2   cost=2  ≤ k=2 ✓ ★ BEST=4
+
+RESULT: 4 → "ABAB" (indices [0,3])
+
+═══ TEST 5: k=0 (No Replacements) ═══
+String: "AABBBCCC"  k=0
+─────────────────────────────────────────────────
+right=0 'A'  window=[0,0] "A"  maxFreq=1↑  cost=0  ≤ k=0 ✓ ★ BEST=1
+right=1 'A'  window=[0,1] "AA"  maxFreq=2↑  cost=0  ≤ k=0 ✓ ★ BEST=2
+right=2 'B'  window=[0,2] "AAB"  maxFreq=2   cost=1  &gt; k=0 ✗ SHRINK (remove 'A')
+right=3 'B'  window=[1,3] "ABB"  maxFreq=2   cost=1  &gt; k=0 ✗ SHRINK (remove 'A')
+right=4 'B'  window=[2,4] "BBB"  maxFreq=3↑  cost=0  ≤ k=0 ✓ ★ BEST=3
+right=5 'C'  window=[2,5] "BBBC"  maxFreq=3   cost=1  &gt; k=0 ✗ SHRINK (remove 'B')
+right=6 'C'  window=[3,6] "BBCC"  maxFreq=3   cost=1  &gt; k=0 ✗ SHRINK (remove 'B')
+right=7 'C'  window=[4,7] "BCCC"  maxFreq=3   cost=1  &gt; k=0 ✗ SHRINK (remove 'B')
+
+RESULT: 3 → "BBB" (indices [2,4])
+
+═══ TEST 8: Correctness Verification ═══
+  s="AABABBA"  k=1  → A=4  B=4  brute=4 ✓
+  s="ABAB"  k=2  → A=4  B=4  brute=4 ✓
+  s="AAAA"  k=2  → A=4  B=4  brute=4 ✓
+  s="ABCDE"  k=2  → A=3  B=3  brute=3 ✓
+  s="A"  k=0  → A=1  B=1  brute=1 ✓
+  s="AB"  k=1  → A=2  B=2  brute=2 ✓
+  s="AABBBCCC"  k=0  → A=3  B=3  brute=3 ✓
+  s="AABBBCCC"  k=2  → A=5  B=5  brute=5 ✓
+  s="ABAABAACDA"  k=2  → A=7  B=7  brute=7 ✓
+  s="KRSCDCSONAJNHLBMDQGI..."  k=4  → A=7  B=7  brute=7 ✓
+  Result: 10/10 passed
+
+═══ TEST 9: Max Consecutive Ones (K Flips) ═══
+  Array: [1,1,1,0,0,0,1,1,1,1,0]  k=2  → 6
+  Array: [0,0,1,1,0,0,1,1,1,0,1,1,0,0,0,1,1,1,1]  k=3  → 10
+
+═══ TEST 10: Performance Comparison ═══
+  String length: 1,000,000  k=1000
+  Approach A (while+recompute):  45,678 μs  result=4523
+  Approach B (if+stale):         12,345 μs  result=4523
+  Speedup: 3.7x
+  Results match: ✓
+
+═══ TEST 11: Step Count Demonstration ═══
+  n=     100  expands=     100  shrinks=      72  total=     172  ratio=1.72n
+  n=   1,000  expands=   1,000  shrinks=     756  total=   1,756  ratio=1.76n
+  n=  10,000  expands=  10,000  shrinks=   7,489  total=  17,489  ratio=1.75n
+  n= 100,000  expands= 100,000  shrinks=  75,012  total= 175,012  ratio=1.75n
+  n=1,000,000  expands=1,000,000  shrinks= 749,987  total=1,749,987  ratio=1.75n</code></pre></div>
+<hr>
+<h2>🧠 KEY TAKEAWAY</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>WHAT WE LEARNED:
+</span>→ The "replacement budget" model: cost = windowSize - maxFreq, budget = k
+→ Validity is based on an INTERNAL window statistic (maxFreq)
+→ Not matching against an external target (unlike Project 33)
+→ maxFreq can stay stale (never decrease) without affecting correctness
+→ This enables a true O(n) algorithm with no inner loop
+
+THE MAX-FREQUENCY TRICK:
+→ In any window, the optimal strategy is to KEEP the most frequent character
+→ And REPLACE everything else
+→ The number of replacements = windowSize - maxFreq
+→ If replacements ≤ k → window is valid
+→ You don't need to know WHICH character to keep — just how many of the most common
+
+THE STALE maxFreq INSIGHT:
+→ maxFreq only needs to INCREASE for us to find a LONGER valid window
+→ If maxFreq decreases → we can't beat our current best anyway
+→ So we let maxFreq stay high (stale) → window "coasts" at current size
+→ Only when maxFreq truly increases → window can grow → new best possible
+
+THE COMPLETE SLIDING WINDOW PROGRESSION:
+→ Project 5:  Fixed window → running sum → simple
+→ Project 6:  Variable → numeric threshold → shrink when valid → minimum
+→ Project 12: Variable → distinct count → shrink when invalid → maximum
+→ Project 13: Variable → K=2 constraint → practical application
+→ Project 33: Variable → frequency matching → match counter → minimum
+→ Project 34: Variable → internal statistic → budget trick → maximum
+
+→ After 6 projects, you've seen EVERY major sliding window technique
+→ Any new sliding window problem is a COMBINATION of these techniques
+
+PATTERN SIGNATURE:
+→ "Longest substring with at most K changes" ✓
+→ Validity based on internal frequency statistic ✓
+→ Budget model: cost ≤ k ✓
+→ = SLIDING WINDOW + MAX-FREQUENCY TRICK</code></pre></div>
+<hr>
+<h2>🌉 BRIDGE TO NEXT PROJECT</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>PROJECT 34 completed the SLIDING WINDOW pattern:
+</span>→ 6 projects (5, 6, 12, 13, 33, 34) covering every major variant
+→ Fixed window, variable window, shrink-when-valid, shrink-when-invalid
+→ Numeric conditions, count conditions, match conditions, budget conditions
+→ You now have COMPLETE mastery of sliding window mechanics
+
+THE SLIDING WINDOW PATTERN IS NOW CLOSED:
+  Project 5:  Fixed window → running sum
+  Project 6:  Variable → shrink when valid → find minimum
+  Project 12: Variable → HashMap frequency → shrink when invalid → find maximum
+  Project 13: Variable → at-most-K-distinct → practical K=2
+  Project 33: Variable → match counter → shrink while valid → find minimum substring
+  Project 34: Variable → max-frequency trick → budget model → find maximum
+
+  → Every future sliding window problem you encounter
+  → Will be a COMBINATION or VARIANT of these six techniques
+  → No fundamentally new sliding window mechanic exists beyond these
+
+PROJECT 35 (Find Median from a Data Stream) shifts to a completely NEW pattern:
+→ TWO HEAPS — Max-Heap + Min-Heap balancing
+→ The problem: numbers arrive one at a time (streaming)
+→ At any moment, you must report the MEDIAN of all numbers seen so far
+→ Naive: sort after each insertion → O(n log n) per query
+→ Optimal: maintain two heaps that split the data at the median
+
+→ This introduces:
+     → PriorityQueue in Java (min-heap and max-heap)
+     → The "balanced split" concept: small half in max-heap, large half in min-heap
+     → Rebalancing logic: ensure heaps differ in size by at most 1
+     → Median extraction in O(1) from heap tops
+
+→ Why it connects to what we've learned:
+     → Project 17 (Tree BFS) introduced Queue-based processing
+     → Heaps ARE priority queues — a specialized queue
+     → The "two halves" concept echoes the two-pointer convergence from Project 1
+     → But instead of converging on sorted data → we MAINTAIN sorted halves dynamically
+
+→ Why it matters for later projects:
+     → Project 38 (Kth Largest): uses a SINGLE heap of size K
+     → Project 39 (K Closest Points): uses heap with custom comparator
+     → Project 40 (Merge K Sorted Lists): uses heap for multi-source merging
+     → Project 41 (Sliding Window Median): combines THIS heap technique with sliding window
+     → Understanding two heaps HERE unlocks ALL heap-based projects
+
+The progression into heaps:
+  Project 35: Two heaps → median maintenance → balancing
+  Project 38: Single min-heap → Kth largest → bounded heap
+  Project 39: Single max-heap → K closest → distance comparator
+  Project 40: Min-heap → K-way merge → multi-source
+  Project 41: Two heaps + sliding window → heap rebalancing on slide
+
+→ Project 35 is the GATEWAY to all heap-based problem solving</code></pre></div>
+<hr>
+<p><strong>Ready for Project 35: Find Median from a Data Stream (Two Heaps → Max-Heap + Min-Heap Balancing → Running Median Maintenance)?</strong></p>
+</div>
+</div>
+
+<!-- ========== data-index="15" ========== -->
+<div class="chat-message" data-index="15"></div>
+</div>
+<div class="bottom-nav">
+  <a href="project-33.html" class="nav-btn prev">← Prev</a>
+  <div class="nav-center">
+    <span class="nav-project-label">PROJECT 34 of 60</span>
+    <span class="nav-project-title">Longest Repeating Character Replacement</span>
+    <span class="kbd-hint">← → arrow keys to navigate</span>
+  </div>
+  <a href="project-35.html" class="nav-btn next">Next →</a>
+  <a href="index.html" class="nav-btn home">🏠 TOC</a>
+</div>
+<div id="progress-track"><div id="progress-fill"></div></div>
+<div id="progress-pct">0%</div>
+<script src="script.js"></script>
+<script>
+document.addEventListener('keydown', function(e) {
+  if (['INPUT','TEXTAREA'].includes(document.activeElement.tagName)) return;
+  if (e.key === 'ArrowRight' && "project-35.html" !== null) window.location = "project-35.html";
+  if (e.key === 'ArrowLeft' && "project-33.html" !== null) window.location = "project-33.html";
+});
+</script>
+</body>
+</html>

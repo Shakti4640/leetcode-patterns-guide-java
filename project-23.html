@@ -1,0 +1,879 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PROJECT 23: Reverse a Sub-portion of a Linked List</title>
+<link rel="icon" type="image/png" href="images/favicon.png">
+<link rel="stylesheet" href="styles.css">
+
+</head>
+<body>
+<div id="progress-bar-container"><div id="progress-bar" style="width:39%"></div></div>
+<div id="progress-label">39%</div>
+<div class="page-wrapper">
+<div class="chat-message"><div class="px-2"><h1>PROJECT 23: Reverse a Sub-portion of a Linked List</h1>
+<h2>🎯 In-place Reversal → Positional Reversal → Boundary Stitching</h2>
+<hr>
+<h2>🧩 THE HYPOTHETICAL PROBLEM</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ You are given the HEAD of a singly linked list
+</span>→ You are given two integers LEFT and RIGHT (1-based positions)
+→ Reverse the nodes from position LEFT to position RIGHT
+→ Return the modified list
+→ Do it in ONE PASS and O(1) extra space
+
+Example 1:
+  Input:  1 → 2 → 3 → 4 → 5, left=2, right=4
+  
+  Before: 1 → [2 → 3 → 4] → 5
+                ↑ reverse ↑
+  After:  1 → [4 → 3 → 2] → 5
+  
+  Output: 1 → 4 → 3 → 2 → 5
+
+Example 2:
+  Input:  1 → 2 → 3 → 4 → 5, left=1, right=5
+  
+  Reverse entire list
+  Output: 5 → 4 → 3 → 2 → 1
+
+Example 3:
+  Input:  1 → 2 → 3 → 4 → 5, left=3, right=3
+  
+  Reverse single node → no change
+  Output: 1 → 2 → 3 → 4 → 5
+
+Example 4:
+  Input:  1 → 2 → 3 → 4 → 5, left=1, right=3
+  
+  Before: [1 → 2 → 3] → 4 → 5
+  After:  [3 → 2 → 1] → 4 → 5
+  
+  Output: 3 → 2 → 1 → 4 → 5
+  (Head changes! → need to return new head)
+
+Example 5:
+  Input:  5, left=1, right=1
+  
+  Single node → no change
+  Output: 5</code></pre></div>
+<hr>
+<h2>🔍 HOW TO APPROACH IT</h2>
+<h3>Step 1 — Recall Project 16: Full Linked List Reversal</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ Project 16 taught us the prev/curr/next pointer dance:
+</span>     prev = null
+     curr = head
+     while curr != null:
+         next = curr.next
+         curr.next = prev
+         prev = curr
+         curr = next
+     return prev
+
+→ That reverses the ENTIRE list
+→ Project 23 reverses only positions LEFT to RIGHT
+→ We need to:
+     1. NAVIGATE to the reversal start point
+     2. REVERSE only the sub-portion
+     3. STITCH the reversed portion back into the surrounding list
+     
+→ Steps 1 and 3 are NEW → Step 2 reuses Project 16 knowledge</code></pre></div>
+<h3>Step 2 — Connect to Project 22: Three-Region Thinking</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ Project 22 taught us three-region decomposition on intervals:
+</span>     → BEFORE: unchanged, pass through
+     → MIDDLE: process (merge / reverse)
+     → AFTER: unchanged, pass through
+
+→ Same structure applies to this linked list:
+     → BEFORE: nodes 1 to left-1 → unchanged
+     → MIDDLE: nodes left to right → REVERSE
+     → AFTER: nodes right+1 to end → unchanged
+
+  1 → 2 → 3 → 4 → 5    (left=2, right=4)
+  [B]  [── MIDDLE ──]  [A]
+  
+  Before: [1]
+  Middle: [2 → 3 → 4] → reverse → [4 → 3 → 2]
+  After:  [5]
+  
+  Stitch: [1] → [4 → 3 → 2] → [5]</code></pre></div>
+<h3>Step 3 — Identify the Critical Nodes</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>For left=2, right=4 on list: 1 → 2 → 3 → 4 → 5
+</span>
+We need FOUR critical reference points:
+
+  1. beforeLeft: the node JUST BEFORE the reversal region
+     → Node at position left-1 = position 1 = node(1)
+     → After reversal, this node must point to the NEW first node of reversed portion
+     
+  2. leftNode: the first node of the reversal region
+     → Node at position left = position 2 = node(2)
+     → After reversal, this becomes the LAST node of the reversed portion
+     → It must point to the AFTER region
+     
+  3. rightNode: the last node of the reversal region
+     → Node at position right = position 4 = node(4)
+     → After reversal, this becomes the FIRST node of the reversed portion
+     → beforeLeft must point to this
+     
+  4. afterRight: the node JUST AFTER the reversal region
+     → Node at position right+1 = position 5 = node(5)
+     → leftNode (now last in reversed portion) must point to this
+
+BEFORE reversal:
+  beforeLeft(1) → leftNode(2) → 3 → rightNode(4) → afterRight(5)
+
+AFTER reversal:
+  beforeLeft(1) → rightNode(4) → 3 → leftNode(2) → afterRight(5)
+
+STITCHING:
+  beforeLeft.next = rightNode    (connect before-region to reversed-region)
+  leftNode.next = afterRight     (connect reversed-region to after-region)</code></pre></div>
+<h3>Step 4 — The Special Case: left = 1</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>When left = 1:
+</span>  → There is NO node before the reversal region
+  → beforeLeft does not exist
+  → The HEAD of the list changes after reversal!
+
+  Input:  [1 → 2 → 3] → 4 → 5   (left=1, right=3)
+  After:  [3 → 2 → 1] → 4 → 5
+  New head = node(3) = rightNode
+
+SOLUTION: Use a DUMMY NODE (sentinel)
+  → Create a fake node that points to head
+  → dummy.next = head
+  → Now beforeLeft = dummy (for left=1)
+  → After reversal: new head = dummy.next
+  → The dummy node elegantly handles the edge case
+
+  dummy → 1 → 2 → 3 → 4 → 5   (left=1, right=3)
+  beforeLeft = dummy
+  
+  After reversal:
+  dummy → 3 → 2 → 1 → 4 → 5
+  
+  Return dummy.next = node(3) = new head ✓</code></pre></div>
+<h3>Step 5 — Visualize the Complete Process</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>List: 1 → 2 → 3 → 4 → 5, left=2, right=4
+</span>
+STEP 1: Add dummy node
+  dummy(0) → 1 → 2 → 3 → 4 → 5
+
+STEP 2: Navigate to beforeLeft (position left-1 = 1)
+  Move pointer 1 time from dummy
+  beforeLeft = node(1)
+
+STEP 3: Identify leftNode
+  leftNode = beforeLeft.next = node(2)
+
+STEP 4: Reverse the sub-portion (left to right)
+  We need to reverse 3 nodes: 2, 3, 4 (right - left + 1 = 3)
+  
+  Using Project 16's technique on the sub-portion:
+  
+  Initial state:
+    beforeLeft(1) → 2 → 3 → 4 → 5
+    
+  We use a DIFFERENT reversal technique here:
+  "Repeatedly move the next node to the front of the reversed portion"
+  
+  Iteration 1: Move node(3) to front
+    beforeLeft(1) → 3 → 2 → 4 → 5
+    
+  Iteration 2: Move node(4) to front
+    beforeLeft(1) → 4 → 3 → 2 → 5
+
+STEP 5: Stitching happened automatically during the process!
+  beforeLeft.next now points to 4 (front of reversed)
+  leftNode(2).next now points to 5 (after region)
+  
+  Result: dummy(0) → 1 → 4 → 3 → 2 → 5
+  Return dummy.next = node(1) → 1 → 4 → 3 → 2 → 5 ✓</code></pre></div>
+<h3>Step 6 — The "Move to Front" Reversal Technique</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>This is a KEY technique for partial reversal.
+</span>
+Instead of the classic prev/curr/next approach:
+→ We repeatedly take the NEXT node after leftNode
+→ And move it to the FRONT of the reversed portion
+→ beforeLeft.next always points to the current front
+
+WHY this technique?
+→ Classic reversal needs to know the END point in advance
+→ Classic reversal disconnects nodes → hard to stitch back
+→ "Move to front" keeps the list CONNECTED throughout
+→ Stitching happens AUTOMATICALLY as we go
+→ No separate stitching step needed
+
+DETAILED MECHANICS:
+
+Starting: beforeLeft(1) → leftNode(2) → 3 → 4 → 5
+
+Variables:
+  beforeLeft = node(1)
+  leftNode = node(2)    (this stays fixed — it becomes the LAST node)
+  
+Iteration 1: (move node after leftNode to front)
+  nodeToMove = leftNode.next = node(3)
+  
+  Step A: leftNode.next = nodeToMove.next
+          node(2).next = node(4)
+          State: 1 → 2 → 4 → 5,  node(3) detached
+  
+  Step B: nodeToMove.next = beforeLeft.next
+          node(3).next = node(2)
+          State: 1 → 2 → 4 → 5,  node(3) → node(2) → 4 → 5
+  
+  Step C: beforeLeft.next = nodeToMove
+          node(1).next = node(3)
+          State: 1 → 3 → 2 → 4 → 5 ✓
+          
+Iteration 2: (move node after leftNode to front)
+  nodeToMove = leftNode.next = node(4)
+  
+  Step A: leftNode.next = nodeToMove.next
+          node(2).next = node(5)
+  
+  Step B: nodeToMove.next = beforeLeft.next
+          node(4).next = node(3)
+  
+  Step C: beforeLeft.next = nodeToMove
+          node(1).next = node(4)
+          
+  State: 1 → 4 → 3 → 2 → 5 ✓
+
+DONE! (right - left = 4 - 2 = 2 iterations)</code></pre></div>
+<hr>
+<h2>🛠️ HOW CAN WE SOLVE IT</h2>
+<h3>The Algorithm — Precise Steps</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>reverseBetween(head, left, right):
+</span>
+  1. IF head is null OR left == right → return head (nothing to reverse)
+
+  2. CREATE dummy node: dummy.next = head
+     → Handles the left=1 edge case elegantly
+
+  3. NAVIGATE to beforeLeft:
+     → Start at dummy
+     → Move forward (left - 1) times
+     → beforeLeft = current position
+
+  4. IDENTIFY leftNode:
+     → leftNode = beforeLeft.next
+     → This node will become the LAST node of the reversed portion
+
+  5. REVERSE using "move to front" technique:
+     → Repeat (right - left) times:
+          a. nodeToMove = leftNode.next
+          b. leftNode.next = nodeToMove.next       (skip over nodeToMove)
+          c. nodeToMove.next = beforeLeft.next      (nodeToMove points to current front)
+          d. beforeLeft.next = nodeToMove            (nodeToMove becomes new front)
+
+  6. RETURN dummy.next (the real head, which may have changed)</code></pre></div>
+<h3>Why (right - left) Iterations?</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ We have (right - left + 1) nodes to reverse
+</span>→ The first node (leftNode) stays in place and shifts to the end naturally
+→ We need to move each of the remaining (right - left) nodes to the front
+→ Each iteration moves exactly ONE node
+→ Total iterations = right - left
+
+Example: left=2, right=4 → reverse nodes at positions 2,3,4
+  → 3 nodes to reverse
+  → leftNode (position 2) stays → shifts to end
+  → Move position 3 to front → 1 iteration
+  → Move position 4 to front → 2 iterations
+  → Total: right - left = 4 - 2 = 2 iterations ✓</code></pre></div>
+<hr>
+<h2>✅ WHAT SHOULD YOU DO</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ ALWAYS use a dummy node
+</span>     → Eliminates special case for left=1
+     → dummy.next = head → return dummy.next at the end
+     → Makes code cleaner and less error-prone
+     → O(1) extra space → acceptable
+
+→ ALWAYS keep leftNode reference fixed
+     → leftNode is set ONCE and never reassigned
+     → It naturally migrates to the end of the reversed portion
+     → Its .next pointer changes each iteration but the reference stays
+
+→ ALWAYS use the "move to front" technique for partial reversal
+     → Keeps list connected throughout
+     → Automatic stitching
+     → No separate stitching step needed
+     → Fewer edge cases than classic prev/curr/next
+
+→ ALWAYS verify with small examples:
+     → left=1, right=1 → no change
+     → left=1, right=n → full reversal → head changes
+     → left=right → no change
+     → left=1, right=2 → swap first two nodes
+
+→ ALWAYS count iterations carefully
+     → (right - left) iterations, NOT (right - left + 1)
+     → Off-by-one here reverses one too many or too few nodes</code></pre></div>
+<hr>
+<h2>🚫 WHAT SHOULD YOU NOT DO</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ DO NOT use classic prev/curr/next reversal without modification
+</span>     → Classic reversal disconnects nodes
+     → Hard to stitch back into surrounding list
+     → Need to save beforeLeft and afterRight references
+     → "Move to front" is cleaner for partial reversal
+
+→ DO NOT forget the dummy node
+     → Without dummy: special case for left=1
+     → Code branches into two paths → doubled complexity
+     → Dummy eliminates the branch entirely
+
+→ DO NOT modify leftNode reference during reversal
+     WRONG:
+       leftNode = leftNode.next;  // inside reversal loop
+     → leftNode must stay fixed → it's our anchor
+     → Its .next changes → but the reference doesn't
+
+→ DO NOT navigate using 1-based counting from head
+     WRONG:
+       for (int i = 1; i &lt; left; i++) curr = curr.next;
+       // curr is now at position left → NOT beforeLeft!
+     
+     RIGHT:
+       // Start from dummy (position 0)
+       for (int i = 0; i &lt; left - 1; i++) curr = curr.next;
+       // curr is now beforeLeft ✓
+
+→ DO NOT reverse then stitch separately
+     → Reversing disconnects the sub-list from the main list
+     → You lose the afterRight reference
+     → Need to save it first → more variables → more bugs
+     → "Move to front" avoids all this
+
+→ DO NOT use extra data structures
+     → No arrays, no stacks, no queues
+     → Pure pointer manipulation
+     → O(1) space is the goal
+
+→ DO NOT ignore the return value
+     → When left=1, the head changes
+     → Always return dummy.next, not original head
+     → Returning original head when left=1 → wrong answer</code></pre></div>
+<hr>
+<h2>🔀 WHEN TO USE THIS PATTERN</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>✓ Reversing a PORTION of a linked list (not the whole thing)
+</span>✓ Positions are given (left, right) rather than node references
+✓ In-place modification required (O(1) space)
+✓ Single-pass solution needed
+✓ Variants:
+     → Reverse every k-group of nodes
+     → Reverse alternating k-groups
+     → Reverse second half of list
+     → All build on this sub-portion reversal technique
+✓ The "move to front" technique works whenever:
+     → You need to reverse a contiguous segment
+     → You have a reference to the node BEFORE the segment
+     → You want automatic stitching</code></pre></div>
+<hr>
+<h2>🚫 WHEN NOT TO USE THIS PATTERN</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>✗ Need to reverse the ENTIRE list
+</span>     → Simpler: use Project 16's classic prev/curr/next
+     → No navigation or stitching needed
+
+✗ Doubly linked list
+     → Reversal is simpler with double links
+     → Just swap prev and next pointers for each node in range
+     → Then fix boundary connections
+     → No "move to front" needed
+
+✗ Need to reverse based on VALUES, not positions
+     → "Reverse all nodes with value &gt; 5" → different problem
+     → Position-based technique doesn't apply
+     → Need value-based filtering + reversal
+
+✗ Random access is available (array-based list)
+     → Arrays: just use two-pointer swap from both ends
+     → Much simpler than linked list pointer manipulation
+     → This technique is specifically for singly linked lists
+
+✗ Multiple non-contiguous segments to reverse
+     → Each segment needs its own navigation + reversal
+     → Consider if a different approach (stack, array conversion) is cleaner</code></pre></div>
+<hr>
+<h2>⚙️ HOW IT ONLY WORKS — Internal Mechanics</h2>
+<h3>The Dummy Node Technique — Deep Dive</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>WHY a dummy node works:
+</span>
+Without dummy (left=1):
+  head → 1 → 2 → 3 → 4 → 5
+  → beforeLeft = ??? → no node before position 1
+  → Must handle separately: "if left == 1, then..."
+  → After reversal: new head = rightNode
+  → Special return logic needed
+
+With dummy:
+  dummy(0) → 1 → 2 → 3 → 4 → 5
+  → beforeLeft = dummy → always exists!
+  → Same algorithm works for all cases
+  → After reversal: dummy.next = correct new head
+  → Return dummy.next → always correct
+
+The dummy node is a SENTINEL:
+→ It provides a uniform "before" reference
+→ It absorbs the edge case into the general case
+→ Cost: one extra object → negligible
+→ Benefit: eliminates branching → fewer bugs
+
+This technique appears in MANY linked list problems:
+→ Merge two sorted lists
+→ Remove nth node from end
+→ Partition list around value
+→ Any problem where the head might change</code></pre></div>
+<h3>The "Move to Front" Technique — Step by Step Mechanics</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>The three pointer operations per iteration:
+</span>
+BEFORE iteration:
+  beforeLeft → [front] → ... → leftNode → nodeToMove → rest
+  
+OPERATION A: leftNode.next = nodeToMove.next
+  → Detaches nodeToMove from its current position
+  → leftNode now skips over nodeToMove → points to rest
+  
+  beforeLeft → [front] → ... → leftNode → rest
+                                              nodeToMove (floating)
+
+OPERATION B: nodeToMove.next = beforeLeft.next
+  → nodeToMove now points to current front of reversed portion
+  
+  beforeLeft → [front] → ... → leftNode → rest
+               ↑
+  nodeToMove ──┘
+
+OPERATION C: beforeLeft.next = nodeToMove
+  → nodeToMove becomes the new front
+  
+  beforeLeft → nodeToMove → [old front] → ... → leftNode → rest
+
+AFTER iteration:
+  beforeLeft → nodeToMove → [old front] → ... → leftNode → rest
+  → nodeToMove is now the FIRST node after beforeLeft
+  → leftNode is still the LAST node of the reversed portion
+  → leftNode.next points to rest (the unreversed remainder)
+
+KEY OBSERVATIONS:
+  → leftNode NEVER MOVES in the list structure
+  → leftNode gradually becomes the last reversed node
+  → Each new node jumps to the front
+  → beforeLeft always points to the newest front
+  → The list stays FULLY CONNECTED at every step</code></pre></div>
+<h3>Why the List Stays Connected</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>This is the CRITICAL advantage over classic reversal.
+</span>
+Classic reversal (Project 16):
+  prev=null, curr=head
+  → curr.next = prev → DISCONNECTS curr from the rest!
+  → The rest of the list is only reachable through "next" variable
+  → If you lose "next", you lose the rest of the list
+  → Must be very careful with pointer order
+
+"Move to front":
+  → leftNode.next = nodeToMove.next → RECONNECTS leftNode to rest
+  → nodeToMove.next = beforeLeft.next → CONNECTS nodeToMove to front
+  → beforeLeft.next = nodeToMove → CONNECTS beforeLeft to nodeToMove
+  → At NO point is any part of the list unreachable
+  → The list is always fully traversable from dummy
+
+This makes the technique:
+  → Safer (no dangling pointers)
+  → Easier to debug (can print list at any step)
+  → Less error-prone (fewer ways to lose references)</code></pre></div>
+<h3>Time and Space Complexity</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>TIME: O(n)
+</span>→ Navigate to beforeLeft: O(left) steps
+→ Reverse sub-portion: O(right - left) iterations
+→ Total: O(left) + O(right - left) = O(right) ≤ O(n)
+→ Single pass → true O(n)
+
+SPACE: O(1)
+→ Variables: dummy, beforeLeft, leftNode, nodeToMove
+→ Fixed number of pointers regardless of list size
+→ No recursion → no call stack growth
+→ Dummy node: 1 extra object → O(1)
+
+COMPARISON WITH ALTERNATIVES:
+  Stack-based: O(n) time, O(right-left) space → violates O(1) space
+  Array conversion: O(n) time, O(n) space → violates O(1) space
+  Recursive: O(n) time, O(n) stack space → violates O(1) space
+  "Move to front": O(n) time, O(1) space → OPTIMAL ✓</code></pre></div>
+<h3>The Three Operations Order Matters</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>The three operations MUST happen in exactly this order:
+</span>
+CORRECT ORDER: A → B → C
+  A: leftNode.next = nodeToMove.next      (detach)
+  B: nodeToMove.next = beforeLeft.next     (point to front)
+  C: beforeLeft.next = nodeToMove          (become new front)
+
+WHY this specific order?
+
+If we do C first (beforeLeft.next = nodeToMove):
+  → We lose reference to old front (beforeLeft used to point there)
+  → nodeToMove.next hasn't been set yet → dangling
+  → BROKEN
+
+If we do B first (nodeToMove.next = beforeLeft.next):
+  → This is actually OK → reads beforeLeft.next before modifying it
+  → But then A must happen before C
+  → A detaches nodeToMove → then C sets new front
+
+If we do A first (leftNode.next = nodeToMove.next):
+  → nodeToMove is detached from its position
+  → But we still have nodeToMove reference → not lost
+  → Then B and C connect it at the front
+  → CORRECT
+
+Actually, A-B-C and B-A-C both work.
+The key constraint: C must be LAST (otherwise we lose beforeLeft.next reference for B).
+
+Safest order: A → B → C (detach → repoint → connect)</code></pre></div>
+<hr>
+<h2>⚠️ COMMON PITFALLS AND FAILURE MODES</h2>
+<h3>Pitfall 1: Wrong Number of Navigation Steps</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>SCENARIO: left=2, list starts at dummy
+</span>
+How many steps from dummy to beforeLeft?
+  dummy(pos 0) → node(pos 1) → node(pos 2) → ...
+  
+  beforeLeft is at position left-1 = 1
+  Steps from dummy to position 1 = 1 step
+  
+  FORMULA: (left - 1) steps from dummy to reach beforeLeft
+
+WRONG:
+  for (int i = 0; i &lt; left; i++) curr = curr.next;
+  → This reaches position LEFT, not beforeLeft
+  → One step too many!
+
+RIGHT:
+  for (int i = 0; i &lt; left - 1; i++) curr = curr.next;
+  → Reaches position left-1 = beforeLeft ✓
+
+VERIFICATION:
+  left=1: steps = 0 → stay at dummy → beforeLeft = dummy ✓
+  left=2: steps = 1 → move once → beforeLeft = first node ✓
+  left=5: steps = 4 → move four times → beforeLeft = fourth node ✓</code></pre></div>
+<h3>Pitfall 2: Wrong Number of Reversal Iterations</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>SCENARIO: left=2, right=4 → reverse 3 nodes (positions 2,3,4)
+</span>
+Number of "move to front" iterations needed?
+  → Node at position 2 (leftNode) stays → ends up last
+  → Node at position 3 → move to front → iteration 1
+  → Node at position 4 → move to front → iteration 2
+  → Total: 2 iterations = right - left
+
+WRONG:
+  for (int i = 0; i &lt; right - left + 1; i++) ...
+  → right - left + 1 = 3 → one too many iterations
+  → Moves a node from the AFTER region into the reversed portion!
+
+RIGHT:
+  for (int i = 0; i &lt; right - left; i++) ...
+  → right - left = 2 → exactly correct ✓</code></pre></div>
+<h3>Pitfall 3: Not Returning dummy.next</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>SCENARIO: left=1, right=3 on list 1 → 2 → 3 → 4 → 5
+</span>
+After reversal: dummy → 3 → 2 → 1 → 4 → 5
+Original head was node(1), now head should be node(3)
+
+WRONG: return head;
+  → Returns node(1) → but node(1) is now in position 3
+  → Caller gets: 1 → 4 → 5 (missing the reversed front)
+
+RIGHT: return dummy.next;
+  → Returns node(3) → the true new head ✓</code></pre></div>
+<h3>Pitfall 4: left = right (No Reversal Needed)</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>left=3, right=3 → reverse single node → no change
+</span>
+Algorithm: right - left = 0 → zero iterations → no reversal
+→ Handled automatically → no special case needed
+
+But some code has bugs here:
+→ If you check "if left == right return head" at the start → correct but unnecessary
+→ The algorithm handles it naturally → zero iterations → unchanged list</code></pre></div>
+<h3>Pitfall 5: Reversing When List is Shorter Than Expected</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>What if right &gt; list length?
+</span>→ Problem typically guarantees valid left and right
+→ If not guaranteed → nodeToMove could be null → NullPointerException
+
+DEFENSIVE CODE:
+  for (int i = 0; i &lt; right - left; i++) {
+      ListNode nodeToMove = leftNode.next;
+      if (nodeToMove == null) break;  // safety net
+      ...
+  }
+
+→ Add null check if problem doesn't guarantee valid bounds</code></pre></div>
+<h3>Pitfall 6: Confusing Node References After Reversal</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>After reversal, leftNode and beforeLeft still point to the same NODES
+</span>But those nodes are now in different POSITIONS:
+
+BEFORE: dummy → 1 → 2 → 3 → 4 → 5
+  beforeLeft = node(1) at position 1
+  leftNode = node(2) at position 2
+
+AFTER: dummy → 1 → 4 → 3 → 2 → 5
+  beforeLeft = node(1) still at position 1 ✓
+  leftNode = node(2) now at position 4 (end of reversed portion)
+
+→ The NODES don't move in memory → their LINKS change
+→ leftNode is the same object → but its position in the list changed
+→ This is expected and correct</code></pre></div>
+<hr>
+<h2>📈 SCALABILITY CONSIDERATIONS</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ n = 100 → O(100) → instant
+</span>→ n = 1,000,000 → O(1,000,000) → fast
+→ n = 100,000,000 → O(100,000,000) → few seconds
+
+→ Space is ALWAYS O(1) regardless of n
+→ No recursion → no stack overflow risk
+→ Sequential pointer following → cache-friendly
+
+→ COMPARISON WITH ALTERNATIVES:
+     Stack-based reversal: O(n) time, O(right-left) space
+       → For right-left = n/2 → O(n) space → bad
+     Array conversion: O(n) time, O(n) space
+       → Convert to array → reverse slice → rebuild list
+       → Simple but wasteful
+     This approach: O(n) time, O(1) space → OPTIMAL
+
+→ For REPEATED partial reversals:
+     → Each reversal is O(n) worst case
+     → k reversals → O(kn) total
+     → If k is large → consider converting to array once
+     → Array slicing is O(1) for each reversal setup</code></pre></div>
+<hr>
+<h2>🔍 INTERPRETABILITY CONSIDERATIONS</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ The "move to front" technique is visually clear:
+</span>     → "Take the next node, move it to the front of the group"
+     → Like shuffling cards to the front of a hand
+     → Easy to draw on whiteboard
+
+→ The dummy node technique is a standard pattern:
+     → Interviewers expect it for linked list problems
+     → Saying "I'll use a dummy node to handle edge cases" is a strong signal
+     → Shows awareness of common patterns
+
+→ Three-region thinking connects to Project 22:
+     → Same decomposition: before / middle / after
+     → Different operation: merge vs reverse
+     → Shows pattern recognition across problem types
+
+→ INTERVIEW STRATEGY:
+     Step 1: "I'll use a dummy node to handle left=1"
+     Step 2: "Navigate to the node before position left"
+     Step 3: "Use the move-to-front technique to reverse the sub-portion"
+     Step 4: "The list stays connected throughout — no separate stitching"
+     Step 5: "Return dummy.next as the new head"
+
+→ DEBUGGING: Print list after each iteration of the reversal loop
+     → See nodes moving to the front one by one
+     → Easy to spot if wrong node moves or connections break</code></pre></div>
+<hr>
+<div class="github-btn-wrap"><a class="github-btn" href="https://github.com/Shakti4640/leetcode-patterns-guide-java/tree/main/project- (23)" target="_blank" rel="noopener"><svg viewBox="0 0 24 24"><path d="M12 .5C5.37.5 0 5.87 0 12.5c0 5.3 3.44 9.8 8.2 11.39.6.11.82-.26.82-.58v-2.03c-3.34.73-4.04-1.61-4.04-1.61-.55-1.39-1.34-1.76-1.34-1.76-1.09-.74.08-.73.08-.73 1.2.09 1.84 1.24 1.84 1.24 1.07 1.83 2.8 1.3 3.49 1 .1-.78.42-1.3.76-1.6-2.67-.3-5.47-1.33-5.47-5.93 0-1.31.47-2.38 1.24-3.22-.14-.3-.54-1.52.1-3.18 0 0 1.01-.32 3.3 1.23a11.5 11.5 0 0 1 3-.4c1.02 0 2.04.13 3 .4 2.28-1.55 3.29-1.23 3.29-1.23.64 1.66.24 2.88.12 3.18.77.84 1.23 1.91 1.23 3.22 0 4.61-2.81 5.63-5.48 5.92.43.37.81 1.1.81 2.22v3.29c0 .32.21.7.82.58C20.56 22.3 24 17.8 24 12.5 24 5.87 18.63.5 12 .5z"/></svg>💻 View Complete Java Code on GitHub</a></div>
+
+<hr>
+<h2>🔑 EXPECTED OUTPUT (Key Sections)</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>═══ TEST 1: Middle Reversal — left=2, right=4 ═══
+</span>  Input list: 1 → 2 → 3 → 4 → 5
+  Reverse positions 2 to 4
+
+  After adding dummy: dummy(0) → 1 → 2 → 3 → 4 → 5
+  beforeLeft = node(1) at position 1
+  leftNode = node(2) at position 2
+
+  ═══ Reversal Process (2 iterations) ═══
+  Iteration 1:
+    nodeToMove = node(3)
+    A: leftNode(2).next = node(4)  [detach nodeToMove]
+    B: nodeToMove(3).next = node(2)  [point to current front]
+    C: beforeLeft(1).next = node(3)  [new front]
+    State: dummy(0) → 1 → 3 → 2 → 4 → 5
+
+  Iteration 2:
+    nodeToMove = node(4)
+    A: leftNode(2).next = node(5)  [detach nodeToMove]
+    B: nodeToMove(4).next = node(3)  [point to current front]
+    C: beforeLeft(1).next = node(4)  [new front]
+    State: dummy(0) → 1 → 4 → 3 → 2 → 5
+
+  ★ FINAL: 1 → 4 → 3 → 2 → 5
+
+═══ TEST 3: Head Changes — left=1, right=3 ═══
+  Input list: 1 → 2 → 3 → 4 → 5
+  Reverse positions 1 to 3
+
+  After adding dummy: dummy(0) → 1 → 2 → 3 → 4 → 5
+  beforeLeft = node(0) at position 0
+  leftNode = node(1) at position 1
+
+  ═══ Reversal Process (2 iterations) ═══
+  Iteration 1:
+    nodeToMove = node(2)
+    A: leftNode(1).next = node(3)  [detach nodeToMove]
+    B: nodeToMove(2).next = node(1)  [point to current front]
+    C: beforeLeft(0).next = node(2)  [new front]
+    State: dummy(0) → 2 → 1 → 3 → 4 → 5
+
+  Iteration 2:
+    nodeToMove = node(3)
+    A: leftNode(1).next = node(4)  [detach nodeToMove]
+    B: nodeToMove(3).next = node(2)  [point to current front]
+    C: beforeLeft(0).next = node(3)  [new front]
+    State: dummy(0) → 3 → 2 → 1 → 4 → 5
+
+  ★ FINAL: 3 → 2 → 1 → 4 → 5
+
+═══ TEST 5: Two-Node Swap — left=2, right=3 ═══
+  Before: 1 → [2 → 3] → 4 → 5
+  After:  1 → [3 → 2] → 4 → 5
+
+═══ TEST 6: End of List — left=3, right=5 ═══
+  Before: 1 → 2 → [3 → 4 → 5]
+  After:  1 → 2 → [5 → 4 → 3]
+
+═══ TEST 9: Move-to-Front vs Classic Reversal ═══
+  Test 1 [L=2,R=4]: MoveToFront=[1, 4, 3, 2, 5] Classic=[1, 4, 3, 2, 5] ✓
+  Test 2 [L=1,R=5]: MoveToFront=[5, 4, 3, 2, 1] Classic=[5, 4, 3, 2, 1] ✓
+  Test 3 [L=1,R=3]: MoveToFront=[3, 2, 1, 4, 5] Classic=[3, 2, 1, 4, 5] ✓
+  Test 4 [L=3,R=5]: MoveToFront=[1, 2, 5, 4, 3] Classic=[1, 2, 5, 4, 3] ✓
+  Test 5 [L=1,R=2]: MoveToFront=[20, 10, 30] Classic=[20, 10, 30] ✓
+  Test 6 [L=1,R=2]: MoveToFront=[2, 1] Classic=[2, 1] ✓
+  Test 7 [L=1,R=1]: MoveToFront=[7] Classic=[7] ✓
+  Test 8 [L=3,R=8]: MoveToFront=[1, 2, 8, 7, 6, 5, 4, 3, 9, 10] Classic=[1, 2, 8, 7, 6, 5, 4, 3, 9, 10] ✓
+  All match: true</code></pre></div>
+<hr>
+<h2>🧠 Project 16 vs Project 23 — The Evolution</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>┌─────────────────────┬──────────────────────┬────────────────────────────┐
+</span>│ Aspect              │ Project 16           │ Project 23                 │
+│                     │ (Full Reversal)      │ (Partial Reversal)         │
+├─────────────────────┼──────────────────────┼────────────────────────────┤
+│ What to reverse     │ Entire list          │ Positions left to right    │
+│ Navigation needed?  │ No → start at head   │ Yes → find beforeLeft      │
+│ Stitching needed?   │ No → new head = prev │ Yes → connect three regions│
+│ Head changes?       │ Always               │ Only if left=1             │
+│ Dummy node needed?  │ No                   │ Yes (handles left=1)       │
+│ Technique           │ prev/curr/next       │ Move-to-front              │
+│ Key variables       │ prev, curr, next     │ beforeLeft, leftNode,      │
+│                     │                      │ nodeToMove                 │
+│ Loop count          │ n iterations         │ right-left iterations      │
+│ Three regions?      │ No                   │ Yes: before/reverse/after  │
+│ Complexity          │ O(n) time, O(1)      │ O(n) time, O(1) space     │
+└─────────────────────┴──────────────────────┴────────────────────────────┘
+
+EVOLUTION:
+  Project 16: "Reverse everything" → simple, no boundaries
+  Project 23: "Reverse a section" → navigation + reversal + stitching
+  
+The partial reversal CONTAINS the full reversal as a special case:
+  → left=1, right=n → full reversal
+  → Project 23 generalizes Project 16</code></pre></div>
+<hr>
+<h2>🧠 The Three-Region Pattern Across Problems</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>┌──────────────────┬──────────────┬──────────────┬───────────────┐
+</span>│ Problem          │ Before       │ Middle       │ After         │
+├──────────────────┼──────────────┼──────────────┼───────────────┤
+│ Project 22       │ Intervals    │ Merge with   │ Intervals     │
+│ Insert Interval  │ before new   │ new interval │ after merged  │
+├──────────────────┼──────────────┼──────────────┼───────────────┤
+│ Project 23       │ Nodes before │ Reverse      │ Nodes after   │
+│ Reverse Between  │ position L   │ L to R       │ position R    │
+├──────────────────┼──────────────┼──────────────┼───────────────┤
+│ Project 32       │ Elements     │ Elements     │ Elements      │
+│ Sort Colors      │ that are 0   │ that are 1   │ that are 2    │
+│ (future)         │              │              │               │
+└──────────────────┴──────────────┴──────────────┴───────────────┘
+
+→ Same SKELETON: identify three regions → process each appropriately
+→ Different OPERATIONS: merge vs reverse vs partition
+→ Recognizing this pattern accelerates problem solving</code></pre></div>
+<hr>
+<h2>🧠 KEY TAKEAWAY</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>WHAT WE LEARNED:
+</span>→ Partial linked list reversal needs THREE components:
+     1. Navigation to the boundary (beforeLeft)
+     2. Reversal of the sub-portion (move-to-front)
+     3. Stitching (automatic with move-to-front)
+→ Dummy node eliminates the left=1 edge case
+→ "Move to front" keeps the list connected throughout
+→ leftNode stays fixed → naturally becomes the last reversed node
+→ (right - left) iterations → NOT (right - left + 1)
+→ Always return dummy.next → head may have changed
+
+THE CORE MENTAL MODEL:
+→ "Navigate to the node before the reversal zone"
+→ "Repeatedly move the next node to the front of the zone"
+→ "After all moves, the zone is reversed and connected"
+→ "Dummy node ensures there's always a 'before' node"
+
+PATTERN SIGNATURE:
+→ Singly linked list ✓
+→ Reverse between positions L and R ✓
+→ In-place O(1) space ✓
+→ = MOVE-TO-FRONT PARTIAL REVERSAL + DUMMY NODE
+
+CONNECTION TO PREVIOUS PROJECTS:
+→ Project 16: Full reversal → prev/curr/next dance
+→ Project 22: Three-region decomposition → before/middle/after
+→ Project 23: Combines both → navigate + reverse portion + stitch</code></pre></div>
+<hr>
+<h2>🌉 BRIDGE TO NEXT PROJECT</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>PROJECT 23 taught us:
+</span>→ Partial reversal on linked lists
+→ Three-region thinking on linear data structures
+→ Dummy node sentinel technique
+
+PROJECT 24 (Binary Tree Zigzag Level Order Traversal) returns to:
+→ Tree BFS from Project 17
+→ Project 17: standard level-order → left to right at every level
+→ Project 24: ALTERNATING direction → left-to-right, then right-to-left
+
+→ Key new concept: DIRECTION FLAG
+     → Even levels: left to right (normal)
+     → Odd levels: right to left (reversed)
+     → Toggle the flag after each level
+
+→ Connection to THIS project:
+     → Project 23 reverses a portion of a linked list
+     → Project 24 reverses the ORDER of certain levels
+     → Both deal with controlled reversal within a larger structure
+     → Different data structure (list vs tree) → same reversal thinking
+
+The Tree BFS progression:
+  Project 17: Standard level order → queue + level boundary
+  Project 24: Zigzag level order → queue + direction flag
+  Project 25: Connect siblings → queue + neighbor linking
+  → Same BFS skeleton → progressively complex per-level operations</code></pre></div>
+<hr>
+<p><strong>Ready for Project 24: Binary Tree Zigzag Level Order Traversal (Tree BFS → Alternating Direction Flag → Level-Aware Queue Processing)?</strong></p>
+</div>
+</div>
+
+<!-- ========== data-index="17" ========== -->
+<div class="chat-message" data-index="17"></div>
+</div>
+<div class="bottom-nav">
+  <a href="project-22.html" class="nav-btn prev">← Prev</a>
+  <div class="nav-center">
+    <span class="nav-project-label">PROJECT 23 of 60</span>
+    <span class="nav-project-title">Reverse a Sub-portion of a Linked List</span>
+    <span class="kbd-hint">← → arrow keys to navigate</span>
+  </div>
+  <a href="project-24.html" class="nav-btn next">Next →</a>
+  <a href="index.html" class="nav-btn home">🏠 TOC</a>
+</div>
+<div id="progress-track"><div id="progress-fill"></div></div>
+<div id="progress-pct">0%</div>
+<script src="script.js"></script>
+<script>
+document.addEventListener('keydown', function(e) {
+  if (['INPUT','TEXTAREA'].includes(document.activeElement.tagName)) return;
+  if (e.key === 'ArrowRight' && "project-24.html" !== null) window.location = "project-24.html";
+  if (e.key === 'ArrowLeft' && "project-22.html" !== null) window.location = "project-22.html";
+});
+</script>
+</body>
+</html>

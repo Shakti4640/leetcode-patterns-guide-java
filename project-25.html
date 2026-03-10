@@ -1,0 +1,942 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PROJECT 25: Connect Level Order Siblings — Next Pointer</title>
+<link rel="icon" type="image/png" href="images/favicon.png">
+<link rel="stylesheet" href="styles.css">
+
+</head>
+<body>
+<div id="progress-bar-container"><div id="progress-bar" style="width:43%"></div></div>
+<div id="progress-label">43%</div>
+<div class="page-wrapper">
+<div class="chat-message"><div class="px-2"><h1>PROJECT 25: Connect Level Order Siblings — Next Pointer</h1>
+<h2>🎯 Tree BFS → Sibling Linking Within Level → Queue Neighbor Awareness</h2>
+<hr>
+<h2>🧩 THE HYPOTHETICAL PROBLEM</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ You are given a PERFECT or ARBITRARY binary tree
+</span>→ Each node has an additional pointer: next
+→ Populate each node's next pointer to point to its RIGHT NEIGHBOR at the same level
+→ If there is no right neighbor → next = null
+→ The next pointer is initially null for all nodes
+
+Example 1 (Perfect Binary Tree):
+  BEFORE:
+              1 → null
+             / \
+            2   3 → null
+           / \ / \
+          4  5 6  7 → null
+
+  AFTER:
+              1 → null
+             / \
+            2 → 3 → null
+           / \ / \
+          4→ 5→6→ 7 → null
+
+Example 2 (Arbitrary Binary Tree):
+  BEFORE:
+              1 → null
+             / \
+            2   3 → null
+           / \   \
+          4   5   7 → null
+
+  AFTER:
+              1 → null
+             / \
+            2 → 3 → null
+           / \   \
+          4→ 5 → 7 → null
+
+  Note: 5's right neighbor is 7 (NOT 6 — node 6 doesn't exist)
+  The next pointer skips gaps → connects to next EXISTING node at same level
+
+Example 3:
+  Input: null (empty tree)
+  Output: null (nothing to connect)
+
+Example 4:
+  Input: single node [1]
+  Output: 1 → null (no right neighbor)
+
+CONSTRAINT:
+  → O(1) extra space is ideal (beyond the queue for BFS)
+  → But queue-based BFS solution is acceptable and common</code></pre></div>
+<hr>
+<h2>🔍 HOW TO APPROACH IT</h2>
+<h3>Step 1 — Recall Projects 17 and 24: BFS Template</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ Project 17: standard level-order → queue + level-size snapshot
+</span>→ Project 24: zigzag → same template + direction flag + addFirst/addLast
+→ Project 25: sibling linking → same template + node-to-node connection
+
+→ The BFS template processes nodes LEVEL BY LEVEL
+→ Within each level, nodes come out of the queue LEFT TO RIGHT
+→ The node that comes out NEXT is the RIGHT NEIGHBOR of current node
+→ We just need to LINK current node's next pointer to the next node in queue
+
+→ This is the simplest conceptual modification yet:
+     → Project 17: collect value
+     → Project 24: collect value with direction
+     → Project 25: link to neighbor</code></pre></div>
+<h3>Step 2 — The Linking Logic Within BFS</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>During BFS, when processing level of size K:
+</span>
+  Node 0 → Node 1 → Node 2 → ... → Node K-1 → null
+
+  For each node i (0 to K-2):
+    node_i.next = node_{i+1}
+  
+  For the last node (K-1):
+    node_{K-1}.next = null  (already null by default)
+
+HOW to get node_{i+1} while processing node_i?
+
+APPROACH A: Use queue.peek()
+  → After polling node_i from queue
+  → queue.peek() gives node_{i+1} (if not last in level)
+  → node_i.next = queue.peek()
+  → But careful: queue.peek() after adding children may give WRONG node
+
+APPROACH B: Track previous node
+  → Maintain a "prev" variable
+  → For each node polled: prev.next = currentNode
+  → Then: prev = currentNode
+  → First node of level: prev = null → no linking
+  → This is CLEANER and SAFER
+
+APPROACH B is better because:
+  → queue.peek() after enqueueing children → peek returns child, not sibling
+  → prev tracking doesn't depend on queue state
+  → prev tracking is explicit and easy to reason about</code></pre></div>
+<h3>Step 3 — Visualize the Process</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>Tree:
+</span>          1
+         / \
+        2   3
+       / \ / \
+      4  5 6  7
+
+═══ LEVEL 0 ═══
+Queue: [1]
+  Poll node(1): prev = null → no linking → set prev = node(1)
+  Enqueue children: 2, 3
+  End of level: prev(1).next = null (default)
+Queue after: [2, 3]
+
+Result: 1 → null
+
+═══ LEVEL 1 ═══
+Queue: [2, 3]
+  Poll node(2): prev = null → no linking → set prev = node(2)
+  Enqueue children: 4, 5
+  
+  Poll node(3): prev = node(2) → node(2).next = node(3) → set prev = node(3)
+  Enqueue children: 6, 7
+  End of level: prev(3).next = null (default)
+Queue after: [4, 5, 6, 7]
+
+Result: 2 → 3 → null
+
+═══ LEVEL 2 ═══
+Queue: [4, 5, 6, 7]
+  Poll node(4): prev = null → no linking → set prev = node(4)
+  
+  Poll node(5): prev = node(4) → node(4).next = node(5) → set prev = node(5)
+  
+  Poll node(6): prev = node(5) → node(5).next = node(6) → set prev = node(6)
+  
+  Poll node(7): prev = node(6) → node(6).next = node(7) → set prev = node(7)
+  End of level: prev(7).next = null (default)
+
+Result: 4 → 5 → 6 → 7 → null
+
+FULL RESULT:
+          1 → null
+         / \
+        2 → 3 → null
+       / \ / \
+      4→ 5→6→ 7 → null  ✓</code></pre></div>
+<h3>Step 4 — The Arbitrary Tree Case</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>Tree:
+</span>          1
+         / \
+        2   3
+       / \   \
+      4   5   7
+
+═══ LEVEL 2 ═══
+Queue: [4, 5, 7]     ← Note: 6 is missing → only 3 nodes at this level
+
+  Poll node(4): prev = null → set prev = node(4)
+  Poll node(5): prev = node(4) → node(4).next = node(5) → set prev = node(5)
+  Poll node(7): prev = node(5) → node(5).next = node(7) → set prev = node(7)
+
+Result: 4 → 5 → 7 → null  ✓
+
+→ The BFS approach handles gaps AUTOMATICALLY
+→ Queue only contains EXISTING nodes → missing nodes are simply not in queue
+→ Linking consecutive queue nodes connects existing siblings correctly
+→ No special handling needed for missing children</code></pre></div>
+<h3>Step 5 — O(1) Space Solution (Perfect Tree Only)</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ For PERFECT binary trees → an O(1) space solution exists
+</span>→ Uses the ALREADY-ESTABLISHED next pointers to traverse levels
+→ No queue needed!
+
+IDEA:
+→ Process level by level
+→ For each node at current level → link its CHILDREN
+→ Use next pointers to move across the current level
+
+For node at current level:
+  → node.left.next = node.right          (left child → right child)
+  → if node.next != null:
+       node.right.next = node.next.left   (right child → cousin)
+
+This works because:
+  → Current level's next pointers are ALREADY set (from previous iteration)
+  → We use those next pointers to traverse current level
+  → While traversing → we set NEXT level's next pointers
+  → Bootstrap: level 0 has one node → no next needed
+
+LIMITATION: Only works for PERFECT trees
+  → Arbitrary trees have gaps → node.next.left may not exist
+  → Need more complex logic for arbitrary trees (dummy pointer technique)
+  → BFS approach works for ALL tree types → more general</code></pre></div>
+<hr>
+<h2>🛠️ HOW CAN WE SOLVE IT</h2>
+<h3>Algorithm 1: BFS with Previous Node Tracking (General — Works for ALL Trees)</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>connect(root):
+</span>
+  1. IF root is null → return root
+
+  2. CREATE queue, add root
+
+  3. WHILE queue is not empty:
+       a. levelSize = queue.size()
+       b. prev = null
+       
+       c. FOR i = 0 to levelSize - 1:
+            → node = queue.poll()
+            
+            → IF prev != null:
+                 prev.next = node      (link previous to current)
+            
+            → prev = node              (current becomes previous)
+            
+            → IF node.left != null: queue.offer(node.left)
+            → IF node.right != null: queue.offer(node.right)
+       
+       d. (Last node's next is already null by default)
+
+  4. RETURN root</code></pre></div>
+<h3>Algorithm 2: O(1) Space — Level-by-Level Using Next Pointers (Perfect Tree)</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>connect(root):
+</span>
+  1. IF root is null → return root
+
+  2. SET leftmost = root
+     → leftmost tracks the first node of the CURRENT level
+
+  3. WHILE leftmost.left != null:    (while next level exists)
+       a. SET curr = leftmost
+       
+       b. WHILE curr != null:        (traverse current level using next)
+            → curr.left.next = curr.right
+            → IF curr.next != null:
+                 curr.right.next = curr.next.left
+            → curr = curr.next        (move to next node at same level)
+       
+       c. leftmost = leftmost.left   (move to next level)
+
+  4. RETURN root</code></pre></div>
+<h3>Algorithm 3: O(1) Space — Arbitrary Tree (Dummy Child Technique)</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>connect(root):
+</span>
+  1. IF root is null → return root
+
+  2. SET curr = root
+
+  3. WHILE curr != null:             (while current level exists)
+       a. CREATE dummy = new Node(0)  (dummy head for next level's linked list)
+       b. SET tail = dummy            (tail of next level's linked list)
+       c. SET temp = curr             (traverse current level)
+       
+       d. WHILE temp != null:
+            → IF temp.left != null:
+                 tail.next = temp.left
+                 tail = tail.next
+            → IF temp.right != null:
+                 tail.next = temp.right
+                 tail = tail.next
+            → temp = temp.next         (move across current level using next)
+       
+       e. curr = dummy.next            (move to next level's first node)
+
+  4. RETURN root</code></pre></div>
+<hr>
+<h2>✅ WHAT SHOULD YOU DO</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ ALWAYS use the "prev tracking" approach for BFS solution
+</span>     → Safer than queue.peek()
+     → Works for both perfect and arbitrary trees
+     → Clear and easy to reason about
+
+→ ALWAYS reset prev to null at the START of each level
+     → prev = null before the for loop
+     → First node of each level has no left neighbor → no linking
+     → If prev carries over from previous level → wrong cross-level links!
+
+→ ALWAYS let the last node's next remain null
+     → Default value is null → no explicit setting needed
+     → Don't accidentally link last node to first node of next level
+
+→ ALWAYS enqueue children AFTER linking
+     → Link current node → then enqueue its children
+     → Order within the for loop: link → update prev → enqueue
+     → This keeps the queue state predictable
+
+→ ALWAYS consider which tree type the problem specifies:
+     → Perfect tree → O(1) space solution is possible and expected
+     → Arbitrary tree → BFS is cleanest, O(1) space needs dummy technique
+     → Read the problem carefully for tree type constraints
+
+→ ALWAYS return root (not void)
+     → The root node itself doesn't change
+     → But LeetCode expects root returned for chaining</code></pre></div>
+<hr>
+<h2>🚫 WHAT SHOULD YOU NOT DO</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ DO NOT use queue.peek() after enqueueing children
+</span>     WRONG:
+       node = queue.poll()
+       queue.offer(node.left)     // child added to queue
+       queue.offer(node.right)    // child added to queue  
+       node.next = queue.peek()   // peek returns CHILD, not sibling!
+     
+     → After adding children, queue.peek() gives the next level's node
+     → NOT the sibling at the current level
+     → This creates WRONG cross-level links
+
+→ DO NOT forget to reset prev at each level boundary
+     WRONG:
+       Node prev = null;            // set once outside all loops
+       while (!queue.isEmpty()) {
+           int size = queue.size();
+           for (int i = 0; i &lt; size; i++) {
+               node = queue.poll();
+               if (prev != null) prev.next = node;  // links last of level N to first of level N+1!
+               prev = node;
+           }
+       }
+     
+     → prev from level N's last node → links to level N+1's first node → WRONG
+     → prev MUST be reset to null at the start of each level
+
+→ DO NOT link nodes across levels
+     → next pointer connects nodes at the SAME level only
+     → Last node of each level → next = null
+     → Never link level N's last to level N+1's first
+
+→ DO NOT assume perfect tree for general solution
+     → Perfect tree: every internal node has exactly 2 children
+     → Arbitrary tree: nodes may have 0, 1, or 2 children
+     → O(1) space perfect-tree solution BREAKS on arbitrary trees
+     → If problem says "arbitrary" → use BFS or dummy technique
+
+→ DO NOT modify the tree structure (left/right pointers)
+     → Only modify the next pointer
+     → left and right pointers must remain unchanged
+     → Accidentally overwriting left/right → tree destroyed
+
+→ DO NOT use extra space for level collection
+     → Project 17/24: collected values into lists → needed for output
+     → Project 25: we're MODIFYING the tree in-place → no lists needed
+     → The tree IS the output → no separate result structure</code></pre></div>
+<hr>
+<h2>🔀 WHEN TO USE THIS PATTERN</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>✓ Tree nodes have an extra "next" pointer to populate
+</span>✓ Need to connect nodes at the same level horizontally
+✓ Level-order traversal is the natural fit
+✓ Variants:
+     → Connect siblings in perfect binary tree
+     → Connect siblings in arbitrary binary tree
+     → Populate right-side pointers
+     → Build horizontal linked lists at each level
+✓ The "prev tracking" technique works for ANY level-aware linking
+✓ O(1) space with next pointers → when tree type allows traversal via next</code></pre></div>
+<hr>
+<h2>🚫 WHEN NOT TO USE THIS PATTERN</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>✗ Nodes don't have a next pointer field
+</span>     → Can't add structural connections without the field
+     → Would need a separate data structure (HashMap&lt;Node, Node&gt;)
+     
+✗ Need to connect nodes vertically (parent-child)
+     → That's just normal tree structure → already exists via left/right
+     
+✗ Need to connect nodes across levels
+     → next pointer is specifically for same-level connections
+     → Cross-level connections would be a different data structure
+     
+✗ Graph instead of tree
+     → Graphs may have cycles → BFS needs visited tracking
+     → "Level" concept is less clear in general graphs
+     
+✗ Need the connections to be bidirectional
+     → next is one-directional (left to right)
+     → For bidirectional → need both next and prev pointers</code></pre></div>
+<hr>
+<h2>⚙️ HOW IT ONLY WORKS — Internal Mechanics</h2>
+<h3>The "prev" Tracking Technique — Deep Dive</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>CONCEPT:
+</span>→ "prev" always holds the MOST RECENTLY PROCESSED node at the current level
+→ When we process a new node → the previous node's right neighbor IS this new node
+→ So: prev.next = currentNode
+
+STATE TRANSITIONS within one level:
+
+  Before level starts: prev = null
+
+  Process node_0: prev = null → skip linking → prev = node_0
+  Process node_1: prev = node_0 → node_0.next = node_1 → prev = node_1
+  Process node_2: prev = node_1 → node_1.next = node_2 → prev = node_2
+  ...
+  Process node_k: prev = node_{k-1} → node_{k-1}.next = node_k → prev = node_k
+
+  After level ends: node_k.next = null (default)
+
+RESULT: node_0 → node_1 → node_2 → ... → node_k → null
+
+WHY prev = null at level start?
+→ First node of each level has NO left neighbor
+→ prev = null signals "don't link anything yet"
+→ The if (prev != null) guard skips the first node cleanly</code></pre></div>
+<h3>Why BFS Guarantees Correct Sibling Order</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>BFS processes nodes in LEVEL ORDER, LEFT TO RIGHT:
+</span>
+Tree:
+          1
+         / \
+        2   3
+       / \ / \
+      4  5 6  7
+
+Queue evolution:
+  Start:          [1]
+  After level 0:  [2, 3]           → left before right ✓
+  After level 1:  [4, 5, 6, 7]     → all left-to-right ✓
+
+WHY left-to-right is guaranteed:
+→ For each node, we enqueue LEFT child before RIGHT child
+→ Queue is FIFO → left child comes out before right child
+→ Parent nodes are processed left-to-right (by induction from previous level)
+→ So their children enter queue in correct left-to-right order
+
+INDUCTION:
+  Base: Level 0 has one node → trivially left-to-right
+  Step: If level N is left-to-right in queue
+        → Level N's nodes are processed left-to-right
+        → Each node enqueues left child then right child
+        → Level N+1 enters queue in left-to-right order ✓
+
+THEREFORE: BFS always produces correct sibling ordering
+→ Linking consecutive nodes = linking siblings = correct next pointers</code></pre></div>
+<h3>O(1) Space Solution — How Next Pointers Bootstrap</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>PERFECT TREE — Level-by-level without queue:
+</span>
+Level 0: [1]                     → 1.next = null (only node)
+Level 1: [2, 3]                  → 2.next = 3, 3.next = null
+Level 2: [4, 5, 6, 7]           → 4→5→6→7→null
+
+HOW to process level 1 to SET level 2's next pointers:
+
+  Start at leftmost = 1
+  
+  WHILE leftmost has children (leftmost.left != null):
+    curr = leftmost (start of current level)
+    
+    WHILE curr != null (traverse current level via next):
+      
+      Step A: Link curr's left child to curr's right child
+        curr.left.next = curr.right
+        → 2.left(4).next = 2.right(5) → 4→5
+      
+      Step B: Link curr's right child to next node's left child
+        if curr.next != null:
+          curr.right.next = curr.next.left
+          → 2.right(5).next = 3.left(6) → 5→6
+      
+      curr = curr.next  → move to node 3
+      
+      Step A: 3.left(6).next = 3.right(7) → 6→7
+      Step B: curr.next = null → skip
+      
+      curr = null → stop
+    
+    leftmost = leftmost.left → move down to level 2
+  
+  Level 2 result: 4→5→6→7→null ✓
+
+THE BOOTSTRAP:
+→ Level 0 is set trivially (one node)
+→ Level 0's next pointers let us traverse level 0
+→ While traversing level 0 → we set level 1's next pointers
+→ Level 1's next pointers let us traverse level 1
+→ While traversing level 1 → we set level 2's next pointers
+→ ... and so on
+
+→ Each level's next pointers are SET by the level above
+→ Each level's next pointers are USED to traverse that level
+→ The level above is already done → safe to use its next pointers
+→ This is why it works WITHOUT a queue → O(1) extra space!</code></pre></div>
+<h3>O(1) Space for Arbitrary Trees — The Dummy Child Technique</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>PROBLEM with arbitrary trees:
+</span>  → curr.next.left may not exist → can't link curr.right to it
+  → Need to find the FIRST existing child in the next level
+
+SOLUTION: Build a linked list of next level's nodes using a dummy head
+
+Tree:
+          1
+         / \
+        2   3
+       / \   \
+      4   5   7
+
+Processing level 1 [2, 3] to set level 2's next pointers:
+
+  dummy = Node(0)    → dummy head
+  tail = dummy        → tail of the linked list being built
+  
+  curr = 2:
+    2.left = 4 → tail.next = 4 → tail = 4    → dummy→4
+    2.right = 5 → tail.next = 5 → tail = 5   → dummy→4→5
+    curr = 2.next = 3
+  
+  curr = 3:
+    3.left = null → skip
+    3.right = 7 → tail.next = 7 → tail = 7   → dummy→4→5→7
+    curr = 3.next = null → stop
+  
+  Level 2's next chain: 4→5→7→null ✓
+  Next level starts at: dummy.next = 4
+
+→ The dummy node serves the same purpose as in Project 23
+→ It provides a uniform starting point for building the linked list
+→ Works for ANY tree shape → no assumption about perfect structure</code></pre></div>
+<h3>Time and Space Complexity — All Approaches</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>APPROACH 1: BFS with queue
+</span>  Time:  O(n) → each node enqueued and dequeued once
+  Space: O(w) → queue holds at most one level → w = max width
+         → Balanced tree: O(n/2) = O(n)
+         → Skewed tree: O(1)
+
+APPROACH 2: O(1) space — perfect tree
+  Time:  O(n) → each node visited once
+  Space: O(1) → only pointer variables → no queue
+  Limit: ONLY works for perfect binary trees
+
+APPROACH 3: O(1) space — arbitrary tree (dummy technique)
+  Time:  O(n) → each node visited once
+  Space: O(1) → dummy node + pointer variables → no queue
+  Works: For ALL binary trees
+
+COMPARISON:
+  ┌──────────────┬─────────┬─────────┬──────────────┐
+  │ Approach     │ Time    │ Space   │ Tree Type    │
+  ├──────────────┼─────────┼─────────┼──────────────┤
+  │ BFS + queue  │ O(n)    │ O(n)    │ Any          │
+  │ Perfect tree │ O(n)    │ O(1)    │ Perfect only │
+  │ Dummy child  │ O(n)    │ O(1)    │ Any          │
+  └──────────────┴─────────┴─────────┴──────────────┘
+
+→ BFS is simplest to code and understand
+→ O(1) approaches are impressive in interviews
+→ Know both → choose based on problem constraints</code></pre></div>
+<hr>
+<h2>⚠️ COMMON PITFALLS AND FAILURE MODES</h2>
+<h3>Pitfall 1: Not Resetting prev Between Levels</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>WRONG:
+</span>  ListNode prev = null;
+  while (!queue.isEmpty()) {
+      int size = queue.size();
+      for (int i = 0; i &lt; size; i++) {
+          Node node = queue.poll();
+          if (prev != null) prev.next = node;
+          prev = node;
+          // enqueue children...
+      }
+  }
+
+What happens:
+  Level 0: process node(1) → prev = node(1)
+  Level 1: process node(2) → prev.next = node(2) 
+           → node(1).next = node(2) → CROSS-LEVEL LINK! ✗
+
+  Result: 1 → 2 → 3 → 4 → 5 → 6 → 7 → null
+  → All nodes chained together → level boundaries lost!
+
+RIGHT:
+  while (!queue.isEmpty()) {
+      int size = queue.size();
+      Node prev = null;              // ← RESET for each level
+      for (int i = 0; i &lt; size; i++) {
+          Node node = queue.poll();
+          if (prev != null) prev.next = node;
+          prev = node;
+          // enqueue children...
+      }
+  }
+
+  Result: 
+    Level 0: 1 → null
+    Level 1: 2 → 3 → null
+    Level 2: 4 → 5 → 6 → 7 → null ✓</code></pre></div>
+<h3>Pitfall 2: Using queue.peek() After Enqueueing Children</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>WRONG:
+</span>  for (int i = 0; i &lt; size; i++) {
+      Node node = queue.poll();
+      if (node.left != null) queue.offer(node.left);
+      if (node.right != null) queue.offer(node.right);
+      
+      if (i &lt; size - 1) {
+          node.next = queue.peek();   // ← WRONG!
+      }
+  }
+
+What happens for node(2) in level 1:
+  Poll node(2)
+  Enqueue node(4) → queue = [3, 4]    (3 is still there, but...)
+  Wait, actually queue = [3] → then add 4,5 → queue = [3, 4, 5]
+  queue.peek() = node(3) → this is correct!
+  
+  BUT for node(3) in level 1:
+  Poll node(3)
+  Enqueue node(6), node(7) → queue = [4, 5, 6, 7]
+  i = 1 = size-1 → skip peek → correct
+
+  Hmm, in this case peek BEFORE enqueueing would work:
+
+ACTUALLY the issue is MORE subtle. Consider:
+  If we peek AFTER enqueueing:
+    Level 1: [2, 3] in queue
+    Poll 2 → enqueue 4, 5 → queue = [3, 4, 5]
+    peek = 3 ✓ (sibling)
+    
+    Poll 3 → enqueue 6, 7 → queue = [4, 5, 6, 7]
+    i = size-1 → don't peek ✓
+
+  This WORKS but is FRAGILE:
+  → Depends on i &lt; size - 1 check
+  → If we forget the check → peek returns next level's node
+  → prev tracking is more robust and self-documenting
+
+RECOMMENDATION: Use prev tracking → no peek ambiguity</code></pre></div>
+<h3>Pitfall 3: O(1) Space on Arbitrary Tree Without Dummy</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>Tree:
+</span>          1
+         / \
+        2   3
+         \   \
+          5   7
+
+O(1) perfect-tree approach:
+  curr = 2:
+    curr.left = null → SKIP
+    curr.right = 5 → but what do we link 5 to?
+    curr.right.next = curr.next.left → 3.left = null → NullPointerException!
+
+→ The perfect-tree O(1) approach assumes ALL children exist
+→ On arbitrary trees → null children → crashes or wrong links
+→ MUST use dummy technique for arbitrary trees</code></pre></div>
+<h3>Pitfall 4: Forgetting That next Is Already null</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ Node constructor initializes next = null
+</span>→ The LAST node of each level should have next = null
+→ Since it's already null → no action needed
+→ But if you accidentally set it to something else → bug
+
+SAFE PATTERN:
+  → Only set next when prev != null
+  → Never explicitly set next = null (it already is)
+  → This prevents accidental overwrites</code></pre></div>
+<h3>Pitfall 5: Confusing Node.next With ListNode.next</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ In linked list problems (Projects 16, 20, 23): ListNode.next = next node in list
+</span>→ In this problem: TreeNode.next = right neighbor at same level
+→ TreeNode ALSO has .left and .right for children
+
+→ The "next" pointer in this problem is HORIZONTAL (same level)
+→ The "left/right" pointers are VERTICAL (parent to child)
+→ Don't confuse them in your code
+→ Some implementations name it "nextRight" for clarity</code></pre></div>
+<h3>Pitfall 6: Verifying the Solution</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ How to verify next pointers are correct?
+</span>→ Traverse each level using next pointers:
+     Start at leftmost node of each level
+     Follow next pointers until null
+     Compare with BFS level output
+
+→ If they match → next pointers are correct
+→ This is a good testing strategy for your solution</code></pre></div>
+<hr>
+<h2>📈 SCALABILITY CONSIDERATIONS</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ n = 100 → all approaches instant
+</span>→ n = 100,000 → BFS: fast, O(1) space: fast
+→ n = 10,000,000 → BFS queue may use significant memory
+                   → O(1) space approach preferred for huge trees
+
+→ MEMORY COMPARISON for balanced tree with n = 1,000,000:
+     BFS queue: max width ≈ 500,000 nodes → ~4MB for queue entries
+     O(1) space: ~0 extra memory
+
+→ For PERFECT binary trees:
+     → O(1) space solution is strictly better
+     → No queue overhead → faster in practice
+     → Cache-friendly → level traversal via next pointers
+
+→ For ARBITRARY binary trees:
+     → BFS is simpler and reliable
+     → O(1) dummy technique works but is more complex to code
+     → In interviews → BFS is usually acceptable
+     → Mention O(1) possibility → shows depth of knowledge
+
+→ The next pointers themselves don't add to "extra space"
+     → They're part of the node structure → required by the problem
+     → "Extra space" refers to auxiliary data structures (queue, etc.)</code></pre></div>
+<hr>
+<h2>🔍 INTERPRETABILITY CONSIDERATIONS</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ The concept is visually intuitive:
+</span>     → "Connect each node to its right neighbor at the same level"
+     → Draw horizontal arrows at each level → that's the answer
+     → Anyone can understand the goal
+
+→ The BFS solution is natural:
+     → "I process level by level"
+     → "Within each level, I link each node to the next one"
+     → "BFS gives me nodes in the right order → just link them"
+
+→ The O(1) space solution is elegant:
+     → "I use the next pointers I've already built to traverse levels"
+     → "Each level helps me build the next level's connections"
+     → "Bootstrap from root → no queue needed"
+     → This shows deep understanding → impressive in interviews
+
+→ INTERVIEW STRATEGY:
+     → Start with BFS approach → code it quickly → correct
+     → Then say: "For O(1) space, I can use the established next pointers..."
+     → Explain the bootstrap idea
+     → Code it if time permits
+     → This shows progression from correct → optimal
+
+→ Real-world application:
+     → Thread binary trees → next pointers enable efficient traversal
+     → Database B-trees → sibling pointers for range queries
+     → DOM trees → sibling nodes in HTML
+     → Any tree where horizontal navigation is needed</code></pre></div>
+<hr>
+<div class="github-btn-wrap"><a class="github-btn" href="https://github.com/Shakti4640/leetcode-patterns-guide-java/tree/main/project- (25)" target="_blank" rel="noopener"><svg viewBox="0 0 24 24"><path d="M12 .5C5.37.5 0 5.87 0 12.5c0 5.3 3.44 9.8 8.2 11.39.6.11.82-.26.82-.58v-2.03c-3.34.73-4.04-1.61-4.04-1.61-.55-1.39-1.34-1.76-1.34-1.76-1.09-.74.08-.73.08-.73 1.2.09 1.84 1.24 1.84 1.24 1.07 1.83 2.8 1.3 3.49 1 .1-.78.42-1.3.76-1.6-2.67-.3-5.47-1.33-5.47-5.93 0-1.31.47-2.38 1.24-3.22-.14-.3-.54-1.52.1-3.18 0 0 1.01-.32 3.3 1.23a11.5 11.5 0 0 1 3-.4c1.02 0 2.04.13 3 .4 2.28-1.55 3.29-1.23 3.29-1.23.64 1.66.24 2.88.12 3.18.77.84 1.23 1.91 1.23 3.22 0 4.61-2.81 5.63-5.48 5.92.43.37.81 1.1.81 2.22v3.29c0 .32.21.7.82.58C20.56 22.3 24 17.8 24 12.5 24 5.87 18.63.5 12 .5z"/></svg>💻 View Complete Java Code on GitHub</a></div>
+
+<hr>
+<h2>🔑 EXPECTED OUTPUT (Key Sections)</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>═══ TEST 1: Perfect Binary Tree — Full Trace ═══
+</span>  BEFORE:
+  Level 0: 1 → null
+  Level 1: 2 → null
+  Level 2: 4 → null
+
+  ═══ LEVEL 0 (1 nodes) ═══
+  Queue: [1]
+    Process node(1) → first in level → no left neighbor
+      Enqueue left child: 2
+      Enqueue right child: 3
+  Level 0 chain: (verified after processing)
+
+  ═══ LEVEL 1 (2 nodes) ═══
+  Queue: [2, 3]
+    Process node(2) → first in level → no left neighbor
+      Enqueue left child: 4
+      Enqueue right child: 5
+    Process node(3) → link: node(2).next = node(3)
+      Enqueue left child: 6
+      Enqueue right child: 7
+  Level 1 chain: (verified after processing)
+
+  ═══ LEVEL 2 (4 nodes) ═══
+  Queue: [4, 5, 6, 7]
+    Process node(4) → first in level → no left neighbor
+    Process node(5) → link: node(4).next = node(5)
+    Process node(6) → link: node(5).next = node(6)
+    Process node(7) → link: node(6).next = node(7)
+  Level 2 chain: (verified after processing)
+
+  ═══ VERIFICATION — Next Pointer Chains ═══
+  Level 0: 1 → null
+  Level 1: 2 → 3 → null
+  Level 2: 4 → 5 → 6 → 7 → null
+
+═══ TEST 2: Arbitrary Tree — Full Trace ═══
+  ═══ VERIFICATION — Next Pointer Chains ═══
+  Level 0: 1 → null
+  Level 1: 2 → 3 → null
+  Level 2: 4 → 5 → 7 → null
+
+═══ TEST 3: Skewed Tree — Sparse Levels ═══
+  After connecting:
+  Level 0: 1 → null
+  Level 1: 2 → 3 → null
+  Level 2: 4 → 7 → null
+  Level 3: 8 → 9 → null
+
+═══ TEST 8: Visual Before/After — Perfect Tree ═══
+  BEFORE connecting:
+  Level 0 nodes:  1   
+  Level 0 next:   →N  
+  Level 1 nodes:  2   3   
+  Level 1 next:   →N  →N  
+  Level 2 nodes:  4   5   6   7   
+  Level 2 next:   →N  →N  →N  →N  
+
+  AFTER connecting:
+  Level 0 nodes:  1   
+  Level 0 next:   →N  
+  Level 1 nodes:  2   3   
+  Level 1 next:   →3  →N  
+  Level 2 nodes:  4   5   6   7   
+  Level 2 next:   →5  →6  →7  →N  
+
+═══ TEST 9: Verify All Approaches Agree ═══
+  Perfect Tree:
+    BFS:       [[1], [2, 3], [4, 5, 6, 7]]
+    O(1) Perf: [[1], [2, 3], [4, 5, 6, 7]]
+    O(1) Arb:  [[1], [2, 3], [4, 5, 6, 7]]
+    All match: true
+  Arbitrary Tree:
+    BFS:       [[1], [2, 3], [4, 5, 7]]
+    O(1) Arb:  [[1], [2, 3], [4, 5, 7]]
+    Match: true
+  Skewed Tree:
+    BFS:       [[1], [2, 3], [4, 7], [8, 9]]
+    O(1) Arb:  [[1], [2, 3], [4, 7], [8, 9]]
+    Match: true
+  ALL TESTS PASS: true</code></pre></div>
+<hr>
+<h2>🧠 The Complete Tree BFS Family</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>┌──────────────────┬────────────────────┬────────────────────────────────────┐
+</span>│ Project          │ Per-Node Operation │ Additional State                   │
+├──────────────────┼────────────────────┼────────────────────────────────────┤
+│ 17: Standard BFS │ levelList.add(val) │ None                               │
+│                  │                    │ Pure collection                     │
+├──────────────────┼────────────────────┼────────────────────────────────────┤
+│ 24: Zigzag BFS   │ addFirst or        │ boolean leftToRight                │
+│                  │ addLast based on   │ Toggle after each level            │
+│                  │ direction          │                                    │
+├──────────────────┼────────────────────┼────────────────────────────────────┤
+│ 25: Connect      │ prev.next = node   │ Node prev                         │
+│ Siblings         │ Link to neighbor   │ Reset to null each level           │
+│                  │                    │ + O(1) space variants              │
+└──────────────────┴────────────────────┴────────────────────────────────────┘
+
+THE UNIVERSAL BFS TEMPLATE:
+
+  queue.offer(root)
+  while queue not empty:
+    size = queue.size()            ← LEVEL BOUNDARY (Project 17)
+    [LEVEL INIT]                   ← Reset per-level state
+    for i = 0 to size-1:
+      node = queue.poll()
+      [PER-NODE OPERATION]         ← THE ONLY THING THAT CHANGES
+      enqueue children
+    [POST-LEVEL OPERATION]         ← Toggle, add to result, etc.
+
+→ Master this template → ALL tree BFS problems become variations
+→ Only the [bracketed] parts change between problems
+→ The skeleton (queue, size snapshot, child enqueueing) is FIXED</code></pre></div>
+<hr>
+<h2>🧠 KEY TAKEAWAY</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>WHAT WE LEARNED:
+</span>→ Sibling linking = BFS template + prev tracking within each level
+→ prev must be RESET to null at the start of each level
+→ Linking: if prev != null → prev.next = currentNode
+→ Last node's next stays null (default) → no explicit action
+→ BFS guarantees left-to-right order → linking consecutive nodes = correct siblings
+→ O(1) space is possible by bootstrapping next pointers level by level
+→ Dummy node technique handles arbitrary trees in O(1) space
+
+THE CORE MENTAL MODEL:
+→ "BFS gives me nodes level by level, left to right"
+→ "Within each level, consecutive nodes are siblings"
+→ "Link each node to the next one → sibling chain complete"
+→ "Reset the 'previous' reference at each new level"
+
+PATTERN SIGNATURE:
+→ Tree with extra next pointer ✓
+→ Connect nodes at same level ✓
+→ Level-order processing ✓
+→ = BFS TEMPLATE + PREV TRACKING (+ optional O(1) bootstrap)
+
+CONNECTION TO PREVIOUS PROJECTS:
+→ Project 17: BFS template foundation → level-size snapshot
+→ Project 24: Per-level customization → direction flag
+→ Project 25: Per-node customization → sibling linking
+→ All three share the EXACT SAME skeleton
+→ Project 23: Dummy node technique → reused in O(1) arbitrary tree solution</code></pre></div>
+<hr>
+<h2>🌉 BRIDGE TO NEXT PROJECT</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>PROJECT 25 completed the Tree BFS trilogy:
+</span>→ Project 17: Collect values → level order
+→ Project 24: Collect values with direction → zigzag
+→ Project 25: Connect nodes → sibling linking
+
+PROJECT 26 (All Root-to-Leaf Paths for a Target Sum) returns to:
+→ Tree DFS from Project 18
+→ Project 18: "Does ANY path sum to target?" → boolean return
+→ Project 26: "Give me ALL paths that sum to target" → list of lists
+
+→ Key new concept: PATH ACCUMULATION + BACKTRACKING
+     → Maintain a running list of nodes in current path
+     → When we reach a valid leaf → copy the path to results
+     → When we RETURN from recursion → REMOVE the last node from path
+     → This removal IS backtracking → "undo" the last choice
+
+→ Connection to Project 18:
+     → Project 18: subtraction technique → check at leaf → boolean
+     → Project 26: same subtraction → but COLLECT path → then backtrack
+     → Same DFS skeleton → more complex output handling
+
+The Tree DFS progression:
+  Project 18: Does a path exist?         → boolean
+  Project 26: Give me ALL valid paths    → list + backtracking
+  Project 27: Encode the entire tree     → serialization
+  → Same DFS core → increasingly complex output requirements</code></pre></div>
+<hr>
+<p><strong>Ready for Project 26: All Root-to-Leaf Paths for a Target Sum (Tree DFS → Path Accumulation → Backtracking on DFS Return
+)?</strong></p></div>
+</div>
+
+
+
+<!-- ========== data-index="5" ========== -->
+<div class="chat-message" data-index="5"></div>
+</div>
+<div class="bottom-nav">
+  <a href="project-24.html" class="nav-btn prev">← Prev</a>
+  <div class="nav-center">
+    <span class="nav-project-label">PROJECT 25 of 60</span>
+    <span class="nav-project-title">Connect Level Order Siblings — Next Pointer</span>
+    <span class="kbd-hint">← → arrow keys to navigate</span>
+  </div>
+  <a href="project-26.html" class="nav-btn next">Next →</a>
+  <a href="index.html" class="nav-btn home">🏠 TOC</a>
+</div>
+<div id="progress-track"><div id="progress-fill"></div></div>
+<div id="progress-pct">0%</div>
+<script src="script.js"></script>
+<script>
+document.addEventListener('keydown', function(e) {
+  if (['INPUT','TEXTAREA'].includes(document.activeElement.tagName)) return;
+  if (e.key === 'ArrowRight' && "project-26.html" !== null) window.location = "project-26.html";
+  if (e.key === 'ArrowLeft' && "project-24.html" !== null) window.location = "project-24.html";
+});
+</script>
+</body>
+</html>

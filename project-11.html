@@ -1,0 +1,707 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PROJECT 11: Three Sum — Find All Unique Triplets</title>
+<link rel="icon" type="image/png" href="images/favicon.png">
+<link rel="stylesheet" href="styles.css">
+
+</head>
+<body>
+<div id="progress-bar-container"><div id="progress-bar" style="width:20%"></div></div>
+<div id="progress-label">20%</div>
+<div class="page-wrapper">
+<div class="chat-message"><div class="px-2"><h1>PROJECT 11: Three Sum — Find All Unique Triplets</h1>
+<h2>🎯 Two Pointers → Multi-Pointer Coordination → Duplicate Skipping</h2>
+<hr>
+<h2>🔗 DEPENDENCY CHAIN</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>Project 1  → Two Pointers → left/right convergence on SORTED data → pair sum
+</span>Project 3  → Read/Write Pointers → duplicate awareness → in-place skipping
+Project 10 → XOR → bit-level thinking (different dimension, parked for Project 37)
+Project 11 → THREE Sum → "anchor + two pointers" → extends pair to triplet
+             → combines sorting + outer loop + inner convergence + duplicate management
+             → the FIRST multi-layer algorithmic composition in this series</code></pre></div>
+<hr>
+<h2>🧩 THE HYPOTHETICAL PROBLEM</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ You are given an UNSORTED array of integers (can include negatives, zeros, duplicates)
+</span>→ Find ALL UNIQUE triplets [a, b, c] such that a + b + c = 0
+→ The solution set must NOT contain duplicate triplets
+→ Return a list of all such triplets
+
+Example 1:
+  Input:  [-1, 0, 1, 2, -1, -4]
+  Output: [[-1, -1, 2], [-1, 0, 1]]
+  
+  → (-1) + (-1) + 2 = 0 ✓
+  → (-1) + 0 + 1 = 0 ✓
+  → Even though -1 appears twice in the array, [-1, -1, 2] appears ONCE in output
+
+Example 2:
+  Input:  [0, 0, 0, 0]
+  Output: [[0, 0, 0]]
+  
+  → Only ONE triplet of zeros, despite four zeros available
+
+Example 3:
+  Input:  [1, 2, -2, -1]
+  Output: []
+  
+  → No three numbers sum to zero
+
+CONSTRAINTS:
+  → Array length: 3 ≤ n ≤ 3000
+  → Values: -10^5 ≤ nums[i] ≤ 10^5
+  → Must return ALL unique triplets
+  → Order within triplet doesn't matter: [-1, 0, 1] == [0, -1, 1]
+  → But NO duplicate triplets in the result</code></pre></div>
+<hr>
+<h2>🔍 HOW TO APPROACH IT</h2>
+<h3>Step 1 — Why This Is Harder Than Pair Sum</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>Project 1 (Pair Sum):
+</span>  → Sorted array ✓ (given)
+  → Find ONE pair ✓
+  → Two pointers from both ends ✓
+  → O(n) time ✓
+
+Project 11 (Three Sum):
+  → UNSORTED array ✗ → we must sort it ourselves
+  → Find ALL triplets ✗ → can't stop at first match
+  → THREE elements, not two ✗ → can't just use two pointers directly
+  → No duplicate triplets ✗ → must skip repeated combinations
+
+→ Every aspect is MORE complex
+→ But the CORE technique is still two pointers
+→ We just WRAP it in an additional layer</code></pre></div>
+<h3>Step 2 — The Key Insight: Reduce 3Sum to 2Sum</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>OBSERVATION:
+</span>  a + b + c = 0
+  → rearrange: b + c = -a
+  → if we FIX one element (a), we need to find TWO elements that sum to (-a)
+  → that's EXACTLY the pair sum problem from Project 1!
+
+STRATEGY:
+  → Sort the array (enables two-pointer technique)
+  → For EACH element as the "anchor" (a):
+       → Use two pointers on the REMAINING elements to find b + c = -a
+       → This is Project 1's technique applied INSIDE a loop
+
+TIME COMPLEXITY PREVIEW:
+  → Outer loop: O(n) iterations (one per anchor)
+  → Inner two pointers: O(n) per iteration
+  → Total: O(n²)
+  → Plus sorting: O(n log n)
+  → Overall: O(n²) — much better than brute force O(n³)</code></pre></div>
+<h3>Step 3 — Visualize the Structure</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>Array (after sorting): [-4, -1, -1, 0, 1, 2]
+</span>
+ANCHOR at index 0: a = -4
+  → Need b + c = 4
+  → Two pointers on [-1, -1, 0, 1, 2]
+  → left=1, right=5: -1+2=1 &lt; 4 → left++
+  → left=2, right=5: -1+2=1 &lt; 4 → left++
+  → left=3, right=5: 0+2=2 &lt; 4 → left++
+  → left=4, right=5: 1+2=3 &lt; 4 → left++
+  → left=5, right=5: left not &lt; right → DONE → no triplet with -4
+
+ANCHOR at index 1: a = -1
+  → Need b + c = 1
+  → Two pointers on [-1, 0, 1, 2]
+  → left=2, right=5: -1+2=1 == 1 → FOUND [-1, -1, 2] ✓
+  → After finding: move left++, right-- to search for more
+  → left=3, right=4: 0+1=1 == 1 → FOUND [-1, 0, 1] ✓
+  → left=4, right=3: left not &lt; right → DONE
+
+ANCHOR at index 2: a = -1 (SAME as previous anchor!)
+  → This would produce DUPLICATE triplets
+  → SKIP this anchor entirely
+  → This is where duplicate management comes in
+
+ANCHOR at index 3: a = 0
+  → Need b + c = 0
+  → Two pointers on [1, 2]
+  → left=4, right=5: 1+2=3 &gt; 0 → right--
+  → left=4, right=4: left not &lt; right → DONE → no triplet with 0
+
+Result: [[-1, -1, 2], [-1, 0, 1]]</code></pre></div>
+<h3>Step 4 — The Duplicate Problem (Critical)</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>WITHOUT duplicate handling:
+</span>  Array: [-1, -1, 0, 1]
+  
+  Anchor i=0: a=-1 → find b+c=1 → finds [-1, 0, 1]
+  Anchor i=1: a=-1 → find b+c=1 → finds [-1, 0, 1] AGAIN!
+  
+  → DUPLICATE triplet in output → WRONG
+
+THREE LEVELS of duplicate skipping needed:
+
+LEVEL 1: Skip duplicate ANCHORS
+  → If nums[i] == nums[i-1] → skip this anchor
+  → Because the previous anchor already explored all triplets starting with this value
+
+LEVEL 2: Skip duplicate LEFT pointers (after finding a match)
+  → After recording a triplet, if nums[left] == nums[left+1] → skip forward
+  → Because the same left value would produce the same triplet
+
+LEVEL 3: Skip duplicate RIGHT pointers (after finding a match)
+  → After recording a triplet, if nums[right] == nums[right-1] → skip backward
+  → Because the same right value would produce the same triplet
+
+ALL THREE levels are necessary for correctness</code></pre></div>
+<h3>Step 5 — Why Sorting Is Essential (Not Optional)</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>REASON 1: Enables two-pointer technique
+</span>  → Project 1 proved: two pointers need sorted data for monotonic movement
+  → Without sorting, we can't decide "move left" vs "move right"
+
+REASON 2: Enables duplicate detection
+  → In a sorted array, duplicates are ADJACENT
+  → nums[i] == nums[i-1] reliably detects duplicates
+  → In unsorted array, duplicates could be anywhere → need HashSet → O(n) space
+
+REASON 3: Ensures consistent triplet ordering
+  → Sorted array means triplets are always in non-decreasing order
+  → [-1, -1, 2] not [2, -1, -1]
+  → This makes duplicate detection across triplets trivial
+
+→ Sorting transforms an UNSTRUCTURED problem into a STRUCTURED one
+→ The O(n log n) sorting cost is absorbed by the O(n²) main algorithm</code></pre></div>
+<hr>
+<h2>🛠️ HOW CAN WE SOLVE IT</h2>
+<h3>The Algorithm — Complete Logic</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>1. SORT the array in ascending order
+</span>2. FOR i = 0 to n-3:                           ← anchor loop
+     a. DUPLICATE CHECK: if i &gt; 0 AND nums[i] == nums[i-1] → skip (continue)
+     b. EARLY TERMINATION: if nums[i] &gt; 0 → break
+        → smallest remaining element is positive
+        → three positives can never sum to 0
+     c. Set target = -nums[i]                    ← what the pair must sum to
+     d. Set left = i + 1                         ← start of remaining subarray
+     e. Set right = n - 1                        ← end of remaining subarray
+     f. WHILE left &lt; right:                      ← two-pointer convergence
+          i.   sum = nums[left] + nums[right]
+          ii.  IF sum == target:
+                 → Record triplet [nums[i], nums[left], nums[right]]
+                 → Skip duplicate lefts:  while left &lt; right AND nums[left] == nums[left+1] → left++
+                 → Skip duplicate rights: while left &lt; right AND nums[right] == nums[right-1] → right--
+                 → Move both: left++, right--
+          iii. ELSE IF sum &lt; target → left++     ← need bigger sum (Project 1 logic)
+          iv.  ELSE → right--                    ← need smaller sum (Project 1 logic)
+3. RETURN collected triplets</code></pre></div>
+<h3>Why n-3 in the Outer Loop?</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ We need at least 3 elements for a triplet
+</span>→ Anchor at index i → left at i+1 → right at n-1
+→ For this to work: i+1 &lt; n-1 → i &lt; n-2 → i ≤ n-3
+→ So i goes from 0 to n-3 inclusive
+→ Last valid anchor is at index n-3, with left=n-2, right=n-1</code></pre></div>
+<h3>Why Early Termination When nums[i] &gt; 0?</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>Array is sorted → nums[i] ≤ nums[left] ≤ nums[right]
+</span>If nums[i] &gt; 0:
+  → All three values are positive
+  → nums[i] + nums[left] + nums[right] &gt; 0 + 0 + 0 = 0
+  → Sum is ALWAYS positive → can NEVER be zero
+  → No point continuing → break the outer loop
+
+This is a PRUNING optimization:
+  → Doesn't change correctness
+  → Can save significant time on arrays with many positive values</code></pre></div>
+<hr>
+<h2>✅ WHAT SHOULD YOU DO</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ ALWAYS sort first
+</span>     → Sorting is the foundation that enables everything else
+     → Two pointers need it → duplicate detection needs it → triplet ordering needs it
+
+→ ALWAYS skip duplicate anchors BEFORE entering the inner loop
+     → Check: i &gt; 0 &amp;&amp; nums[i] == nums[i-1]
+     → The i &gt; 0 guard prevents array-index-out-of-bounds
+
+→ ALWAYS skip duplicate left/right AFTER finding a match
+     → Skip while values repeat → then move one more step
+     → This ensures the NEXT iteration considers a genuinely new value
+
+→ ALWAYS move BOTH left and right after a match
+     → If nums[left] + nums[right] == target
+     → The current left can only pair with current right (in sorted data)
+     → Moving just one would never find another match with the stationary pointer
+     → Move both inward to search for different pairs
+
+→ ALWAYS use the early termination optimization
+     → if nums[i] &gt; 0 → break
+     → Free performance gain → shows interviewer you think about pruning
+
+→ ALWAYS think of 3Sum as "anchor + 2Sum"
+     → This decomposition is the mental model for all K-Sum problems
+     → 4Sum = anchor + 3Sum = anchor + anchor + 2Sum → recursive reduction</code></pre></div>
+<hr>
+<h2>🚫 WHAT SHOULD YOU NOT DO</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ DO NOT use three nested loops (brute force)
+</span>     → O(n³) time → too slow for n = 3000 → 27 billion operations
+     → Two-pointer inner loop brings it to O(n²) → 9 million operations
+
+→ DO NOT use a HashSet of triplets to handle duplicates
+     → Tempting: "just add triplets to a Set and let it deduplicate"
+     → Problems:
+        1. Hashing arrays/lists is expensive
+        2. Still generates duplicates before filtering → wasted work
+        3. HashSet of lists needs custom equals/hashCode → error-prone in Java
+     → INSTEAD: prevent duplicates at the source via skip logic
+
+→ DO NOT skip duplicates in the WRONG direction
+     WRONG: if nums[i] == nums[i+1] → skip
+     → This skips the FIRST occurrence, keeping only the last
+     → Misses valid triplets like [-1, -1, 2] where -1 is used twice
+     
+     RIGHT: if nums[i] == nums[i-1] → skip
+     → This keeps the FIRST occurrence, skips subsequent duplicates
+     → The first occurrence explores ALL triplets involving this value
+     → Subsequent duplicates would only RE-explore the same triplets
+
+→ DO NOT forget to move both pointers after a match
+     → Moving only left: left++ → new left value with same right
+     → But we already found the only pair for this anchor with this right value
+     → Moving only right: same problem in reverse
+     → Moving neither: infinite loop
+     → Moving both: correct — search for genuinely new pairs
+
+→ DO NOT start left pointer at 0
+     → left must start at i+1 (after the anchor)
+     → Starting at 0 would include the anchor element itself
+     → Or include elements before the anchor → duplicates with previous anchors
+
+→ DO NOT forget the i &gt; 0 guard when checking duplicate anchors
+     → if nums[i] == nums[i-1]  ← crashes when i=0 (index -1)
+     → if i &gt; 0 &amp;&amp; nums[i] == nums[i-1]  ← safe</code></pre></div>
+<hr>
+<h2>🔀 WHEN TO USE THIS PATTERN</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>✓ Problem asks for triplets/quadruplets/k-tuples with a target sum
+</span>     → 3Sum, 4Sum, kSum → all reduce to anchor + (k-1)Sum recursively
+
+✓ Problem requires ALL unique combinations (not just one)
+     → The sorted + skip approach generates unique results directly
+
+✓ Input can be sorted without losing required information
+     → If original indices are needed → can't sort → use HashMap approach instead
+
+✓ O(n²) time is acceptable
+     → For n ≤ 3000 → n² = 9 million → fast enough
+     → For n ≤ 10,000 → n² = 100 million → borderline
+     → For n &gt; 10,000 → might need different approach
+
+✓ O(1) extra space is desired (excluding output)
+     → Sorting is in-place (O(log n) stack for Java's Arrays.sort)
+     → Two pointers use O(1)
+     → Only the output list uses O(k) where k = number of triplets</code></pre></div>
+<hr>
+<h2>🚫 WHEN NOT TO USE THIS PATTERN</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>✗ Array cannot be sorted (original order matters)
+</span>     → Use HashMap-based approach instead
+     → Store complements → look up pairs → use Set for deduplication
+
+✗ Need to find pairs, not triplets
+     → Use pure two pointers (Project 1) → no outer loop needed
+     → 3Sum's outer loop is unnecessary overhead for 2Sum
+
+✗ Array has only positive numbers and target is 0
+     → Answer is always empty (three positives can't sum to 0)
+     → Return [] immediately → no algorithm needed
+
+✗ n is very large (&gt; 10,000) and O(n²) is too slow
+     → No known algorithm solves 3Sum in better than O(n²) in worst case
+     → This is actually an open problem in theoretical CS
+     → For practical purposes: optimize constants, use early termination
+
+✗ Problem asks for count of triplets, not the triplets themselves
+     → Different problem → might have specialized counting techniques
+     → Though the same skeleton often works with a counter instead of a list</code></pre></div>
+<hr>
+<h2>⚙️ HOW IT ONLY WORKS — Internal Mechanics</h2>
+<h3>Mechanic 1: The Anchor Decomposition</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>3Sum: a + b + c = 0
+</span>
+DECOMPOSE:
+  → Fix a (the anchor) → iterate through all possible values of a
+  → For each a, solve: b + c = -a → this is 2Sum with target = -a
+  → 2Sum is solved with two pointers (Project 1)
+
+WHY THIS DECOMPOSITION IS OPTIMAL:
+  → We reduce a 3-variable problem to a 2-variable problem
+  → The 2-variable problem has a known O(n) solution
+  → Wrapping in an O(n) outer loop → O(n²) total
+  → This is the best known approach for 3Sum
+
+GENERALIZATION:
+  → 4Sum: fix one element → solve 3Sum on the rest → O(n³)
+  → 5Sum: fix one element → solve 4Sum on the rest → O(n⁴)
+  → kSum: O(n^(k-1)) by recursive decomposition down to 2Sum</code></pre></div>
+<h3>Mechanic 2: Why Duplicate Skipping Is Correct</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>CLAIM: Skipping duplicate anchors does not miss any unique triplet.
+</span>
+PROOF:
+  Sorted array: [..., -1(i), -1(i+1), ...]
+  
+  When anchor = -1 at index i:
+    → left starts at i+1, right at n-1
+    → This explores ALL pairs (b, c) in subarray [i+1 .. n-1]
+    → Including pairs where b = nums[i+1] = -1
+
+  When anchor = -1 at index i+1:
+    → left starts at i+2, right at n-1
+    → This explores pairs in subarray [i+2 .. n-1]
+    → This is a SUBSET of what index i already explored
+    → Every triplet found here was ALREADY found by index i
+    → So index i+1 produces ONLY duplicates → safe to skip
+
+CLAIM: Skipping duplicate left/right after a match does not miss unique triplets.
+
+PROOF:
+  After finding triplet [a, b, c]:
+    → If nums[left+1] == nums[left] == b:
+      → New triplet would be [a, b, nums[right-1]]
+      → But we also move right-- → nums[right-1] might be different
+      → However, if nums[right] hasn't changed (still c):
+        → Triplet [a, b, c] is a DUPLICATE → skip
+    → By skipping ALL repeated lefts and rights:
+      → We ensure the next attempt has DIFFERENT values for both b and c
+      → Therefore produces a genuinely NEW triplet (or none)</code></pre></div>
+<h3>Mechanic 3: Why Both Pointers Move After Match</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>After finding: nums[left] + nums[right] == target
+</span>
+CAN the same left value pair with a DIFFERENT right value?
+  → If right' &lt; right: nums[right'] ≤ nums[right] (sorted)
+  → nums[left] + nums[right'] ≤ nums[left] + nums[right] == target
+  → So nums[left] + nums[right'] ≤ target
+  → For equality: nums[right'] must equal nums[right] → DUPLICATE
+  → For less: no match possible
+  → Therefore: no NEW match exists with the same left → move left++
+
+By symmetric argument: no new match exists with same right → move right--
+
+→ Moving BOTH is correct and necessary</code></pre></div>
+<h3>Mechanic 4: Time Complexity Detailed Breakdown</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>SORTING: O(n log n)
+</span>  → Java's Arrays.sort uses dual-pivot quicksort for primitives
+  → Guaranteed O(n log n) average case
+
+OUTER LOOP: runs at most n-2 times
+  → Minus skipped duplicates → but worst case is n-2
+
+INNER LOOP (per anchor): left and right together move at most n-i-1 steps
+  → left moves right, right moves left
+  → Total movements bounded by the subarray size
+
+TOTAL INNER WORK across all anchors:
+  → i=0: inner loop does at most n-1 steps
+  → i=1: inner loop does at most n-2 steps
+  → i=2: inner loop does at most n-3 steps
+  → ...
+  → i=n-3: inner loop does at most 2 steps
+  → Sum: (n-1) + (n-2) + ... + 2 = n(n-1)/2 - 1 ≈ n²/2
+
+TOTAL: O(n log n) + O(n²) = O(n²)
+
+SPACE: O(log n) for sorting + O(k) for output where k = number of triplets
+  → Ignoring output: O(log n) → effectively O(1)</code></pre></div>
+<hr>
+<h2>⚠️ COMMON PITFALLS AND FAILURE MODES</h2>
+<h3>Pitfall 1: Duplicate Skip Direction</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>WRONG CODE:
+</span>  if (nums[i] == nums[i + 1]) continue;  // skips FIRST occurrence
+
+  Array: [-1, -1, 0, 1]
+  → i=0: nums[0]==-1, nums[1]==-1 → SKIP
+  → i=1: nums[1]==-1, nums[2]==0 → don't skip → anchor = -1
+  → left=2, right=3: 0+1=1 == -(-1)=1 → FOUND [-1, 0, 1] ✓
+  
+  But what about [-1, -1, 2]?
+  → When i=0 was skipped, we missed anchoring at the first -1
+  → When i=1 anchors at -1, left starts at 2 → only sees [0, 1]
+  → Never considers nums[0]=-1 as the second element
+  → MISSED [-1, -1, 2] → WRONG
+
+CORRECT CODE:
+  if (i &gt; 0 &amp;&amp; nums[i] == nums[i - 1]) continue;  // skips SUBSEQUENT occurrences
+
+  → i=0: first element → no skip → anchor = -1
+  → Explores full range [1..n-1] → finds [-1,-1,2] and [-1,0,1]
+  → i=1: nums[1]==-1 == nums[0]==-1 → SKIP → no duplicates
+  → CORRECT</code></pre></div>
+<h3>Pitfall 2: Infinite Loop on Duplicate Skipping</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>WRONG CODE (after finding match):
+</span>  while (nums[left] == nums[left + 1]) left++;    // no bounds check!
+  while (nums[right] == nums[right - 1]) right--;  // no bounds check!
+
+  → If left reaches the end → left+1 is out of bounds → CRASH
+  → If right reaches the start → right-1 is out of bounds → CRASH
+
+CORRECT CODE:
+  while (left &lt; right &amp;&amp; nums[left] == nums[left + 1]) left++;
+  while (left &lt; right &amp;&amp; nums[right] == nums[right - 1]) right--;
+  left++;   // move past the last duplicate
+  right--;  // move past the last duplicate
+
+  → Bounds check prevents crash
+  → Final left++/right-- moves past the duplicates to a new value</code></pre></div>
+<h3>Pitfall 3: Missing the Final Move After Duplicate Skip</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>WRONG CODE:
+</span>  // After match found:
+  while (left &lt; right &amp;&amp; nums[left] == nums[left + 1]) left++;
+  while (left &lt; right &amp;&amp; nums[right] == nums[right - 1]) right--;
+  // MISSING: left++ and right-- here!
+  
+  → After the while loops, left points at the LAST duplicate
+  → Next iteration: same left value → same triplet → INFINITE DUPLICATES
+
+CORRECT CODE:
+  while (left &lt; right &amp;&amp; nums[left] == nums[left + 1]) left++;
+  while (left &lt; right &amp;&amp; nums[right] == nums[right - 1]) right--;
+  left++;   // NOW pointing at a genuinely new value
+  right--;  // NOW pointing at a genuinely new value</code></pre></div>
+<h3>Pitfall 4: Not Handling All Zeros</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>Array: [0, 0, 0, 0]
+</span>→ Sorted: [0, 0, 0, 0]
+→ i=0: anchor=0, target=0
+  → left=1, right=3: 0+0=0 → MATCH [0,0,0]
+  → Skip duplicate lefts: nums[1]==nums[2] → left=2
+  → Skip duplicate rights: nums[3]==nums[2] → right=2
+  → left++→3, right--→1: left &gt; right → done
+→ i=1: nums[1]==nums[0] → SKIP
+→ i=2: nums[2]==nums[1] → SKIP
+→ Result: [[0,0,0]] ✓ (exactly one triplet)
+
+→ The algorithm handles this correctly IF duplicate skipping is implemented properly
+→ Common mistake: special-casing zeros → unnecessary and error-prone</code></pre></div>
+<h3>Pitfall 5: Integer Overflow</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ nums[i] range: -10^5 to 10^5
+</span>→ Sum of three: -3*10^5 to 3*10^5 = -300,000 to 300,000
+→ Well within int range (-2.1 billion to 2.1 billion)
+→ NO overflow risk for this specific problem
+
+→ BUT: if the problem had values up to 10^9:
+  → Sum of three: up to 3*10^9 → OVERFLOWS int
+  → Would need long for the sum computation
+  → Always check value ranges</code></pre></div>
+<hr>
+<h2>📈 SCALABILITY CONSIDERATIONS</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>ARRAY SIZE SCALING:
+</span>→ n = 100     → n² = 10,000          → instant
+→ n = 1,000   → n² = 1,000,000       → ~5ms
+→ n = 3,000   → n² = 9,000,000       → ~30ms (typical LeetCode constraint)
+→ n = 10,000  → n² = 100,000,000     → ~500ms (borderline)
+→ n = 100,000 → n² = 10,000,000,000  → too slow (~50 seconds)
+
+OPTIMIZATION IMPACT:
+  Without early termination: always runs full n² in worst case
+  With early termination (nums[i] &gt; 0 → break):
+    → Array [-10, -5, -3, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+    → After anchor reaches 1: break → saves ~70% of iterations
+    → Especially effective when array has many positive numbers
+
+  Without duplicate skipping: still O(n²) but with wasted iterations
+  With duplicate skipping:
+    → Array [0, 0, 0, ..., 0] (all same) → only 1 anchor iteration instead of n
+    → Dramatic speedup on arrays with many duplicates
+
+ADDITIONAL PRUNING (advanced):
+  → After fixing anchor nums[i]:
+    → Minimum possible sum: nums[i] + nums[i+1] + nums[i+2]
+    → If this minimum &gt; 0 → break (no valid triplet possible for this or later anchors)
+    → Maximum possible sum: nums[i] + nums[n-2] + nums[n-1]
+    → If this maximum &lt; 0 → continue (skip this anchor, try next larger one)
+  → These two checks can significantly reduce iterations</code></pre></div>
+<hr>
+<h2>🔍 INTERPRETABILITY CONSIDERATIONS</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>MENTAL MODEL:
+</span>→ "Fix one, find two" — the simplest way to explain 3Sum
+→ The outer loop is the "fixer" → the inner loop is the "finder"
+→ The finder is exactly Project 1's two-pointer pair sum
+
+DEBUGGING:
+→ Print: anchor value, left value, right value, sum at each step
+→ You can see the convergence happening within each anchor iteration
+→ If duplicates appear in output → check the three skip levels
+
+INTERVIEW EXPLANATION:
+→ "I sort the array first to enable two-pointer technique"
+→ "I iterate through each element as a fixed anchor"
+→ "For each anchor, I use two pointers to find complementary pairs"
+→ "I skip duplicate values at three levels to avoid duplicate triplets"
+→ "Time: O(n²), Space: O(log n) for sorting"
+→ This is a COMPLETE and IMPRESSIVE explanation
+
+CODE READABILITY:
+→ The algorithm has clear phases: sort → loop → find → skip
+→ Each phase can be understood independently
+→ The connection to Project 1 makes it easier to grasp
+→ "It's just 2Sum inside a for loop" → instant understanding</code></pre></div>
+<hr>
+<div class="github-btn-wrap"><a class="github-btn" href="https://github.com/Shakti4640/leetcode-patterns-guide-java/tree/main/project- (11)" target="_blank" rel="noopener"><svg viewBox="0 0 24 24"><path d="M12 .5C5.37.5 0 5.87 0 12.5c0 5.3 3.44 9.8 8.2 11.39.6.11.82-.26.82-.58v-2.03c-3.34.73-4.04-1.61-4.04-1.61-.55-1.39-1.34-1.76-1.34-1.76-1.09-.74.08-.73.08-.73 1.2.09 1.84 1.24 1.84 1.24 1.07 1.83 2.8 1.3 3.49 1 .1-.78.42-1.3.76-1.6-2.67-.3-5.47-1.33-5.47-5.93 0-1.31.47-2.38 1.24-3.22-.14-.3-.54-1.52.1-3.18 0 0 1.01-.32 3.3 1.23a11.5 11.5 0 0 1 3-.4c1.02 0 2.04.13 3 .4 2.28-1.55 3.29-1.23 3.29-1.23.64 1.66.24 2.88.12 3.18.77.84 1.23 1.91 1.23 3.22 0 4.61-2.81 5.63-5.48 5.92.43.37.81 1.1.81 2.22v3.29c0 .32.21.7.82.58C20.56 22.3 24 17.8 24 12.5 24 5.87 18.63.5 12 .5z"/></svg>💻 View Complete Java Code on GitHub</a></div>
+
+<hr>
+<h2>🔑 EXPECTED OUTPUT</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>╔═════════════════════════════════════════════════╗
+</span>║  PROJECT 11: Three Sum — All Unique Triplets    ║
+║  Pattern: Two Pointers → Multi-Pointer + Dedup  ║
+╚═════════════════════════════════════════════════╝
+
+═══ TEST 1: Classic Example ═══
+  Original: [-1, 0, 1, 2, -1, -4]
+  Sorted:   [-4, -1, -1, 0, 1, 2]
+  ─────────────────────────────────────────
+  Anchor i=0 val=-4 → target for pair = 4
+    left=1(-1) right=5(2) → sum=1 vs target=4
+    → too small → left++
+    left=2(-1) right=5(2) → sum=1 vs target=4
+    → too small → left++
+    left=3(0) right=5(2) → sum=2 vs target=4
+    → too small → left++
+    left=4(1) right=5(2) → sum=3 vs target=4
+    → too small → left++
+
+  Anchor i=1 val=-1 → target for pair = 1
+    left=2(-1) right=5(2) → sum=1 vs target=1
+    ★ MATCH: [-1, -1, 2]
+    left=3(0) right=4(1) → sum=1 vs target=1
+    ★ MATCH: [-1, 0, 1]
+
+  Anchor i=2 val=-1 → DUPLICATE ANCHOR → SKIP
+  Anchor i=3 val=0 → target for pair = 0
+    left=4(1) right=5(2) → sum=3 vs target=0
+    → too big → right--
+
+  FINAL RESULT: [[-1, -1, 2], [-1, 0, 1]]
+
+═══ TEST 2: All Zeros ═══
+  Original: [0, 0, 0, 0]
+  Sorted:   [0, 0, 0, 0]
+  ─────────────────────────────────────────
+  Anchor i=0 val=0 → target for pair = 0
+    left=1(0) right=3(0) → sum=0 vs target=0
+    ★ MATCH: [0, 0, 0]
+    → skip dup left: 0
+    → skip dup right: 0
+
+  Anchor i=1 val=0 → DUPLICATE ANCHOR → SKIP
+  FINAL RESULT: [[0, 0, 0]]
+
+═══ TEST 3: No Solution ═══
+  Original: [1, 2, -2, -1]
+  Sorted:   [-2, -1, 1, 2]
+  ─────────────────────────────────────────
+  Anchor i=0 val=-2 → target for pair = 2
+    left=1(-1) right=3(2) → sum=1 vs target=2
+    → too small → left++
+    left=2(1) right=3(2) → sum=3 vs target=2
+    → too big → right--
+
+  Anchor i=1 val=-1 → target for pair = 1
+    left=2(1) right=3(2) → sum=3 vs target=1
+    → too big → right--
+
+  FINAL RESULT: []
+
+═══ TEST 6: Minimum Array (3 elements) ═══
+  [0, 0, 0] → [[0, 0, 0]]
+  [1, -1, 0] → [[-1, 0, 1]]
+  [1, 2, 3] → []
+
+═══ TEST 7: 3Sum Closest Variant ═══
+  Array: [-1, 2, 1, -4], Target: 1
+  Closest sum: 2
+  (Expected: 2 → because -1+2+1=2 is closest to 1)
+
+═══ TEST 8: 3Sum Smaller Variant ═══
+  Array: [-2, 0, 1, 3], Target: 2
+  Count of triplets with sum &lt; 2: 2
+  (Triplets: [-2,0,1]=-1, [-2,0,3]=1 → count=2)
+
+═══ TEST 9: Correctness Verification ═══
+  [-1, 0, 1, 2, -1, -4] → ✓ PASS
+  [0, 0, 0, 0] → ✓ PASS
+  [-2, -2, -1, -1, 0, 0, 1, 1, 2, 2] → ✓ PASS
+  [-4, -3, -2, -1, 0, 1, 2, 3, 4] → ✓ PASS
+  [3, -2, 1, 0] → ✓ PASS
+  All tests passed: true</code></pre></div>
+<hr>
+<h2>🧠 KEY TAKEAWAY</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>WHAT WE LEARNED:
+</span>→ 3Sum = "Fix one, find two" → reduces to 2Sum (Project 1) inside a loop
+→ Sorting is the FOUNDATION: enables two pointers + duplicate detection + pruning
+→ Duplicate management happens at THREE levels: anchor, left, right
+→ Direction of duplicate skip matters: compare with PREVIOUS, not NEXT
+→ Early termination and pruning provide significant real-world speedup
+
+EVOLUTION OF TWO POINTERS ACROSS PROJECTS:
+  Project 1:  Two pointers → find ONE pair → sorted input given
+  Project 3:  Two pointers → same-direction (read/write) → in-place mutation
+  Project 11: Two pointers → INSIDE outer loop → find ALL unique triplets
+              → we SORT the input ourselves → three-level dedup
+
+THE PATTERN GROWS:
+  → Same core technique (left/right convergence)
+  → Wrapped in increasing layers of complexity
+  → The two-pointer skeleton is UNCHANGED from Project 1
+  → Only the surrounding logic (loop, dedup, pruning) is new
+
+VARIANTS INTRODUCED:
+  → 3Sum Closest: same skeleton, track minimum distance instead of equality
+  → 3Sum Smaller: same skeleton, count valid pairs instead of collecting them
+  → All use the SAME anchor + two-pointer framework
+
+GENERAL PRINCIPLE:
+  → kSum can ALWAYS be reduced to (k-1)Sum recursively
+  → Base case: 2Sum → two pointers → O(n)
+  → Each reduction adds one O(n) loop
+  → kSum total: O(n^(k-1))</code></pre></div>
+<hr>
+<h2>🌉 BRIDGE TO NEXT PROJECT</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>PROJECT 11 used:
+</span>→ Sorting + two pointers + outer loop → find triplets
+
+PROJECT 12 (Longest Substring with K Distinct Characters) shifts to:
+→ Sliding Window + HashMap → a completely different pattern family
+→ Instead of CONVERGING from both ends → we SLIDE a window forward
+→ Instead of sorted data → we work with STRINGS and CHARACTER FREQUENCIES
+→ Instead of finding combinations → we find the LONGEST valid substring
+
+THE CONNECTION:
+  → Project 11 exhausted the "multi-pointer on sorted arrays" theme
+  → Projects 5, 6 introduced basic sliding windows (fixed-size, variable-size)
+  → Project 12 adds HashMap-based tracking to the sliding window
+  → The window's VALIDITY is determined by a frequency condition
+  → This is where sliding windows become truly powerful
+
+PROGRESSION:
+  Project 5:  Fixed-size window → simple sum tracking
+  Project 6:  Variable-size window → shrink when sum exceeds target
+  Project 12: Variable-size window → shrink when distinct characters exceed K
+              → HashMap replaces simple sum → richer state tracking
+              → This enables an entire class of string/substring problems</code></pre></div>
+<hr>
+<p><strong>Ready for Project 12: Longest Substring with K Distinct Characters (Sliding Window → HashMap Frequency Tracking)?</strong></p>
+</div>
+</div>
+
+<!-- ========== data-index="9" ========== -->
+<div class="chat-message" data-index="9"></div>
+</div>
+<div class="bottom-nav">
+  <a href="project-10.html" class="nav-btn prev">← Prev</a>
+  <div class="nav-center">
+    <span class="nav-project-label">PROJECT 11 of 60</span>
+    <span class="nav-project-title">Three Sum — Find All Unique Triplets</span>
+    <span class="kbd-hint">← → arrow keys to navigate</span>
+  </div>
+  <a href="project-12.html" class="nav-btn next">Next →</a>
+  <a href="index.html" class="nav-btn home">🏠 TOC</a>
+</div>
+<div id="progress-track"><div id="progress-fill"></div></div>
+<div id="progress-pct">0%</div>
+<script src="script.js"></script>
+<script>
+document.addEventListener('keydown', function(e) {
+  if (['INPUT','TEXTAREA'].includes(document.activeElement.tagName)) return;
+  if (e.key === 'ArrowRight' && "project-12.html" !== null) window.location = "project-12.html";
+  if (e.key === 'ArrowLeft' && "project-10.html" !== null) window.location = "project-10.html";
+});
+</script>
+</body>
+</html>

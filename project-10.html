@@ -1,0 +1,671 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PROJECT 10: Find the Single Number</title>
+<link rel="icon" type="image/png" href="images/favicon.png">
+<link rel="stylesheet" href="styles.css">
+
+</head>
+<body>
+<div id="progress-bar-container"><div id="progress-bar" style="width:18%"></div></div>
+<div id="progress-label">18%</div>
+<div class="page-wrapper">
+<div class="chat-message"><div class="px-2"><h1>PROJECT 10: Find the Single Number</h1>
+<h2>🎯 Bitwise XOR → Cancellation Property → O(1) Space Trick</h2>
+<hr>
+<h2>🔗 DEPENDENCY CHAIN</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>Project 1  → Two Pointers → foundational convergence thinking
+</span>Project 3  → Read/Write Pointers → in-place mutation concept
+Project 8  → Cyclic Sort → index-value mapping → in-place placement
+Project 10 → Bitwise XOR → when even placement-based sorting is overkill
+             → a completely different dimension of "in-place" thinking
+             → using BIT-LEVEL properties instead of ARRAY-LEVEL properties</code></pre></div>
+<hr>
+<h2>🧩 THE HYPOTHETICAL PROBLEM</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ You are given a NON-EMPTY array of integers
+</span>→ EVERY element appears EXACTLY TWICE except ONE element
+→ That one element appears EXACTLY ONCE
+→ Find that single element
+→ You MUST do it in O(n) time
+→ You MUST do it in O(1) extra space (no HashMaps, no sorting)
+
+Example 1:
+  Input:  [4, 1, 2, 1, 2]
+  Output: 4
+  → 1 appears twice, 2 appears twice, 4 appears once → answer is 4
+
+Example 2:
+  Input:  [2, 2, 1]
+  Output: 1
+  → 2 appears twice, 1 appears once → answer is 1
+
+Example 3:
+  Input:  [7, 3, 5, 3, 5, 9, 7]
+  Output: 9
+  → 7 twice, 3 twice, 5 twice, 9 once → answer is 9
+
+CONSTRAINTS:
+  → Array can be UNSORTED
+  → Elements can be ANY integers (positive, negative, zero)
+  → No index-value mapping possible (values don't map to indices)
+  → This is why Cyclic Sort from Project 8 CANNOT help here</code></pre></div>
+<hr>
+<h2>🔍 HOW TO APPROACH IT</h2>
+<h3>Step 1 — Why Previous Techniques Fail</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>TECHNIQUE: Sorting (then scan for unpaired)
+</span>→ Sort the array → pairs sit adjacent → find the one without a neighbor
+→ Works BUT: sorting is O(n log n) → violates O(n) time requirement
+→ Also modifies the array → might not be allowed
+
+TECHNIQUE: HashMap (count frequencies)
+→ Count each element → find the one with count 1
+→ Works BUT: HashMap uses O(n) space → violates O(1) space requirement
+
+TECHNIQUE: Cyclic Sort (Project 8)
+→ Project 8 used index-value mapping: value i goes to index i
+→ HERE: values can be anything → [4, 1, 2, 1, 2]
+→ Value 4 would go to index 4 → but array might only have 5 elements
+→ Values could be negative → no valid index
+→ Cyclic Sort CANNOT apply when values don't map to valid indices
+
+TECHNIQUE: Math (sum formula)
+→ If we knew all unique values: 2*(sum of uniques) - (sum of all) = single number
+→ Works BUT: requires knowing the unique set → needs a HashSet → O(n) space
+
+→ ALL standard techniques either exceed time or space constraints
+→ We need something FUNDAMENTALLY DIFFERENT
+→ We need to operate at the BIT LEVEL</code></pre></div>
+<h3>Step 2 — Introducing XOR (Exclusive OR)</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>XOR is a BITWISE operation
+</span>→ Symbol in Java: ^
+→ It operates on individual BITS of two numbers
+
+TRUTH TABLE (for each bit position):
+  0 ^ 0 = 0   → same bits → result is 0
+  0 ^ 1 = 1   → different bits → result is 1
+  1 ^ 0 = 1   → different bits → result is 1
+  1 ^ 1 = 0   → same bits → result is 0
+
+PLAIN ENGLISH:
+  → XOR returns 1 when bits are DIFFERENT
+  → XOR returns 0 when bits are the SAME
+  → Think of it as "are these bits different? yes=1, no=0"
+
+FULL NUMBER EXAMPLE:
+  5 in binary:  0101
+  3 in binary:  0011
+  5 ^ 3:        0110  → which is 6
+
+  Position 3: 0 ^ 0 = 0
+  Position 2: 1 ^ 0 = 1
+  Position 1: 0 ^ 1 = 1
+  Position 0: 1 ^ 1 = 0
+  Result:      0110 = 6</code></pre></div>
+<h3>Step 3 — The Three Magic Properties of XOR</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>PROPERTY 1: Self-Cancellation
+</span>  a ^ a = 0
+  → Any number XORed with ITSELF becomes 0
+  → 5 ^ 5 = 0
+  → 0101 ^ 0101 = 0000
+  → Every bit matches → every result bit is 0
+
+PROPERTY 2: Identity with Zero
+  a ^ 0 = a
+  → Any number XORed with 0 stays UNCHANGED
+  → 5 ^ 0 = 5
+  → 0101 ^ 0000 = 0101
+  → Zero has no effect
+
+PROPERTY 3: Commutativity and Associativity
+  a ^ b = b ^ a               (order doesn't matter)
+  (a ^ b) ^ c = a ^ (b ^ c)  (grouping doesn't matter)
+  → We can REARRANGE XOR operations freely
+  → This is the key to the entire technique</code></pre></div>
+<h3>Step 4 — The Cancellation Chain</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>Given: [4, 1, 2, 1, 2]
+</span>
+XOR all elements together:
+  4 ^ 1 ^ 2 ^ 1 ^ 2
+
+Because of commutativity and associativity, we can REGROUP:
+  = 4 ^ (1 ^ 1) ^ (2 ^ 2)
+
+Apply self-cancellation:
+  = 4 ^ 0 ^ 0
+
+Apply identity:
+  = 4
+
+THE PAIRS CANCELLED EACH OTHER OUT
+THE SINGLE NUMBER SURVIVED
+
+This works for ANY arrangement:
+  [7, 3, 5, 3, 5, 9, 7]
+  7 ^ 3 ^ 5 ^ 3 ^ 5 ^ 9 ^ 7
+  = (7 ^ 7) ^ (3 ^ 3) ^ (5 ^ 5) ^ 9
+  = 0 ^ 0 ^ 0 ^ 9
+  = 9</code></pre></div>
+<h3>Step 5 — Visual Bit-Level Walkthrough</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>Array: [4, 1, 2, 1, 2]
+</span>
+Binary representations:
+  4 = 100
+  1 = 001
+  2 = 010
+  1 = 001
+  2 = 010
+
+XOR step by step (accumulator starts at 0):
+
+  result = 000 (initial)
+
+  Step 1: result ^ 4
+          000 ^ 100 = 100    → result = 100 (4)
+
+  Step 2: result ^ 1
+          100 ^ 001 = 101    → result = 101 (5)
+
+  Step 3: result ^ 2
+          101 ^ 010 = 111    → result = 111 (7)
+
+  Step 4: result ^ 1
+          111 ^ 001 = 110    → result = 110 (6)
+          ↑ the second 1 CANCELLED the first 1's contribution
+
+  Step 5: result ^ 2
+          110 ^ 010 = 100    → result = 100 (4)
+          ↑ the second 2 CANCELLED the first 2's contribution
+
+  Final result: 100 = 4 ✓
+
+→ After all pairs cancel, only the single number's bits remain</code></pre></div>
+<hr>
+<h2>🛠️ HOW CAN WE SOLVE IT</h2>
+<h3>The Algorithm — Absurdly Simple</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>1. Initialize result = 0
+</span>2. FOR each element in array:
+     result = result ^ element
+3. RETURN result
+
+That's it.
+Three lines of logic.
+The MATH does all the work.</code></pre></div>
+<h3>Why Initialize to 0?</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ Property 2: a ^ 0 = a
+</span>→ Starting with 0 means the first XOR simply assigns the first element
+→ result = 0 ^ arr[0] = arr[0]
+→ Then continues accumulating from there
+→ 0 is the IDENTITY element for XOR (like 0 for addition, 1 for multiplication)</code></pre></div>
+<hr>
+<h2>✅ WHAT SHOULD YOU DO</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ ALWAYS verify the problem guarantees exactly ONE element appears once
+</span>     → If ZERO elements appear once → result will be 0 (misleading)
+     → If MORE THAN ONE element appears once → result will be wrong
+     → XOR cancellation only isolates a single number when ALL others pair up
+
+→ ALWAYS remember XOR works on negative numbers too
+     → Java stores negatives in two's complement
+     → XOR operates on the raw bits → works perfectly
+     → (-3) ^ (-3) = 0 → cancellation still holds
+
+→ ALWAYS start the accumulator at 0
+     → 0 is the identity element → does not corrupt the result
+
+→ ALWAYS think BIT-LEVEL when you see "pairs cancel" or "find the unique"
+     → This is the signature trigger for XOR problems
+
+→ ALWAYS consider XOR FIRST when constraints demand O(1) space on pair-based problems</code></pre></div>
+<hr>
+<h2>🚫 WHAT SHOULD YOU NOT DO</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ DO NOT use a HashMap
+</span>     → HashMap works: count frequencies, find count==1
+     → But it uses O(n) space
+     → XOR achieves the same result in O(1) space
+     → HashMap is the OBVIOUS solution → XOR is the OPTIMAL solution
+
+→ DO NOT sort the array
+     → Sorting works: adjacent elements form pairs, unpaired one stands out
+     → But sorting is O(n log n) time
+     → XOR is O(n) time
+     → Sorting also modifies the input array
+
+→ DO NOT try to use Cyclic Sort (Project 8) here
+     → Cyclic Sort needs values that MAP to valid indices (0 to n)
+     → This problem has arbitrary values → no index mapping exists
+     → Cyclic Sort is for "find missing in range 0..n" problems
+     → This is a "find unique among pairs" problem → different category
+
+→ DO NOT try to XOR indices or use index tricks
+     → The values have no relationship to their positions
+     → Pure value-based operation → XOR all VALUES
+
+→ DO NOT confuse XOR with OR or AND
+     → OR:  1 | 1 = 1  → does NOT cancel → accumulates bits
+     → AND: 1 &amp; 0 = 0  → does NOT cancel → loses bits
+     → XOR: 1 ^ 1 = 0  → CANCELS → exactly what we need</code></pre></div>
+<hr>
+<h2>🔀 WHEN TO USE THIS PATTERN</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>✓ "Find the element that appears odd number of times (all others appear even times)"
+</span>     → XOR cancels pairs → odd-count element survives
+
+✓ "Find the unique / single / non-duplicate element"
+     → Classic XOR cancellation
+
+✓ Problem demands O(1) space AND O(n) time simultaneously
+     → HashMap gives O(n)/O(n)
+     → Sorting gives O(n log n)/O(1)
+     → XOR gives O(n)/O(1) → best of both worlds
+
+✓ Elements come in PAIRS with exactly ONE exception
+     → The pair structure is what enables cancellation
+
+✓ You need to detect DIFFERENCES between two sets
+     → XOR of combined sets cancels shared elements → leaves differences
+     → This extends to "find missing number" (Project 8 connection below)
+
+✓ Bit manipulation is allowed / no restriction on operators</code></pre></div>
+<hr>
+<h2>🚫 WHEN NOT TO USE THIS PATTERN</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>✗ Elements appear THREE times except one appearing once
+</span>     → a ^ a ^ a = a (not 0!)
+     → XOR only cancels PAIRS (even occurrences)
+     → Need different bit tricks for triples (bit counting per position)
+
+✗ TWO elements appear once (all others paired)
+     → XOR of everything gives single1 ^ single2 → not either one alone
+     → Need additional technique to SEPARATE them → Project 37
+
+✗ You need to find WHICH elements are duplicated (not which is unique)
+     → XOR tells you the unique one → it cannot list the duplicates
+
+✗ You need the COUNT of occurrences
+     → XOR gives a single number → no frequency information
+     → Use HashMap for counting
+
+✗ Elements appear varying numbers of times (no pair structure)
+     → No guaranteed cancellation → XOR result is meaningless</code></pre></div>
+<hr>
+<h2>⚙️ HOW IT ONLY WORKS — Internal Mechanics</h2>
+<h3>Mechanic 1: Bit Independence</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>XOR operates on EACH BIT POSITION independently
+</span>
+Number:   bit7  bit6  bit5  bit4  bit3  bit2  bit1  bit0
+
+When we XOR two numbers:
+→ bit0 of result depends ONLY on bit0 of both operands
+→ bit1 of result depends ONLY on bit1 of both operands
+→ ... and so on
+→ NO carry, NO interaction between bit positions
+→ Each bit is its own isolated universe
+
+This means:
+→ At each bit position, we're counting "how many 1s appeared?"
+→ If even number of 1s → result bit is 0 (pairs cancelled)
+→ If odd number of 1s → result bit is 1 (single number's bit survived)</code></pre></div>
+<h3>Mechanic 2: The Cancellation Proof</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>CLAIM: If every number except one appears exactly twice,
+</span>       XOR of all elements equals the single number.
+
+PROOF:
+  Let the array be: [a, b, c, a, b]  where c is the single number
+
+  XOR_all = a ^ b ^ c ^ a ^ b
+
+  By commutativity:
+  = (a ^ a) ^ (b ^ b) ^ c
+
+  By self-cancellation:
+  = 0 ^ 0 ^ c
+
+  By identity:
+  = c
+
+  This generalizes to ANY number of paired elements.
+  Order does NOT matter (commutativity + associativity).
+  QED.</code></pre></div>
+<h3>Mechanic 3: Connection to Project 8 (Missing Number)</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>Project 8 used Cyclic Sort to find missing number in [0, n]
+</span>XOR provides an ALTERNATIVE solution to that same problem:
+
+Missing number in [0, 1, 2, ..., n] with one missing:
+
+  XOR all array elements:        arr[0] ^ arr[1] ^ ... ^ arr[n-1]
+  XOR all expected indices:       0 ^ 1 ^ 2 ^ ... ^ n
+  XOR these two results together: all present numbers cancel → missing remains
+
+Example: [3, 0, 1] → missing from [0, 1, 2, 3]
+  Array XOR:    3 ^ 0 ^ 1 = 2  (intermediate)
+  Index XOR:    0 ^ 1 ^ 2 ^ 3 = 0  (intermediate)
+  
+  Better approach — XOR everything together:
+  (0 ^ 1 ^ 2 ^ 3) ^ (3 ^ 0 ^ 1)
+  = (0^0) ^ (1^1) ^ (3^3) ^ 2
+  = 0 ^ 0 ^ 0 ^ 2
+  = 2 ✓
+
+→ XOR is the BIT-LEVEL generalization of the same "find the odd one out" idea
+→ Cyclic Sort uses POSITION → XOR uses BITS
+→ Both achieve O(n) time, O(1) space
+→ XOR works even when values DON'T map to valid indices</code></pre></div>
+<h3>Mechanic 4: Why Order Doesn't Matter</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>Commutativity: a ^ b = b ^ a
+</span>Associativity: (a ^ b) ^ c = a ^ (b ^ c)
+
+Together these mean:
+→ We can XOR elements in ANY order → same result
+→ We can GROUP elements in ANY way → same result
+→ The array can be shuffled, reversed, anything → same result
+→ This is why we just loop through and accumulate
+
+This is UNLIKE subtraction:
+  (5 - 3) - 2 = 0
+  5 - (3 - 2) = 4   → different! → subtraction is NOT associative
+
+XOR behaves like addition in modular arithmetic (mod 2 on each bit)
+→ Addition mod 2: 0+0=0, 0+1=1, 1+0=1, 1+1=0 → exactly XOR!</code></pre></div>
+<h3>Time and Space Complexity</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>TIME:  O(n)
+</span>→ Single pass through array
+→ One XOR operation per element
+→ XOR is O(1) per operation (constant number of bits)
+
+SPACE: O(1)
+→ One integer variable (result)
+→ No data structures, no extra arrays, no maps
+→ This is truly minimal — you CANNOT use less space</code></pre></div>
+<hr>
+<h2>⚠️ COMMON PITFALLS AND FAILURE MODES</h2>
+<h3>Pitfall 1: More Than One Single Element</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>Array: [1, 2, 3]  → all appear once
+</span>XOR:   1 ^ 2 ^ 3 = 0 (binary: 01 ^ 10 ^ 11 = 00)
+
+→ Result is 0 → WRONG (no element is 0)
+→ XOR only works when EXACTLY ONE element is unpaired
+→ For TWO unpaired elements → need Project 37's technique
+→ ALWAYS verify the problem guarantees exactly one single element</code></pre></div>
+<h3>Pitfall 2: Element Appears Three Times</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>Array: [5, 5, 5, 3, 3]  → 5 appears 3 times, 3 appears 2 times
+</span>XOR:   5 ^ 5 ^ 5 ^ 3 ^ 3
+     = (5 ^ 5) ^ 5 ^ (3 ^ 3)
+     = 0 ^ 5 ^ 0
+     = 5
+
+→ This HAPPENS to work here because 5 appears ODD times (3)
+→ But if the problem is "find the one appearing once among triples"
+→ Like [5, 5, 5, 3, 3, 3, 7] → XOR = 5^5^5^3^3^3^7 = 5^3^7 → wrong answer
+→ XOR only cancels EVEN occurrences → odd occurrences survive
+→ For "all appear 3 times except one" → need bit-counting technique (different problem)</code></pre></div>
+<h3>Pitfall 3: Thinking XOR is Addition</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>5 ^ 3 = 6    (NOT 8)
+</span>5 + 3 = 8
+
+→ XOR is NOT addition
+→ XOR has NO carry between bit positions
+→ Don't confuse ^ (XOR) with + (addition) or * (multiplication)
+
+Specifically in Java:
+→ ^ is XOR for integers
+→ ^ is NOT exponentiation (Java has no exponent operator → use Math.pow)</code></pre></div>
+<h3>Pitfall 4: Applying to Unsorted Array When Sorting is Needed</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ XOR doesn't care about order → works on any arrangement
+</span>→ But if the problem asks "return the INDEX of the single number"
+→ XOR gives you the VALUE, not the index
+→ You'd need a second pass to find where that value lives
+→ Still O(n) total, but remember to handle this</code></pre></div>
+<h3>Pitfall 5: Empty Array or Single Element</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>Empty array: no elements to XOR → result stays 0 → misleading
+</span>→ Problem says "non-empty" → but add a guard anyway
+
+Single element array: [42]
+→ XOR: 0 ^ 42 = 42 ✓
+→ Works correctly → the only element is trivially the single one</code></pre></div>
+<hr>
+<h2>📈 SCALABILITY CONSIDERATIONS</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>PERFORMANCE SCALING:
+</span>→ n = 100         → 100 XOR operations     → instant
+→ n = 1,000,000   → 1 million XOR ops      → ~1ms
+→ n = 100,000,000 → 100 million XOR ops    → ~100ms
+→ n = 1 BILLION   → 1 billion XOR ops      → ~1 second
+
+XOR is one of the FASTEST CPU operations:
+→ Single clock cycle on modern processors
+→ No memory access (operates on registers)
+→ No branch prediction issues (no if/else in the hot loop)
+→ CPU can pipeline XOR operations efficiently
+
+COMPARISON WITH ALTERNATIVES:
+→ HashMap approach: O(n) time but with hash computation overhead + O(n) memory allocation
+→ Sorting approach: O(n log n) time with comparison overhead
+→ XOR approach: O(n) time with minimal overhead + O(1) memory
+→ At large scale, XOR is orders of magnitude faster in practice
+
+MEMORY SCALING:
+→ HashMap for n = 1 billion integers → ~16 GB memory (entry overhead)
+→ XOR for n = 1 billion integers → 4 bytes (one int variable)
+→ The difference is astronomical</code></pre></div>
+<hr>
+<h2>🔍 INTERPRETABILITY CONSIDERATIONS</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>READABILITY:
+</span>→ The code is 3 lines → extremely short
+→ BUT the WHY is non-obvious to someone unfamiliar with XOR
+→ Add a comment explaining the cancellation property
+
+DEBUGGING:
+→ Hard to "see" intermediate states meaningfully
+→ The accumulator holds a partial XOR → not human-interpretable
+→ You can't look at result=7 midway and know what it means
+→ Trust the math → verify with small test cases
+
+INTERVIEW COMMUNICATION:
+→ State the three properties: self-cancel, identity, commutative+associative
+→ Explain WHY pairs cancel → show one small example
+→ Then write the code → it speaks for itself
+→ Interviewers EXPECT this solution → it's a classic
+
+TEAM COMMUNICATION:
+→ If a teammate sees: result ^= nums[i]
+→ They might not understand without context
+→ Always add: // XOR cancels paired elements, leaving the single one
+→ One comment saves ten minutes of confusion</code></pre></div>
+<hr>
+<div class="github-btn-wrap"><a class="github-btn" href="https://github.com/Shakti4640/leetcode-patterns-guide-java/tree/main/project- (10)" target="_blank" rel="noopener"><svg viewBox="0 0 24 24"><path d="M12 .5C5.37.5 0 5.87 0 12.5c0 5.3 3.44 9.8 8.2 11.39.6.11.82-.26.82-.58v-2.03c-3.34.73-4.04-1.61-4.04-1.61-.55-1.39-1.34-1.76-1.34-1.76-1.09-.74.08-.73.08-.73 1.2.09 1.84 1.24 1.84 1.24 1.07 1.83 2.8 1.3 3.49 1 .1-.78.42-1.3.76-1.6-2.67-.3-5.47-1.33-5.47-5.93 0-1.31.47-2.38 1.24-3.22-.14-.3-.54-1.52.1-3.18 0 0 1.01-.32 3.3 1.23a11.5 11.5 0 0 1 3-.4c1.02 0 2.04.13 3 .4 2.28-1.55 3.29-1.23 3.29-1.23.64 1.66.24 2.88.12 3.18.77.84 1.23 1.91 1.23 3.22 0 4.61-2.81 5.63-5.48 5.92.43.37.81 1.1.81 2.22v3.29c0 .32.21.7.82.58C20.56 22.3 24 17.8 24 12.5 24 5.87 18.63.5 12 .5z"/></svg>💻 View Complete Java Code on GitHub</a></div>
+
+<hr>
+<h2>🔑 EXPECTED OUTPUT</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>╔═══════════════════════════════════════════════╗
+</span>║  PROJECT 10: Find the Single Number           ║
+║  Pattern: Bitwise XOR → Cancellation Property ║
+╚═══════════════════════════════════════════════╝
+
+═══ XOR PROPERTY DEMONSTRATIONS ═══
+
+PROPERTY 1: Self-Cancellation (a ^ a = 0)
+  5 ^ 5 = 0
+  42 ^ 42 = 0
+  127 ^ 127 = 0
+  0 ^ 0 = 0
+  -3 ^ -3 = 0
+
+PROPERTY 2: Identity with Zero (a ^ 0 = a)
+  5 ^ 0 = 5
+  42 ^ 0 = 42
+  127 ^ 0 = 127
+  0 ^ 0 = 0
+  -3 ^ 0 = -3
+
+PROPERTY 3: Commutativity (a ^ b = b ^ a)
+  5 ^ 3 = 6
+  3 ^ 5 = 6
+  Equal? true
+
+PROPERTY 4: Associativity ((a^b)^c = a^(b^c))
+  (5 ^ 3) ^ 7 = 1
+  5 ^ (3 ^ 7) = 1
+  Equal? true
+
+COMBINED: Pair Cancellation in Action
+  Array: [4, 1, 2, 1, 2]
+  4 ^ 1 ^ 2 ^ 1 ^ 2
+  = 4 ^ (1^1) ^ (2^2)    [regroup pairs]
+  = 4 ^ 0 ^ 0             [self-cancel]
+  = 4                      [identity]
+  Computed: 4
+
+═══ TEST 1: Basic Trace ═══
+Array: 
+  [4, 1, 2, 1, 2]
+─────────────────────────────────────────
+  Initial result = 0
+  Binary:          00000000
+
+  Step 1: result ^ 4
+    00000000  (0)
+  ^ 00000100  (4)
+  = 00000100  (4)
+
+  Step 2: result ^ 1
+    00000100  (4)
+  ^ 00000001  (1)
+  = 00000101  (5)
+
+  Step 3: result ^ 2
+    00000101  (5)
+  ^ 00000010  (2)
+  = 00000111  (7)
+
+  Step 4: result ^ 1
+    00000111  (7)
+  ^ 00000001  (1)
+  = 00000110  (6)
+
+  Step 5: result ^ 2
+    00000110  (6)
+  ^ 00000010  (2)
+  = 00000100  (4)
+
+  ★ FINAL RESULT: 4
+
+═══ TEST 2: Larger Example Trace ═══
+Array: 
+  [7, 3, 5, 3, 5, 9, 7]
+─────────────────────────────────────────
+  ...
+  ★ FINAL RESULT: 9
+
+═══ EDGE CASE TESTS ═══
+
+Single element [42]: 42
+Three elements [2,2,1]: 1
+Negatives [-1,-1,-2,-3,-3]: -2
+Mixed [-5,3,-5,3,99]: 99
+Zero is single [7,0,7]: 0
+Large values [MAX,100,MAX]: 100
+Single at end [1,1,2,2,3,3,4,4,5]: 5
+
+═══ PROJECT 8 CONNECTION: Missing Number via XOR ═══
+Array [3,0,1] → missing: 2
+Array [0,1,2,4,5] → missing: 3
+Array [1] → missing: 0
+
+═══ PERFORMANCE BENCHMARK ═══
+
+Array size: 10000001 elements
+Expected single number: 5000000
+
+XOR Approach:
+  Result: 5000000
+  Time:   8 ms
+  Space:  O(1) — 4 bytes
+
+HashMap Approach:
+  Result: 5000000
+  Time:   1842 ms
+  Space:  O(n) — ~320 MB
+
+Sorting Approach:
+  Result: 5000000
+  Time:   3215 ms
+  Space:  O(n) — cloned array
+
+SPEEDUP vs HashMap: 230x
+SPEEDUP vs Sorting: 401x</code></pre></div>
+<hr>
+<h2>🧠 KEY TAKEAWAY</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>WHAT WE LEARNED:
+</span>→ XOR is a BITWISE tool that solves "find the unique" in O(n) time, O(1) space
+→ Three properties make it work: self-cancel, identity, commutativity+associativity
+→ Pairs XOR to 0 → the unpaired element survives
+→ This is a COMPLETELY DIFFERENT dimension from array-based techniques
+→ When you see "pairs + find unique + O(1) space" → think XOR immediately
+
+MENTAL MODEL EVOLUTION:
+  Project 1:  Use POSITIONS (two pointers) to exploit sorted structure
+  Project 8:  Use INDEX-VALUE MAPPING (cyclic sort) to exploit range [0..n]
+  Project 10: Use BIT-LEVEL PROPERTIES (XOR) to exploit pair structure
+  
+→ Each project teaches a DIFFERENT LENS to look at data through
+→ Pointers see positions → Cyclic sort sees mappings → XOR sees bits
+
+THE PATTERN SIGNATURE:
+  → Every element appears twice except one ✓
+  → Need O(1) space ✓
+  → Need O(n) time ✓
+  → = BITWISE XOR CANCELLATION
+
+CONNECTION CHAIN:
+  Project 8 (Cyclic Sort) → finds missing number via PLACEMENT
+  Project 10 (XOR)        → finds single number via BIT CANCELLATION
+  Project 37 (Two Singles) → finds TWO single numbers via XOR + BIT PARTITIONING</code></pre></div>
+<hr>
+<h2>🌉 BRIDGE TO NEXT PROJECT</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>PROJECT 10 solved:
+</span>→ ONE single number among pairs → XOR everything → done
+
+PROJECT 37 (Find Two Single Numbers) will ask:
+→ What if TWO elements appear once and all others appear twice?
+→ XOR of everything gives: single1 ^ single2 → NOT either one alone
+→ We need to SEPARATE them into two groups
+→ HOW? Find a bit where single1 and single2 DIFFER
+→ Use that differing bit to PARTITION the array into two halves
+→ XOR each half independently → each half contains exactly one single
+→ This is XOR + BIT PARTITIONING → a beautiful extension of today's concept
+
+BEFORE we get to Project 37, we first build through:
+  Project 11: Three Sum → extends Two Pointers to multi-element coordination
+  Projects 12-13: Sliding Window depth → HashMap-based window tracking
+  Projects 14-19: Intervals, Linked Lists, Trees, Greedy → core pattern expansion
+
+→ Project 10's XOR foundation sits dormant until Project 37 reactivates it
+→ That gap is intentional → mastery means holding patterns in memory across time</code></pre></div>
+<hr>
+<p><strong>Ready for Project 11: Three Sum — Find All Unique Triplets (Two Pointers → Multi-Pointer Coordination)?</strong></p>
+</div>
+</div>
+
+<!-- ========== data-index="7" ========== -->
+<div class="chat-message" data-index="7"></div>
+</div>
+<div class="bottom-nav">
+  <a href="project-9.html" class="nav-btn prev">← Prev</a>
+  <div class="nav-center">
+    <span class="nav-project-label">PROJECT 10 of 60</span>
+    <span class="nav-project-title">Find the Single Number</span>
+    <span class="kbd-hint">← → arrow keys to navigate</span>
+  </div>
+  <a href="project-11.html" class="nav-btn next">Next →</a>
+  <a href="index.html" class="nav-btn home">🏠 TOC</a>
+</div>
+<div id="progress-track"><div id="progress-fill"></div></div>
+<div id="progress-pct">0%</div>
+<script src="script.js"></script>
+<script>
+document.addEventListener('keydown', function(e) {
+  if (['INPUT','TEXTAREA'].includes(document.activeElement.tagName)) return;
+  if (e.key === 'ArrowRight' && "project-11.html" !== null) window.location = "project-11.html";
+  if (e.key === 'ArrowLeft' && "project-9.html" !== null) window.location = "project-9.html";
+});
+</script>
+</body>
+</html>

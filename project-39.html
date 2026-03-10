@@ -1,0 +1,613 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PROJECT 39: K Closest Points to Origin</title>
+<link rel="icon" type="image/png" href="images/favicon.png">
+<link rel="stylesheet" href="styles.css">
+
+</head>
+<body>
+<div id="progress-bar-container"><div id="progress-bar" style="width:66%"></div></div>
+<div id="progress-label">66%</div>
+<div class="page-wrapper">
+<div class="chat-message"><div class="px-2"><h1>PROJECT 39: K Closest Points to Origin</h1>
+<h2>🎯 Top K Elements → Max-Heap with Distance Comparator → Bounded Heap</h2>
+<hr>
+<h2>🧩 THE HYPOTHETICAL PROBLEM</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ You are given an array of POINTS on a 2D plane
+</span>→ Each point is represented as [x, y]
+→ You are given a value K
+→ Find the K points CLOSEST to the origin (0, 0)
+→ Distance = Euclidean distance = √(x² + y²)
+→ Return the K points in ANY order
+
+Example 1:
+  Input:  points = [[1,3], [-2,2]], k = 1
+  Distances: [1,3] → √(1+9) = √10 ≈ 3.16
+             [-2,2] → √(4+4) = √8 ≈ 2.83
+  Output: [[-2,2]]  (closest single point)
+
+Example 2:
+  Input:  points = [[3,3], [5,-1], [-2,4]], k = 2
+  Distances: [3,3] → √(9+9) = √18
+             [5,-1] → √(25+1) = √26
+             [-2,4] → √(4+16) = √20
+  Output: [[3,3], [-2,4]]  (two closest)
+
+Example 3:
+  Input:  points = [[0,1], [1,0], [0,-1], [-1,0], [2,2]], k = 3
+  Distances: √1, √1, √1, √1, √8
+  Output: Any 3 of the first 4 points (all distance √1)</code></pre></div>
+<hr>
+<h2>🔍 HOW TO APPROACH IT</h2>
+<h3>Step 1 — Map This to the Top K Framework from Project 38</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>Project 38:
+</span>  → Given: array of VALUES
+  → Find: K LARGEST values
+  → Tool: MIN-heap of size K (root = gatekeeper = Kth largest)
+
+Project 39:
+  → Given: array of POINTS
+  → Find: K CLOSEST points (K SMALLEST distances)
+  → Tool: ???-heap of size K
+
+KEY SHIFT:
+  → Project 38 wanted K LARGEST → used MIN-heap (opposite!)
+  → Project 39 wants K SMALLEST (closest) → use MAX-heap (opposite!)
+  
+  → The "opposite heap" rule from Project 38 applies directly:
+       K largest  → MIN-heap → root = smallest of top K = gatekeeper
+       K smallest → MAX-heap → root = largest of bottom K = gatekeeper</code></pre></div>
+<h3>Step 2 — Understand the Comparison Metric Change</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>Project 38:
+</span>  → Compare elements by their RAW VALUE
+  → num &gt; heap.peek() → swap in
+  → Straightforward integer comparison
+
+Project 39:
+  → Compare elements by their COMPUTED DISTANCE
+  → Elements are int[] (point coordinates)
+  → Cannot compare points directly — need a DERIVED metric
+  → distance(point) = x² + y²  (we skip the √ — explained below)
+
+THIS IS THE CORE NEW CONCEPT:
+  → The heap doesn't store distances — it stores POINTS
+  → But the heap ORDERS by distance
+  → This requires a CUSTOM COMPARATOR</code></pre></div>
+<h3>Step 3 — Why We Skip the Square Root</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>Euclidean distance = √(x² + y²)
+</span>
+We need to COMPARE distances, not compute exact values:
+  → √(x₁² + y₁²)  vs  √(x₂² + y₂²)
+  → Since √ is a MONOTONICALLY INCREASING function:
+       √a &lt; √b  ⟺  a &lt; b
+  → So: x₁² + y₁²  vs  x₂² + y₂²  gives the SAME ordering
+
+BENEFITS OF SKIPPING √:
+  → Avoids floating-point precision issues
+  → Avoids expensive Math.sqrt() computation
+  → Integer arithmetic only → faster and exact
+  → Comparison results are IDENTICAL
+
+SQUARED DISTANCE: distSq(x, y) = x*x + y*y
+  → This is our comparison metric throughout</code></pre></div>
+<h3>Step 4 — Visualize the Max-Heap Gatekeeper for "K Closest"</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>points = [[3,3], [5,-1], [-2,4], [1,1], [0,2]], k = 3
+</span>Squared distances:  18,   26,    20,    2,    4
+
+Goal: 3 closest = points with distances 2, 4, 18 → [1,1], [0,2], [3,3]
+
+Process with MAX-heap of size K=3 (ordered by distance):
+
+Step 1: Process [3,3] dist=18 → heap not full → ADD
+        heap: {[3,3](18)}  root=18
+
+Step 2: Process [5,-1] dist=26 → heap not full → ADD
+        heap: {[5,-1](26), [3,3](18)}  root=26
+
+Step 3: Process [-2,4] dist=20 → heap not full → ADD
+        heap: {[5,-1](26), [-2,4](20), [3,3](18)}  root=26
+
+Step 4: Process [1,1] dist=2 → 2 &lt; root(26) → SWAP
+        remove [5,-1](26), add [1,1](2)
+        heap: {[-2,4](20), [3,3](18), [1,1](2)}  root=20
+
+Step 5: Process [0,2] dist=4 → 4 &lt; root(20) → SWAP
+        remove [-2,4](20), add [0,2](4)
+        heap: {[3,3](18), [0,2](4), [1,1](2)}  root=18
+
+Answer: all 3 points in heap = [[3,3], [0,2], [1,1]] ✓
+
+THE GATEKEEPER LOGIC:
+  → Root = FARTHEST of the K closest = the Kth closest
+  → New point closer than root? → it BELONGS in the K closest → swap in
+  → New point farther than root? → it's NOT in the K closest → reject
+  → IDENTICAL logic to Project 38 — just flipped direction</code></pre></div>
+<hr>
+<h2>🛠️ HOW CAN WE SOLVE IT</h2>
+<h3>The Algorithm</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>1. Create a MAX-heap of points, ordered by SQUARED DISTANCE
+</span>     → In Java: PriorityQueue with custom Comparator
+     → Comparator compares (b[0]*b[0]+b[1]*b[1]) vs (a[0]*a[0]+a[1]*a[1])
+     → Reversed order = max-heap behavior
+2. For each point in the array:
+     a. If heap size &lt; K → add point directly
+     b. Else if point's distance &lt; root's distance:
+          → poll root (farthest of K closest)
+          → offer new point (closer one takes its place)
+     c. Else → skip (point is farther than all K closest)
+3. Drain heap into result array → return</code></pre></div>
+<hr>
+<h2>✅ WHAT SHOULD YOU DO</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ ALWAYS use squared distance for comparison
+</span>     → Avoids floating-point errors
+     → Faster computation
+     → Same ordering guarantee
+
+→ ALWAYS use MAX-heap for "K smallest/closest" (opposite rule from Project 38)
+     → Root = farthest of K closest = gatekeeper
+     → Only closer points pass the gate
+
+→ ALWAYS use custom Comparator for non-primitive heap elements
+     → Points are int[] — no natural ordering for "distance"
+     → Comparator encodes the distance logic INTO the heap
+
+→ ALWAYS consider integer overflow for squared distances
+     → x can be up to 10^4 → x² = 10^8
+     → x² + y² = 2 * 10^8 → fits in int (max ~2.1 * 10^9)
+     → BUT if coordinates are larger → use long
+     → Safer to always cast to long in comparator
+
+→ ALWAYS verify: does the problem want K points or just the Kth point?
+     → K points → drain entire heap into result
+     → Kth point → peek at root (like Project 38)</code></pre></div>
+<hr>
+<h2>🚫 WHAT SHOULD YOU NOT DO</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ DO NOT compute Math.sqrt() for comparisons
+</span>     → Unnecessary computation
+     → Introduces floating-point imprecision
+     → Squared distance preserves ordering perfectly
+
+→ DO NOT use MIN-heap for "K closest"
+     → Min-heap root = closest point = 1st closest
+     → Cannot efficiently identify Kth closest
+     → Would need to store ALL points → O(n) space
+     → Project 38 rule: K smallest → MAX-heap (opposite!)
+
+→ DO NOT compare distances using subtraction in Comparator
+     → (a_dist - b_dist) can overflow for large coordinates
+     → Use Integer.compare() or explicit if/else instead
+     → Safe: Integer.compare(distB, distA) for max-heap order
+
+→ DO NOT forget that the result order doesn't matter
+     → Problem says "return in any order"
+     → No need to sort the K results
+     → Just drain heap directly
+
+→ DO NOT create Point objects unnecessarily
+     → int[] works perfectly → avoids object overhead
+     → In competitive programming → raw arrays are faster
+     → In production code → Point class is fine for readability</code></pre></div>
+<hr>
+<h2>🔀 WHEN TO USE THIS PATTERN</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>✓ "Find K closest / nearest / smallest" → MAX-heap of size K
+</span>✓ "Find K farthest / largest / biggest" → MIN-heap of size K
+✓ Comparison metric is DERIVED (distance, frequency, score, etc.)
+✓ The metric can be computed per element independently
+✓ K &lt;&lt; n → bounded heap gives space advantage
+✓ Result order doesn't matter (or you sort K elements at end)
+
+REAL-WORLD APPLICATIONS:
+  → Nearest neighbor search (K closest data points)
+  → Recommendation systems (K most similar items)
+  → GPS: K nearest restaurants/gas stations
+  → Machine learning: K-nearest neighbors (KNN) algorithm
+  → Game dev: K closest enemies to player</code></pre></div>
+<hr>
+<h2>🚫 WHEN NOT TO USE THIS PATTERN</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>✗ K is close to n → sorting is simpler and equally fast
+</span>✗ You need results in SORTED order by distance
+     → Heap gives K elements but not sorted
+     → Would need additional O(K log K) sort
+     → If K ≈ n → just sort original array
+
+✗ Distance computation is EXPENSIVE and elements are compared multiple times
+     → Heap may re-compare during sift operations
+     → Pre-compute distances, store as (distance, point) pairs
+     → Then use simple numeric heap
+
+✗ Coordinates change over time (dynamic points)
+     → Heap doesn't support updating existing elements efficiently
+     → Need more advanced spatial data structures (KD-tree, R-tree)
+
+✗ You need the EXACT Kth closest (not all K)
+     → Just peek at root — same as Project 38
+     → But if you ONLY need the Kth distance value → even simpler</code></pre></div>
+<hr>
+<h2>⚙️ HOW IT ONLY WORKS — Internal Mechanics</h2>
+<h3>Custom Comparator Deep Dive</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>Java PriorityQueue is a MIN-heap by default:
+</span>  → new PriorityQueue&lt;&gt;() → smallest at root
+
+To make it a MAX-heap for points by distance:
+
+OPTION A: Explicit Comparator (clearest)
+  new PriorityQueue&lt;&gt;((a, b) -&gt; {
+      int distA = a[0]*a[0] + a[1]*a[1];
+      int distB = b[0]*b[0] + b[1]*b[1];
+      return Integer.compare(distB, distA);  // REVERSED = max-heap
+  });
+
+OPTION B: Negate distance (trick)
+  new PriorityQueue&lt;&gt;((a, b) -&gt; {
+      int distA = a[0]*a[0] + a[1]*a[1];
+      int distB = b[0]*b[0] + b[1]*b[1];
+      return Integer.compare(distA, distB);  // normal = min-heap
+  });
+  → This gives MIN-heap by distance → WRONG for our gatekeeper approach
+  → We NEED max-heap → OPTION A is correct
+
+OPTION C: Using Comparator.comparingInt (concise)
+  new PriorityQueue&lt;&gt;(
+      Comparator.comparingInt((int[] p) -&gt; p[0]*p[0] + p[1]*p[1]).reversed()
+  );
+  → .reversed() flips to max-heap
+
+HOW THE COMPARATOR FLOWS THROUGH THE HEAP:
+  → When offer(point) is called:
+       → Point placed at bottom of heap
+       → SIFT UP: compare with parent using our comparator
+       → Larger distance floats UP (max-heap behavior)
+       → Root always has LARGEST distance
+  → When poll() is called:
+       → Root removed (largest distance point)
+       → Last element moved to root
+       → SIFT DOWN: compare with children using our comparator
+       → Maintains max-heap property</code></pre></div>
+<h3>The Gatekeeper Invariant (Extension of Project 38)</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>CLAIM: After processing i points, the heap contains the K closest
+</span>       among those i points (or all i if i &lt; K).
+
+The proof is IDENTICAL to Project 38 — just with direction flipped:
+
+→ New point CLOSER than root? 
+     → Root (farthest of K closest) gets kicked out
+     → New closer point takes its place
+     → Heap still holds K closest ✓
+
+→ New point FARTHER than root?
+     → It's farther than even the farthest of K closest
+     → Cannot possibly be in K closest
+     → Skip it → heap unchanged ✓
+
+→ After all n points: heap = K closest overall
+→ Root = farthest of K closest = Kth closest point</code></pre></div>
+<h3>Time Complexity</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ For each of n points:
+</span>     → Compute squared distance: O(1)
+     → Compare with root: O(1)
+     → Possible offer + poll: O(log K) each
+→ Total: O(n log K)
+→ Final drain of heap: O(K log K)
+→ Overall: O(n log K)
+
+vs Sorting approach: O(n log n)
+When K = 10, n = 10,000,000:
+  → Heap: 10^7 * 3.3 ≈ 33M ops
+  → Sort: 10^7 * 23 ≈ 230M ops → 7x slower</code></pre></div>
+<h3>Space Complexity</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ Heap stores K points: O(K)
+</span>→ Result array: O(K)
+→ Total: O(K)
+
+vs Sorting: O(1) extra but modifies input (or O(n) if copy needed)
+When K = 10, n = 10,000,000 → heap uses 10 points vs 10M points</code></pre></div>
+<h3>Why the "Opposite Heap" Rule is Universal</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>PROJECT 38: K LARGEST → MIN-heap
+</span>  → Root = SMALLEST of top K = Kth LARGEST = LOWER BOUNDARY
+  → Only elements ABOVE the boundary enter
+  → Boundary naturally RISES as better (larger) elements arrive
+
+PROJECT 39: K CLOSEST (smallest distance) → MAX-heap  
+  → Root = FARTHEST of K closest = Kth CLOSEST = UPPER BOUNDARY
+  → Only elements BELOW the boundary enter
+  → Boundary naturally DROPS as better (closer) elements arrive
+
+UNIVERSAL PATTERN:
+  → You always want the root to be the WEAKEST member of the elite group
+  → "Weakest" = the one most likely to be replaced
+  → For K largest: weakest = smallest → min-heap root
+  → For K smallest: weakest = largest → max-heap root
+  → The root is always the THRESHOLD for admission</code></pre></div>
+<hr>
+<h2>⚠️ COMMON PITFALLS AND FAILURE MODES</h2>
+<h3>Pitfall 1: Wrong Heap Direction</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>THE MOST COMMON MISTAKE (same as Project 38, but trickier here):
+</span>
+"I want K closest (smallest distances) → I'll use min-heap!"
+
+WRONG:
+  → Min-heap root = closest point = 1st closest
+  → To find K closest → need all n points in heap → O(n) space
+  → Defeats the purpose of bounded heap
+
+CORRECT:
+  → Max-heap of size K → root = farthest of K closest = gatekeeper
+  → Only closer points pass → O(K) space
+
+MEMORY AID (repeat from Project 38):
+  → K largest → MIN-heap (opposite)
+  → K smallest/closest → MAX-heap (opposite)
+  → ROOT = GATEKEEPER = WEAKEST ELITE MEMBER</code></pre></div>
+<h3>Pitfall 2: Comparator Overflow</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>Coordinates: x = 40000, y = 40000
+</span>Squared distance = 40000² + 40000² = 1,600,000,000 + 1,600,000,000 
+                 = 3,200,000,000
+
+int max = 2,147,483,647 → OVERFLOW!
+
+FIX: Cast to long in comparator
+  (a, b) -&gt; {
+      long distA = (long)a[0]*a[0] + (long)a[1]*a[1];
+      long distB = (long)b[0]*b[0] + (long)b[1]*b[1];
+      return Long.compare(distB, distA);
+  }
+
+WHEN IS THIS NEEDED?
+  → LeetCode constraint: -10^4 ≤ x, y ≤ 10^4
+  → Max squared distance = 10^8 + 10^8 = 2 * 10^8 → fits in int
+  → Safe for THIS problem but NOT safe in general
+  → Always consider the constraint range</code></pre></div>
+<h3>Pitfall 3: Comparator Using Subtraction</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>WRONG:
+</span>  (a, b) -&gt; (b[0]*b[0] + b[1]*b[1]) - (a[0]*a[0] + a[1]*a[1])
+
+This uses subtraction for comparison → CAN OVERFLOW:
+  distB = 2,000,000,000
+  distA = -2,000,000,000  (if allowed)
+  distB - distA = 4,000,000,000 → overflows int → returns NEGATIVE
+  → Heap order is CORRUPTED
+
+CORRECT:
+  (a, b) -&gt; Integer.compare(distB, distA)
+  → Integer.compare uses conditional logic, NOT subtraction
+  → NEVER overflows</code></pre></div>
+<h3>Pitfall 4: Ties in Distance</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>points = [[1,0], [0,1], [-1,0], [0,-1], [2,0]], k = 3
+</span>Distances: 1, 1, 1, 1, 4
+
+Four points at distance 1, but K = 3 → which 3?
+→ ANY 3 of the 4 equidistant points are valid
+→ The heap handles this AUTOMATICALLY
+→ First 3 enter → 4th has same distance as root
+→ 4th is NOT strictly closer → gatekeeper rejects it
+→ Result: whichever 3 entered first
+
+If problem requires DETERMINISTIC tie-breaking:
+  → Add secondary sort to comparator (e.g., by x then y)
+  → Most LeetCode problems say "any order" → don't overcomplicate</code></pre></div>
+<h3>Pitfall 5: Distance to a Point OTHER Than Origin</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>Problem variant: "K closest to point P = (px, py)"
+</span>
+Distance formula changes:
+  → distSq = (x - px)² + (y - py)²
+
+Everything else stays IDENTICAL:
+  → Max-heap of size K
+  → Comparator uses (x-px)² + (y-py)² instead of x² + y²
+  → Same gatekeeper logic
+
+Common mistake: forgetting to subtract px, py
+  → If origin (0,0) → subtraction has no effect → works by accident
+  → If P ≠ origin → MUST subtract → test with non-origin reference point</code></pre></div>
+<hr>
+<h2>📈 SCALABILITY CONSIDERATIONS</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>SCENARIO 1: Small K, large n
+</span>  → K = 10, n = 10,000,000
+  → Heap: O(10^7 * log 10) = O(10^7 * 3.3) ≈ 33M ops, O(10) space
+  → Sorting: O(10^7 * log 10^7) = O(10^7 * 23) ≈ 230M ops
+  → Heap wins decisively
+
+SCENARIO 2: K close to n
+  → K = 9,000,000, n = 10,000,000
+  → Heap: O(10^7 * log 9*10^6) ≈ O(10^7 * 23) ≈ 230M ops
+  → Sorting: same ≈ 230M ops
+  → No advantage → sorting is simpler
+
+SCENARIO 3: Streaming points (GPS, sensors)
+  → Points arrive one at a time
+  → Heap processes each in O(log K)
+  → Don't need to store ALL points — only K at a time
+  → Perfect for real-time "K nearest" tracking
+
+SCENARIO 4: 3D or higher dimensions
+  → Distance formula: x² + y² + z² + ...
+  → Comparator changes → everything else identical
+  → Heap approach scales to ANY dimension
+  → For very high dimensions → consider approximate methods (LSH, KD-tree)
+
+SCENARIO 5: Repeated queries with same points but different K
+  → Rebuild heap for each K → O(n log K) per query
+  → Better: sort once by distance → O(n log n) → answer any K in O(K)
+  → Pre-sort when multiple queries expected</code></pre></div>
+<hr>
+<h2>🔍 INTERPRETABILITY CONSIDERATIONS</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>MENTAL MODEL — "VIP Club with Fitness Test"
+</span>  (Extension of Project 38's bouncer metaphor)
+
+Project 38: Bouncer checks ID NUMBER (raw value)
+  → "Is your number bigger than the weakest VIP? Come in."
+
+Project 39: Bouncer checks DISTANCE TO STAGE (computed metric)
+  → "Are you CLOSER to the stage than the farthest VIP? Come in."
+  → The comparison is no longer on the element itself
+  → It's on a DERIVED PROPERTY of the element
+  → The element (point) enters the club
+  → But the ORDERING is by the derived property (distance)
+
+THIS GENERALIZATION IS POWERFUL:
+  → Same heap structure
+  → Same gatekeeper logic
+  → Only the COMPARATOR changes
+  → Tomorrow: compare by frequency → K most frequent elements
+  → Next week: compare by profit → K most profitable items
+  → The PATTERN is universal — the METRIC is pluggable</code></pre></div>
+<hr>
+<div class="github-btn-wrap"><a class="github-btn" href="https://github.com/Shakti4640/leetcode-patterns-guide-java/tree/main/project- (39)" target="_blank" rel="noopener"><svg viewBox="0 0 24 24"><path d="M12 .5C5.37.5 0 5.87 0 12.5c0 5.3 3.44 9.8 8.2 11.39.6.11.82-.26.82-.58v-2.03c-3.34.73-4.04-1.61-4.04-1.61-.55-1.39-1.34-1.76-1.34-1.76-1.09-.74.08-.73.08-.73 1.2.09 1.84 1.24 1.84 1.24 1.07 1.83 2.8 1.3 3.49 1 .1-.78.42-1.3.76-1.6-2.67-.3-5.47-1.33-5.47-5.93 0-1.31.47-2.38 1.24-3.22-.14-.3-.54-1.52.1-3.18 0 0 1.01-.32 3.3 1.23a11.5 11.5 0 0 1 3-.4c1.02 0 2.04.13 3 .4 2.28-1.55 3.29-1.23 3.29-1.23.64 1.66.24 2.88.12 3.18.77.84 1.23 1.91 1.23 3.22 0 4.61-2.81 5.63-5.48 5.92.43.37.81 1.1.81 2.22v3.29c0 .32.21.7.82.58C20.56 22.3 24 17.8 24 12.5 24 5.87 18.63.5 12 .5z"/></svg>💻 View Complete Java Code on GitHub</a></div>
+
+<hr>
+<h2>🔑 EXPECTED OUTPUT</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>╔═══════════════════════════════════════════════════╗
+</span>║  PROJECT 39: K Closest Points to Origin           ║
+║  Pattern: Top K → Max-Heap + Distance Comparator  ║
+╚═══════════════════════════════════════════════════╝
+
+═══ TEST 1: Basic Example with Trace ═══
+Points: [[3,3], [5,-1], [-2,4], [1,1], [0,2]]
+K = 3
+─────────────────────────────────
+Step 1: Process [3,3]  dist²=18
+  → Heap not full (size 1 ≤ 3) → ADD
+  → Heap: {[3,3](d²=18)}
+  → Gatekeeper: [3,3] dist²=18
+
+Step 2: Process [5,-1]  dist²=26
+  → Heap not full (size 2 ≤ 3) → ADD
+  → Heap: {[3,3](d²=18), [5,-1](d²=26)}
+  → Gatekeeper: [5,-1] dist²=26
+
+Step 3: Process [-2,4]  dist²=20
+  → Heap not full (size 3 ≤ 3) → ADD
+  → Heap: {[3,3](d²=18), [-2,4](d²=20), [5,-1](d²=26)}
+  → Gatekeeper: [5,-1] dist²=26
+
+Step 4: Process [1,1]  dist²=2
+  → dist²(2) &lt; gatekeeper(26 at [5,-1]) → SWAP
+  → Heap: {[1,1](d²=2), [3,3](d²=18), [-2,4](d²=20)}
+  → Gatekeeper: [-2,4] dist²=20
+
+Step 5: Process [0,2]  dist²=4
+  → dist²(4) &lt; gatekeeper(20 at [-2,4]) → SWAP
+  → Heap: {[1,1](d²=2), [0,2](d²=4), [3,3](d²=18)}
+  → Gatekeeper: [3,3] dist²=18
+
+═══════════════════════════════════
+ANSWER: K=3 closest → [[1,1], [0,2], [3,3]]
+═══════════════════════════════════
+
+═══ TEST 4: Verify All Solutions Agree ═══
+Points: [[3,3], [5,-1], [-2,4], [1,1], [0,2]], K=2
+  Max-Heap (Gatekeeper): [[1,1], [0,2]]
+  Max-Heap (Simplified): [[1,1], [0,2]]
+  Sorting Approach:      [[1,1], [0,2]]
+  Min-Heap (All n):      [[1,1], [0,2]]
+
+═══ TEST 8: Edge Cases ═══
+Single point [[5,7]], K=1: [[5,7]]
+All same [[1,1],[1,1],[1,1]], K=2: [[1,1], [1,1]]
+With origin [[0,0],[1,1],[2,2]], K=1: [[0,0]]
+Negatives [[-3,-4],[1,1],[-1,-1]], K=2: [[-1,-1], [1,1]]</code></pre></div>
+<hr>
+<h2>📊 PROJECT 38 vs PROJECT 39 — Side-by-Side</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>┌────────────────────┬─────────────────────────┬──────────────────────────────┐
+</span>│ Aspect             │ Project 38              │ Project 39                   │
+│                    │ (Kth Largest Value)      │ (K Closest Points)           │
+├────────────────────┼─────────────────────────┼──────────────────────────────┤
+│ Seeking            │ K LARGEST               │ K SMALLEST (closest)         │
+│ Heap type          │ MIN-heap                │ MAX-heap                     │
+│ Root meaning       │ Smallest of top K       │ Farthest of K closest        │
+│                    │ = Kth largest            │ = Kth closest                │
+│ Comparison metric  │ Raw value               │ Computed distance (x²+y²)    │
+│ Comparator needed? │ No (default works)      │ Yes (custom distance-based)  │
+│ Gatekeeper check   │ num &gt; root → swap       │ dist &lt; rootDist → swap       │
+│ Element type       │ int                     │ int[] (point)                │
+│ Time               │ O(n log K)              │ O(n log K)                   │
+│ Space              │ O(K)                    │ O(K)                         │
+│ Result             │ Single value (peek)     │ K points (drain heap)        │
+└────────────────────┴─────────────────────────┴──────────────────────────────┘
+
+WHAT CHANGED: Heap direction + comparison metric + element type
+WHAT STAYED: Bounded heap structure + gatekeeper logic + complexity</code></pre></div>
+<hr>
+<h2>🧠 KEY TAKEAWAY</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>WHAT WE LEARNED:
+</span>→ The Top K pattern generalizes from RAW VALUES to DERIVED METRICS
+→ Custom Comparator is the KEY that unlocks this generalization
+→ The heap stores ORIGINAL ELEMENTS but orders by COMPUTED PROPERTIES
+→ Same O(n log K) time, O(K) space — regardless of metric complexity
+
+THE GENERALIZATION HIERARCHY:
+  Project 38: Top K by VALUE → simplest form
+  Project 39: Top K by DISTANCE → custom metric
+  Future:     Top K by FREQUENCY → HashMap + heap fusion
+              Top K by SCORE → multi-attribute comparison
+
+THE UNIVERSAL "OPPOSITE HEAP" RULE:
+  → Want K LARGEST/FARTHEST? → MIN-heap (root = weakest elite = gatekeeper)
+  → Want K SMALLEST/CLOSEST? → MAX-heap (root = weakest elite = gatekeeper)
+  → ROOT = ALWAYS the member most likely to be REPLACED
+  → This is true regardless of what metric you compare by
+
+PATTERN SIGNATURE:
+  → "K closest / nearest / smallest" ✓
+  → Comparison by derived property ✓
+  → Custom comparator needed ✓
+  → K &lt;&lt; n ✓
+  → = TOP K ELEMENTS — BOUNDED HEAP + CUSTOM COMPARATOR</code></pre></div>
+<hr>
+<h2>🌉 BRIDGE TO NEXT PROJECT</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>PROJECT 38 taught us:
+</span>→ Bounded heap of size K for Kth largest VALUE
+
+PROJECT 39 taught us:
+→ Same bounded heap but with CUSTOM COMPARATOR for derived metrics
+→ The heap stores original elements, orders by computed properties
+
+PROJECT 40 (Merge K Sorted Lists) will ask:
+→ What if elements come from MULTIPLE SORTED SOURCES?
+→ K sorted linked lists → merge into one sorted list
+→ The heap now serves a DIFFERENT purpose:
+     → Not "keep the top K" → instead "pick the smallest among K candidates"
+     → Min-heap of size K where K = number of lists
+     → Each list contributes its CURRENT HEAD to the heap
+     → Extract min → advance that list's pointer → repeat
+
+THE EVOLUTION:
+  Project 38: Heap as FILTER (keep top K, reject rest)
+  Project 39: Heap as FILTER with custom metric
+  Project 40: Heap as SELECTOR (pick best from K sources, advance)
+
+→ Same data structure — fundamentally different ROLE
+→ This is why understanding the WHY matters more than the HOW</code></pre></div>
+<hr>
+<p><strong>Ready for Project 40: Merge K Sorted Lists (K-way Merge → Min-Heap of List Heads → Multi-Source Merging)?</strong></p>
+</div>
+</div>
+
+<!-- ========== data-index="9" ========== -->
+<div class="chat-message" data-index="9"></div>
+</div>
+<div class="bottom-nav">
+  <a href="project-38.html" class="nav-btn prev">← Prev</a>
+  <div class="nav-center">
+    <span class="nav-project-label">PROJECT 39 of 60</span>
+    <span class="nav-project-title">K Closest Points to Origin</span>
+    <span class="kbd-hint">← → arrow keys to navigate</span>
+  </div>
+  <a href="project-40.html" class="nav-btn next">Next →</a>
+  <a href="index.html" class="nav-btn home">🏠 TOC</a>
+</div>
+<div id="progress-track"><div id="progress-fill"></div></div>
+<div id="progress-pct">0%</div>
+<script src="script.js"></script>
+<script>
+document.addEventListener('keydown', function(e) {
+  if (['INPUT','TEXTAREA'].includes(document.activeElement.tagName)) return;
+  if (e.key === 'ArrowRight' && "project-40.html" !== null) window.location = "project-40.html";
+  if (e.key === 'ArrowLeft' && "project-38.html" !== null) window.location = "project-38.html";
+});
+</script>
+</body>
+</html>

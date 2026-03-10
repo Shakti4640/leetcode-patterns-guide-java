@@ -1,0 +1,766 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PROJECT 41: Sliding Window Median</title>
+<link rel="icon" type="image/png" href="images/favicon.png">
+<link rel="stylesheet" href="styles.css">
+
+</head>
+<body>
+<div id="progress-bar-container"><div id="progress-bar" style="width:69%"></div></div>
+<div id="progress-label">69%</div>
+<div class="page-wrapper">
+<div class="chat-message"><div class="px-2"><h1>PROJECT 41: Sliding Window Median</h1>
+<h2>🎯 Two Heaps → Heap Rebalancing on Window Slide → Lazy Deletion</h2>
+<hr>
+<h2>🧩 THE HYPOTHETICAL PROBLEM</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ You are given an array of integers
+</span>→ You are given a window size K
+→ The window slides from left to right, one position at a time
+→ For EACH window position, find the MEDIAN of the K elements in the window
+→ Return an array of all medians
+
+Median definition:
+  → If K is odd: the middle element when sorted
+  → If K is even: average of the two middle elements
+
+Example 1:
+  Input:  nums = [1, 3, -1, -3, 5, 3, 6, 7], k = 3
+  
+  Window positions:
+    [1,  3, -1] → sorted: [-1, 1, 3]    → median = 1
+    [3, -1, -3] → sorted: [-3, -1, 3]   → median = -1
+    [-1, -3, 5] → sorted: [-3, -1, 5]   → median = -1
+    [-3,  5, 3] → sorted: [-3, 3, 5]    → median = 3
+    [5,  3,  6] → sorted: [3, 5, 6]     → median = 5
+    [3,  6,  7] → sorted: [3, 6, 7]     → median = 6
+  
+  Output: [1.0, -1.0, -1.0, 3.0, 5.0, 6.0]
+
+Example 2:
+  Input:  nums = [1, 2, 3, 4, 2, 3, 1, 4, 2], k = 3
+  Output: [2.0, 3.0, 3.0, 3.0, 2.0, 3.0, 2.0]
+
+Example 3 (even K):
+  Input:  nums = [1, 3, -1, -3, 5, 3], k = 4
+  
+  Window positions:
+    [1, 3, -1, -3] → sorted: [-3, -1, 1, 3] → median = (-1+1)/2 = 0.0
+    [3, -1, -3, 5] → sorted: [-3, -1, 3, 5] → median = (-1+3)/2 = 1.0
+    [-1, -3, 5, 3] → sorted: [-3, -1, 3, 5] → median = (-1+3)/2 = 1.0
+  
+  Output: [0.0, 1.0, 1.0]</code></pre></div>
+<hr>
+<h2>🔍 HOW TO APPROACH IT</h2>
+<h3>Step 1 — Identify the Component Patterns</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>This problem is a FUSION of two patterns we've mastered:
+</span>
+PATTERN 1: Sliding Window (Projects 5, 6, 12)
+  → Fixed-size window of K elements
+  → Window slides right: add one element, remove one element
+  → Compute something for each window position
+
+PATTERN 2: Two Heaps for Median (Project 35)
+  → Max-heap for lower half, min-heap for upper half
+  → Roots of two heaps = the middle elements
+  → Median = root of max-heap (odd) or average of both roots (even)
+
+THE FUSION CHALLENGE:
+  → Project 35: Elements only ENTER the heaps → easy
+  → Project 41: Elements ENTER and LEAVE the heaps → hard
+  → When the window slides:
+       → One new element ENTERS (right side of window)
+       → One old element LEAVES (left side of window)
+  → The element leaving might be DEEP inside a heap
+  → Heaps only support efficient removal of the ROOT
+  → Removing arbitrary elements is O(K) → too slow
+  → THIS is where LAZY DELETION comes in</code></pre></div>
+<h3>Step 2 — Why Direct Removal Fails</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>Standard heap operations:
+</span>  → offer(x):  O(log n) — add to heap
+  → poll():    O(log n) — remove ROOT
+  → remove(x): O(n)     — remove ARBITRARY element (linear scan!)
+
+For each window slide:
+  → We need to remove the element leaving the window
+  → That element could be ANYWHERE in the heap
+  → Java's PriorityQueue.remove(Object): O(n) linear scan
+  → With n = K and (n-K+1) window positions:
+       → Total: O(n * K) → too slow for large inputs
+
+WE NEED A BETTER STRATEGY.</code></pre></div>
+<h3>Step 3 — The Lazy Deletion Insight</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>CORE IDEA: Don't remove elements immediately.
+</span>           Instead, MARK them as "deleted" and clean up LATER.
+
+HOW IT WORKS:
+  → Maintain a HashMap&lt;Integer, Integer&gt; counting "pending deletions"
+  → When an element should leave:
+       → Increment its count in the deletion map
+       → DON'T actually remove from heap yet
+  → When we peek or poll from a heap:
+       → Check if the root is "marked for deletion"
+       → If yes → poll it (discard) → check next root
+       → Repeat until root is NOT marked for deletion
+  → This is called "lazy" because deletion happens only when
+    the element surfaces to the root
+
+WHY THIS WORKS:
+  → Elements marked for deletion are GHOSTS in the heap
+  → They occupy space but don't affect correctness
+  → When they eventually reach the root (through other removals)
+       → We discard them instead of using them
+  → The heap's SIZE tracking must account for ghosts
+       → We maintain a LOGICAL size (actual elements minus ghosts)
+       → Separate from the heap's physical size
+
+EFFICIENCY:
+  → Marking for deletion: O(1) — HashMap put
+  → Lazy cleanup at root: O(log K) per cleanup — standard poll
+  → Each element is lazily removed AT MOST ONCE
+  → Amortized: O(log K) per window slide</code></pre></div>
+<h3>Step 4 — Two Heaps + Lazy Deletion Architecture</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>DATA STRUCTURES:
+</span>  → maxHeap: stores LOWER half (larger values near root)
+  → minHeap: stores UPPER half (smaller values near root)
+  → delayedMap: HashMap&lt;Integer, Integer&gt; — counts pending deletions
+  → maxHeapSize: logical size of maxHeap (excluding ghosts)
+  → minHeapSize: logical size of minHeap (excluding ghosts)
+
+INVARIANTS (same as Project 35, but with logical sizes):
+  → maxHeapSize == minHeapSize     (K even)
+  → maxHeapSize == minHeapSize + 1 (K odd)
+  → All elements in maxHeap ≤ all elements in minHeap
+  → Median = maxHeap.peek() (odd K)
+            or (maxHeap.peek() + minHeap.peek()) / 2.0 (even K)
+
+WINDOW SLIDE PROCEDURE:
+  1. ADD new element (entering window from right)
+  2. REMOVE old element (leaving window from left) — lazy
+  3. REBALANCE heaps (adjust logical sizes)
+  4. PRUNE ghost elements from roots (lazy cleanup)
+  5. COMPUTE median from clean roots</code></pre></div>
+<h3>Step 5 — Visualize a Complete Window Slide</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>nums = [1, 3, -1, -3, 5], k = 3
+</span>
+─── INITIAL WINDOW [1, 3, -1] ───
+Build two heaps with first K elements:
+  Sorted: [-1, 1, 3]
+  maxHeap (lower): [-1, 1]  → root = 1
+  minHeap (upper): [3]      → root = 3
+  Sizes: max=2, min=1 (odd K → max has one extra)
+  Median = maxHeap.peek() = 1 ✓
+
+─── SLIDE: Remove 1, Add -3 → Window [3, -1, -3] ───
+
+Step 1 — ADD -3:
+  → -3 ≤ maxHeap.peek(1) → add to maxHeap
+  → maxHeap: [-1, 1, -3] root=1   maxSize=3
+  → minHeap: [3]                    minSize=1
+
+Step 2 — REMOVE 1 (lazy):
+  → 1 is in maxHeap (1 ≤ maxHeap.peek=1)
+  → Mark in delayedMap: {1: 1}
+  → Decrement maxHeapSize: maxSize=2
+  → DON'T actually remove from heap yet
+
+Step 3 — REBALANCE:
+  → maxSize=2, minSize=1 → already balanced for odd K ✓
+
+Step 4 — PRUNE roots:
+  → maxHeap.peek() = 1 → check delayedMap → 1 is marked!
+  → Poll 1 from maxHeap → decrement delayedMap: {1: 0} → remove key
+  → maxHeap.peek() = -1 → not marked → CLEAN ✓
+  → minHeap.peek() = 3 → not marked → CLEAN ✓
+
+Step 5 — MEDIAN:
+  → maxHeap.peek() = -1 → Median = -1 ✓
+  
+  Verify: window [3, -1, -3] → sorted [-3, -1, 3] → median = -1 ✓</code></pre></div>
+<hr>
+<h2>🛠️ HOW CAN WE SOLVE IT</h2>
+<h3>The Complete Algorithm</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>INITIALIZATION:
+</span>  1. Create maxHeap (lower half) — reversed comparator
+  2. Create minHeap (upper half) — default comparator
+  3. Create delayedMap — HashMap&lt;Integer, Integer&gt;
+  4. Initialize maxHeapSize = 0, minHeapSize = 0
+
+PROCESS FIRST WINDOW:
+  5. Sort first K elements
+  6. Lower half → maxHeap, upper half → minHeap
+  7. Set logical sizes accordingly
+  8. Record first median
+
+SLIDE WINDOW (for each new position):
+  9.  outgoing = nums[i - k]  (element leaving)
+  10. incoming = nums[i]       (element entering)
+  
+  11. STEP A — Record lazy deletion for outgoing:
+        delayedMap[outgoing]++
+        if outgoing ≤ maxHeap.peek() → maxHeapSize--
+        else → minHeapSize--
+  
+  12. STEP B — Add incoming to appropriate heap:
+        if incoming ≤ maxHeap.peek() → maxHeap.offer(incoming); maxHeapSize++
+        else → minHeap.offer(incoming); minHeapSize++
+  
+  13. STEP C — Rebalance:
+        if maxHeapSize &gt; minHeapSize + 1:
+            → move maxHeap root to minHeap
+            → maxHeapSize--, minHeapSize++
+        if minHeapSize &gt; maxHeapSize:
+            → move minHeap root to maxHeap
+            → minHeapSize--, maxHeapSize++
+  
+  14. STEP D — Prune ghost elements from BOTH roots:
+        while maxHeap not empty AND maxHeap.peek() is in delayedMap:
+            → poll from maxHeap → decrement delayedMap
+        while minHeap not empty AND minHeap.peek() is in delayedMap:
+            → poll from minHeap → decrement delayedMap
+  
+  15. STEP E — Compute median:
+        if K is odd → median = maxHeap.peek()
+        if K is even → median = (maxHeap.peek() + minHeap.peek()) / 2.0</code></pre></div>
+<hr>
+<h2>✅ WHAT SHOULD YOU DO</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ ALWAYS track LOGICAL sizes separate from physical heap sizes
+</span>     → Physical size includes ghost elements
+     → Logical size = actual live elements
+     → Balance decisions use LOGICAL sizes
+     → heap.size() is UNRELIABLE (includes ghosts)
+
+→ ALWAYS prune BOTH heap roots after rebalancing
+     → Ghosts can end up at root of EITHER heap
+     → After rebalancing, elements move between heaps
+     → A ghost might become the new root
+     → Must clean both roots before computing median
+
+→ ALWAYS determine which heap an element belongs to before lazy-deleting
+     → outgoing ≤ maxHeap.peek() → it's in maxHeap → decrement maxHeapSize
+     → outgoing &gt; maxHeap.peek() → it's in minHeap → decrement minHeapSize
+     → Getting this wrong corrupts the logical size tracking
+
+→ ALWAYS handle the order: delete → add → rebalance → prune → median
+     → This specific order maintains invariants correctly
+     → Changing the order can create temporary invalid states
+
+→ ALWAYS use long or double for median computation with even K
+     → (maxHeap.peek() + minHeap.peek()) can overflow int
+     → Cast to double BEFORE dividing: ((double)a + (double)b) / 2.0
+
+→ ALWAYS initialize heaps from sorted first-K elements
+     → Guarantees correct split from the start
+     → Avoids complex incremental initialization logic</code></pre></div>
+<hr>
+<h2>🚫 WHAT SHOULD YOU NOT DO</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ DO NOT use PriorityQueue.remove(Object) for deletion
+</span>     → O(K) per removal → O(nK) total → too slow
+     → Lazy deletion achieves amortized O(log K) per slide
+
+→ DO NOT use physical heap.size() for balance decisions
+     → Physical size includes ghost elements
+     → Ghost elements don't participate in the median
+     → Using physical size → wrong balance → wrong median
+
+→ DO NOT prune roots BEFORE rebalancing
+     → Rebalancing moves elements between heaps
+     → The moved element might BECOME a ghost at the new root
+     → Prune AFTER rebalancing catches all cases
+
+→ DO NOT forget to handle the case where delayedMap count reaches 0
+     → When count reaches 0 → REMOVE the key from map
+     → Otherwise → future checks see stale entries
+     → delayedMap.containsKey(x) would incorrectly return true
+
+→ DO NOT move ghost elements during rebalancing
+     → When transferring root from one heap to another:
+       → Poll from source → check if it's a ghost → if ghost, discard and retry
+       → Or: prune source root first, THEN transfer
+     → Moving a ghost between heaps corrupts both heaps
+
+→ DO NOT sort the window for each position
+     → Naive approach: sort K elements per window → O(K log K) per position
+     → Total: O(n * K log K) → much slower than O(n log K)</code></pre></div>
+<hr>
+<h2>🔀 WHEN TO USE THIS PATTERN</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>✓ Sliding window + need MEDIAN (or any order-statistic) per window
+</span>✓ Window size K is large enough that per-window sorting is expensive
+✓ Need O(n log K) instead of O(n * K log K)
+✓ Elements enter AND leave the data structure over time
+✓ Heap-based structure is needed but arbitrary deletion is required
+
+GENERALIZATION — Lazy Deletion applies whenever:
+  → You have a heap-based algorithm
+  → Elements need to be removed from ARBITRARY positions
+  → The heap's root is what matters for correctness
+  → Ghost elements deep in the heap don't affect current answers
+  → They only matter when they surface to the root</code></pre></div>
+<hr>
+<h2>🚫 WHEN NOT TO USE THIS PATTERN</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>✗ Window size K is very small (K ≤ 10)
+</span>     → Just sort K elements per window → O(n * K log K) is fine
+     → Simpler code, fewer edge cases
+
+✗ You only need the MAXIMUM or MINIMUM of each window
+     → Use Monotonic Deque → O(n) total → much simpler
+     → Two heaps is overkill for just max or min
+
+✗ You need the Kth element (not median)
+     → Augmented BST (like TreeMap) with count tracking
+     → Or sorted multiset with index access
+
+✗ Elements are from a small range (e.g., 0 to 255)
+     → Use counting/bucket approach → O(n) per window slide
+     → Simpler and faster for bounded integer ranges
+
+✗ Window size equals array size (K = n)
+     → Single median computation → sort once → O(n log n)
+     → No sliding needed</code></pre></div>
+<hr>
+<h2>⚙️ HOW IT ONLY WORKS — Internal Mechanics</h2>
+<h3>Lazy Deletion Deep Dive</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>THE PROBLEM WITH HEAPS:
+</span>  → Heaps are optimized for ROOT operations: peek O(1), poll O(log n)
+  → Finding an arbitrary element: O(n) — must scan entire array
+  → Removing an arbitrary element: O(n) — find + restructure
+  → This is a FUNDAMENTAL limitation of the heap data structure
+
+LAZY DELETION CIRCUMVENTS THIS:
+  → Instead of finding and removing element X deep in the heap
+  → We RECORD that X should be deleted (HashMap entry)
+  → X stays in the heap as a "ghost"
+  → When X eventually becomes the root (through natural heap operations)
+  → We recognize it as a ghost and discard it
+  → The ghost is cleaned up WITHOUT ever searching for it
+
+CORRECTNESS GUARANTEE:
+  → Ghosts only affect us when they're at the ROOT
+  → We ALWAYS prune ghost roots before reading the root value
+  → Therefore: root is ALWAYS a live (non-ghost) element
+  → Median computation reads ONLY roots → always correct
+
+SPACE COST OF GHOSTS:
+  → At any time, at most K ghosts exist (one per window slide)
+  → Actually: ghosts are cleaned up over time
+  → Worst case: heap physical size = K + (some ghosts)
+  → Practical overhead is small</code></pre></div>
+<h3>The Rebalancing Protocol — Step by Step</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>After adding one element and lazily deleting another:
+</span>  → Logical sizes may be off by 1 from the ideal
+
+IDEAL BALANCE (invariant we maintain):
+  → K odd:  maxHeapSize = (K+1)/2, minHeapSize = K/2
+  → K even: maxHeapSize = K/2, minHeapSize = K/2
+
+REBALANCE RULES:
+  Rule 1: maxHeapSize &gt; minHeapSize + 1 → max has too many
+    → Transfer: poll maxHeap root → offer to minHeap
+    → Adjust sizes: maxHeapSize--, minHeapSize++
+    → BUT: the polled root might be a ghost!
+    → Must prune maxHeap root before transferring
+
+  Rule 2: minHeapSize &gt; maxHeapSize → min has too many
+    → Transfer: poll minHeap root → offer to maxHeap
+    → Adjust sizes: minHeapSize--, maxHeapSize++
+    → Same ghost concern → prune first
+
+PRUNE-THEN-TRANSFER:
+  → Before transferring from heap X:
+       while X.peek() is in delayedMap:
+           poll and discard (it's a ghost)
+           decrement delayedMap count
+       → Now X.peek() is a live element → safe to transfer</code></pre></div>
+<h3>Time Complexity — Precise Analysis</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>INITIALIZATION:
+</span>  → Sort first K elements: O(K log K)
+  → Build heaps: O(K)
+  → Total init: O(K log K)
+
+PER WINDOW SLIDE:
+  → Lazy delete (mark): O(1)
+  → Add to heap: O(log K)
+  → Rebalance (at most 1 transfer): O(log K)
+  → Prune roots: AMORTIZED O(log K)
+       → Each element is pruned exactly once across all slides
+       → Total pruning across all slides: O(n log K)
+       → Per slide amortized: O(log K)
+  → Total per slide: O(log K)
+
+TOTAL: O(K log K + n log K) = O(n log K)
+
+COMPARISON WITH ALTERNATIVES:
+  ┌─────────────────────────────┬──────────────────┐
+  │ Approach                    │ Time             │
+  ├─────────────────────────────┼──────────────────┤
+  │ Sort each window            │ O(n * K log K)   │
+  │ Insertion sort maintenance  │ O(n * K)         │
+  │ Two heaps + direct remove   │ O(n * K)         │
+  │ Two heaps + lazy deletion   │ O(n log K)       │
+  │ Balanced BST (TreeMap)      │ O(n log K)       │
+  └─────────────────────────────┴──────────────────┘</code></pre></div>
+<h3>Space Complexity</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ maxHeap: up to K + ghosts ≈ O(K) physical elements
+</span>→ minHeap: up to K + ghosts ≈ O(K) physical elements
+→ delayedMap: up to K entries (bounded by window slides)
+→ Result array: O(n - K + 1)
+→ Total: O(n) for result + O(K) for heaps/map</code></pre></div>
+<h3>Why TreeMap is an Alternative</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>Java's TreeMap is a balanced BST → supports:
+</span>  → add: O(log K)
+  → remove arbitrary: O(log K)  ← THIS is what heaps can't do!
+  → first/last: O(log K)
+
+BUT:
+  → TreeMap doesn't handle duplicates natively
+  → Need TreeMap&lt;Integer, Integer&gt; for counts → extra complexity
+  → OR use index-augmented entries → even more complex
+  → Constant factors are larger than heap operations
+  → Lazy deletion on heaps is FASTER in practice
+
+INTERVIEW PREFERENCE:
+  → Two heaps + lazy deletion → shows deeper understanding
+  → TreeMap → acceptable but less impressive
+  → Both are O(n log K) → choose based on comfort</code></pre></div>
+<hr>
+<h2>⚠️ COMMON PITFALLS AND FAILURE MODES</h2>
+<h3>Pitfall 1: Wrong Heap Assignment for Outgoing Element</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>When marking an element for lazy deletion, you must know
+</span>WHICH heap it logically belongs to → affects logical size tracking.
+
+RULE: If outgoing ≤ maxHeap.peek() → it's in the lower half (maxHeap)
+      If outgoing &gt; maxHeap.peek() → it's in the upper half (minHeap)
+
+WRONG:
+  delayedMap.merge(outgoing, 1, Integer::sum);
+  maxHeapSize--;  // ← ALWAYS decrementing maxHeap → WRONG
+
+CORRECT:
+  delayedMap.merge(outgoing, 1, Integer::sum);
+  if (outgoing &lt;= maxHeap.peek()) {
+      maxHeapSize--;
+  } else {
+      minHeapSize--;
+  }
+
+EDGE CASE: What if maxHeap is empty when checking?
+  → Only happens if all elements are in minHeap
+  → Shouldn't happen with correct balance maintenance
+  → Guard with: if (!maxHeap.isEmpty() &amp;&amp; outgoing &lt;= maxHeap.peek())</code></pre></div>
+<h3>Pitfall 2: Ghost Elements Transferred During Rebalance</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>When rebalancing, you poll from one heap and offer to another.
+</span>If the polled element is a GHOST → you just moved garbage.
+
+WRONG:
+  // maxHeap too big → transfer root to minHeap
+  int transferred = maxHeap.poll();
+  minHeap.offer(transferred);
+  maxHeapSize--;
+  minHeapSize++;
+  // BUT: transferred might be a ghost → corrupts minHeap
+
+CORRECT:
+  // Prune maxHeap root first
+  pruneHeap(maxHeap);
+  // NOW root is guaranteed live
+  int transferred = maxHeap.poll();
+  minHeap.offer(transferred);
+  maxHeapSize--;
+  minHeapSize++;</code></pre></div>
+<h3>Pitfall 3: Integer Overflow in Median Calculation</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>For even K: median = (maxHeap.peek() + minHeap.peek()) / 2.0
+</span>
+If both values are large:
+  maxHeap.peek() = 2,000,000,000
+  minHeap.peek() = 2,000,000,000
+  Sum = 4,000,000,000 → OVERFLOW int!
+
+FIX:
+  double median = ((double) maxHeap.peek() + (double) minHeap.peek()) / 2.0;
+  OR:
+  double median = maxHeap.peek() / 2.0 + minHeap.peek() / 2.0;
+  (second form avoids intermediate overflow entirely)</code></pre></div>
+<h3>Pitfall 4: Delayed Map Stale Entries</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>When decrementing a count in delayedMap:
+</span>  → If count reaches 0 → MUST remove the key
+
+WRONG:
+  delayedMap.put(val, delayedMap.get(val) - 1);
+  // Count is now 0 but key still exists
+  // Future delayedMap.containsKey(val) returns TRUE
+  // Ghost check incorrectly fires on a live element!
+
+CORRECT:
+  int newCount = delayedMap.get(val) - 1;
+  if (newCount == 0) {
+      delayedMap.remove(val);
+  } else {
+      delayedMap.put(val, newCount);
+  }</code></pre></div>
+<h3>Pitfall 5: Duplicate Values Across Heaps</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>nums = [1, 1, 1, 1, 1], k = 3
+</span>All values are 1 → both heaps contain 1's.
+
+When removing a 1 → which heap does it belong to?
+  → Check: 1 ≤ maxHeap.peek(1) → YES → it's in maxHeap
+  → This is correct even with duplicates
+  → The ≤ comparison handles equality correctly
+
+BUT: delayedMap tracks by VALUE, not by heap membership.
+  → If we mark "1" for deletion and it's in maxHeap
+  → But the ghost-check fires on minHeap's root (also 1)
+  → We might accidentally prune a LIVE element from minHeap!
+
+SOLUTION: The pruneHeap function only fires on the SPECIFIC heap
+being pruned. Both heaps share the delayedMap, but:
+  → We only prune a value from a heap when it's at THAT heap's root
+  → The logical size tracking ensures correct balance
+  → Even if the "wrong" heap's ghost is pruned, sizes stay correct
+     because the ghost was already counted in the right heap's size
+
+ACTUALLY → this IS a subtle issue. The safest approach:
+  → delayedMap is shared → a ghost value at ANY root gets cleaned
+  → Logical sizes were already adjusted when we MARKED the deletion
+  → Physical removal during pruning doesn't change logical sizes
+  → Therefore: it doesn't matter WHICH heap physically holds the ghost
+  → The logical accounting was done correctly at mark time</code></pre></div>
+<h3>Pitfall 6: Empty Heap During Pruning</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>Pruning loop:
+</span>  while (!heap.isEmpty() &amp;&amp; delayedMap.containsKey(heap.peek())) {
+      int ghost = heap.poll();
+      // decrement delayed count
+  }
+
+WITHOUT the isEmpty() check:
+  → If heap becomes empty during pruning → peek() throws exception
+  → ALWAYS check emptiness before peeking</code></pre></div>
+<hr>
+<h2>📈 SCALABILITY CONSIDERATIONS</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>SCENARIO 1: Large array, moderate window
+</span>  → n = 10,000,000, K = 1,000
+  → Two heaps + lazy deletion: O(10^7 * log 1000) ≈ O(10^7 * 10) = 10^8
+  → Sort each window: O(10^7 * 1000 * 10) = 10^11 → way too slow
+  → Lazy deletion wins by 1000x
+
+SCENARIO 2: Large array, small window
+  → n = 10,000,000, K = 5
+  → Two heaps: O(10^7 * log 5) ≈ O(10^7 * 2.3) = 23M ops
+  → Sort each window: O(10^7 * 5 * 2.3) ≈ 115M ops
+  → Heap wins but sort is acceptable for tiny K
+
+SCENARIO 3: Large array, large window
+  → n = 10,000,000, K = 5,000,000
+  → Two heaps: O(10^7 * log 5*10^6) ≈ O(10^7 * 22.3) = 223M ops
+  → Only ~5 window positions → fast regardless
+  → Initialization dominates: O(K log K) ≈ O(5*10^6 * 22.3) = 112M ops
+
+MEMORY SCALING:
+  → Heap physical size ≤ K + number of active ghosts
+  → Ghosts are bounded: at most O(K) at any time
+  → Total memory: O(K)
+  → For K = 1,000,000 → ~4MB for int heaps → manageable</code></pre></div>
+<hr>
+<h2>🔍 INTERPRETABILITY CONSIDERATIONS</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>MENTAL MODEL — "A Judge's Scorecard with Corrections"
+</span>
+Project 35 (Median from Stream):
+  → Judge receives scores one by one
+  → Splits into "low pile" and "high pile"
+  → Median = top of low pile (or average of both tops)
+  → Scores only arrive → piles only grow
+
+Project 41 (Sliding Window Median):
+  → Judge receives scores one by one BUT
+  → Oldest score EXPIRES (falls off the window)
+  → Judge marks expired scores with a red X (lazy deletion)
+  → Red X scores stay in the pile but are IGNORED
+  → When a red X score rises to the top of a pile → discard it
+  → Judge always looks at the TOP of each pile for the median
+  → Tops are ALWAYS clean (non-red-X) due to pruning
+
+WHY LAZY:
+  → Digging through the pile to remove a specific score is SLOW
+  → Marking it and waiting for it to surface is EFFICIENT
+  → Scores deep in the pile don't affect the median anyway
+  → Only the TOP matters → only clean the top
+
+DEBUGGING:
+  → Print both heap roots + logical sizes after each step
+  → Print delayedMap contents to see pending ghosts
+  → Verify: logical maxSize + logical minSize always = K
+  → Verify: median values are non-decreasing? NO — they can fluctuate
+  → Verify: each median matches naive sorted-window computation</code></pre></div>
+<hr>
+<div class="github-btn-wrap"><a class="github-btn" href="https://github.com/Shakti4640/leetcode-patterns-guide-java/tree/main/project- (41)" target="_blank" rel="noopener"><svg viewBox="0 0 24 24"><path d="M12 .5C5.37.5 0 5.87 0 12.5c0 5.3 3.44 9.8 8.2 11.39.6.11.82-.26.82-.58v-2.03c-3.34.73-4.04-1.61-4.04-1.61-.55-1.39-1.34-1.76-1.34-1.76-1.09-.74.08-.73.08-.73 1.2.09 1.84 1.24 1.84 1.24 1.07 1.83 2.8 1.3 3.49 1 .1-.78.42-1.3.76-1.6-2.67-.3-5.47-1.33-5.47-5.93 0-1.31.47-2.38 1.24-3.22-.14-.3-.54-1.52.1-3.18 0 0 1.01-.32 3.3 1.23a11.5 11.5 0 0 1 3-.4c1.02 0 2.04.13 3 .4 2.28-1.55 3.29-1.23 3.29-1.23.64 1.66.24 2.88.12 3.18.77.84 1.23 1.91 1.23 3.22 0 4.61-2.81 5.63-5.48 5.92.43.37.81 1.1.81 2.22v3.29c0 .32.21.7.82.58C20.56 22.3 24 17.8 24 12.5 24 5.87 18.63.5 12 .5z"/></svg>💻 View Complete Java Code on GitHub</a></div>
+
+<hr>
+<h2>🔑 EXPECTED OUTPUT</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>╔═══════════════════════════════════════════════════╗
+</span>║  PROJECT 41: Sliding Window Median                ║
+║  Pattern: Two Heaps + Lazy Deletion               ║
+╚═══════════════════════════════════════════════════╝
+
+═══ TEST 1: Odd K with Full Trace ═══
+Array: [1, 3, -1, -3, 5, 3, 6, 7]  K=3
+═══════════════════════════════════════════
+Window 0: [1, 3, -1]
+  maxHeap root: -1 (logicalSize=2)
+  minHeap root: 3 (logicalSize=1)
+  Delayed: {}
+  ★ Median = 1.0
+───────────────────────────────────────
+Window 1: [3, -1, -3]
+  Outgoing: 1  Incoming: -3
+  → Mark 1 for lazy deletion (from maxHeap) maxSize=1
+  → Add -3 to maxHeap. maxSize=2
+  maxHeap root: -1 (logicalSize=2)
+  minHeap root: 3 (logicalSize=1)
+  Delayed: {}
+  ★ Median = -1.0
+───────────────────────────────────────
+Window 2: [-1, -3, 5]
+  Outgoing: 3  Incoming: 5
+  → Mark 3 for lazy deletion (from minHeap) minSize=0
+  → Add 5 to minHeap. minSize=1
+  maxHeap root: -1 (logicalSize=2)
+  minHeap root: 5 (logicalSize=1)
+  Delayed: {}
+  ★ Median = -1.0
+...
+═══════════════════════════════════════════
+RESULT: [1.0, -1.0, -1.0, 3.0, 5.0, 6.0]
+
+═══ TEST 3: Verify Against Brute Force ═══
+  Test 1: [1, 3, -1, -3, 5, 3, 6, 7] K=3
+    Heap:  [1.0, -1.0, -1.0, 3.0, 5.0, 6.0]
+    Brute: [1.0, -1.0, -1.0, 3.0, 5.0, 6.0]
+    Match: ✓
+  Test 2: [1, 2, 3, 4, 2, 3, 1, 4, 2] K=3
+    Heap:  [2.0, 3.0, 3.0, 3.0, 2.0, 3.0, 2.0]
+    Brute: [2.0, 3.0, 3.0, 3.0, 2.0, 3.0, 2.0]
+    Match: ✓
+  Test 3: [5, 5, 5, 5, 5] K=2
+    Heap:  [5.0, 5.0, 5.0, 5.0]
+    Brute: [5.0, 5.0, 5.0, 5.0]
+    Match: ✓
+  Test 4: [-1, -2, -3, -4, -5] K=3
+    Heap:  [-2.0, -3.0, -4.0]
+    Brute: [-2.0, -3.0, -4.0]
+    Match: ✓
+  Test 5: [1, 4, 2, 3] K=4
+    Heap:  [2.5]
+    Brute: [2.5]
+    Match: ✓</code></pre></div>
+<hr>
+<h2>📊 THE COMPLETE HEAP MASTERY PROGRESSION</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>┌─────────┬───────────────┬────────────────┬───────────────┬─────────────────┐
+</span>│ Project │ Pattern       │ Heap Role      │ Key Mechanic  │ New Concept     │
+├─────────┼───────────────┼────────────────┼───────────────┼─────────────────┤
+│ 35      │ Two Heaps     │ SPLITTER       │ Balance two   │ Heap-based      │
+│         │ (Median)      │                │ halves        │ median          │
+├─────────┼───────────────┼────────────────┼───────────────┼─────────────────┤
+│ 38      │ Top K         │ FILTER         │ Bounded size  │ Gatekeeper      │
+│         │ (Kth Largest) │                │ reject/accept │ at root         │
+├─────────┼───────────────┼────────────────┼───────────────┼─────────────────┤
+│ 39      │ Top K         │ FILTER +       │ Custom metric │ Derived         │
+│         │ (K Closest)   │ custom compare │ comparison    │ comparator      │
+├─────────┼───────────────┼────────────────┼───────────────┼─────────────────┤
+│ 40      │ K-way Merge   │ SELECTOR       │ Pick best of  │ Flow-through    │
+│         │               │                │ K candidates  │ pipeline        │
+├─────────┼───────────────┼────────────────┼───────────────┼─────────────────┤
+│ 41      │ Window Median │ SPLITTER +     │ Elements      │ LAZY DELETION   │
+│         │               │ LAZY DELETE    │ enter &amp; leave │ ghost tracking  │
+└─────────┴───────────────┴────────────────┴───────────────┴─────────────────┘
+
+EACH PROJECT ADDED ONE NEW DIMENSION:
+  35 → Core two-heap median (add only)
+  38 → Bounded heap filtering (add + bounded reject)
+  39 → Custom comparison metric (derived property)
+  40 → Pipeline flow-through (add + extract + replace)
+  41 → Lazy deletion (add + arbitrary remove + ghost management)</code></pre></div>
+<hr>
+<h2>🧠 KEY TAKEAWAY</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>WHAT WE LEARNED:
+</span>→ When heaps need ARBITRARY element removal → use LAZY DELETION
+→ Mark elements for deletion in a HashMap → clean up when they surface
+→ Maintain LOGICAL sizes separate from PHYSICAL heap sizes
+→ Balance decisions use logical sizes → median reads clean roots
+→ Order matters: delete → add → rebalance → prune → read
+
+THE LAZY DELETION PRINCIPLE:
+→ "Don't search for what you can't efficiently find"
+→ "Mark it, forget it, clean it when it comes to you"
+→ This principle appears in many advanced data structures:
+     → Lazy propagation in segment trees
+     → Tombstones in hash tables
+     → Soft deletes in databases
+     → Mark-and-sweep in garbage collection
+
+THE FUSION LESSON:
+→ Real problems rarely use ONE pattern in isolation
+→ This problem FUSED:
+     → Sliding Window (Projects 5, 6, 12) → window management
+     → Two Heaps (Project 35) → median computation
+     → Lazy Deletion (NEW) → efficient arbitrary removal
+→ Pattern mastery = knowing how to COMBINE patterns
+
+COMPLEXITY ACHIEVEMENT:
+→ Brute force: O(n * K log K) — sort each window
+→ Our solution: O(n log K) — exponentially better for large K
+→ The lazy deletion technique is what bridges the gap</code></pre></div>
+<hr>
+<h2>🌉 BRIDGE TO NEXT PROJECT</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>PROJECT 41 taught us:
+</span>→ Two heaps + lazy deletion for sliding window median
+→ Fusing Sliding Window + Two Heaps + ghost management
+→ Elements ENTER and LEAVE a heap-based structure efficiently
+
+PROJECT 42 (Combination Sum) will shift to a completely different domain:
+→ BACKTRACKING — exploring ALL possible combinations
+→ Given candidates and a target → find all unique combinations summing to target
+→ This builds on Project 28 (Subsets) and Project 29 (Permutations)
+→ But adds PRUNING — cutting off branches that can't lead to valid solutions
+→ The combination of "explore all" + "cut early" = efficient backtracking
+
+The progression:
+  Project 28: Generate ALL subsets (no constraint)
+  Project 29: Generate ALL permutations (no constraint)
+  Project 42: Generate combinations WITH A TARGET CONSTRAINT
+              → Not all branches are worth exploring
+              → Pruning = the key optimization
+              → Sort + early termination = dramatic speedup
+
+→ From heap mastery → to search space exploration
+→ Different pattern family, same progressive complexity approach</code></pre></div>
+<hr>
+<p><strong>Ready for Project 42: Combination Sum (Backtracking → Pruning Branches → Target Reduction Recursion)?</strong></p>
+</div>
+</div>
+
+<!-- ========== data-index="13" ========== -->
+<div class="chat-message" data-index="13"></div>
+</div>
+<div class="bottom-nav">
+  <a href="project-40.html" class="nav-btn prev">← Prev</a>
+  <div class="nav-center">
+    <span class="nav-project-label">PROJECT 41 of 60</span>
+    <span class="nav-project-title">Sliding Window Median</span>
+    <span class="kbd-hint">← → arrow keys to navigate</span>
+  </div>
+  <a href="project-42.html" class="nav-btn next">Next →</a>
+  <a href="index.html" class="nav-btn home">🏠 TOC</a>
+</div>
+<div id="progress-track"><div id="progress-fill"></div></div>
+<div id="progress-pct">0%</div>
+<script src="script.js"></script>
+<script>
+document.addEventListener('keydown', function(e) {
+  if (['INPUT','TEXTAREA'].includes(document.activeElement.tagName)) return;
+  if (e.key === 'ArrowRight' && "project-42.html" !== null) window.location = "project-42.html";
+  if (e.key === 'ArrowLeft' && "project-40.html" !== null) window.location = "project-40.html";
+});
+</script>
+</body>
+</html>

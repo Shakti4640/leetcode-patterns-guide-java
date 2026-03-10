@@ -1,0 +1,940 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PROJECT 29: Generate All Permutations of an Array</title>
+<link rel="icon" type="image/png" href="images/favicon.png">
+<link rel="stylesheet" href="styles.css">
+
+</head>
+<body>
+<div id="progress-bar-container"><div id="progress-bar" style="width:49%"></div></div>
+<div id="progress-label">49%</div>
+<div class="page-wrapper">
+<div class="chat-message"><div class="px-2"><h1>PROJECT 29: Generate All Permutations of an Array</h1>
+<h2>🎯 Subsets/Backtracking → Swap-Based Generation → Positional Placement</h2>
+<hr>
+<h2>🔗 DEPENDENCY CHAIN</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>Project 26 (All Root-to-Leaf Paths)
+</span>    → Introduced backtracking on physical trees
+    → Add → recurse → remove pattern
+
+Project 28 (Generate All Subsets)
+    → Backtracking on IMPLICIT decision trees
+    → startIndex to prevent duplicate subsets
+    → Order didn't matter: {1,2} == {2,1}
+
+PROJECT 29 (THIS):
+    → Order MATTERS: [1,2,3] ≠ [3,2,1]
+    → Every element must appear exactly ONCE
+    → But in ANY position
+    → startIndex no longer works → need new branching strategy
+    → Two approaches: visited-set method AND swap method</code></pre></div>
+<hr>
+<h2>🧩 THE HYPOTHETICAL PROBLEM</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ Given an array of DISTINCT integers
+</span>→ Generate ALL possible permutations
+→ A permutation uses EVERY element exactly once
+→ Order matters: [1,2,3] and [3,2,1] are DIFFERENT permutations
+→ Return all permutations as a list of lists
+
+Example:
+  Input:  [1, 2, 3]
+  Output: [[1,2,3], [1,3,2], [2,1,3], [2,3,1], [3,1,2], [3,2,1]]
+
+  Total permutations = n! = 3! = 6
+
+Why n!?
+→ For position 0: n choices (any element)
+→ For position 1: n-1 choices (remaining elements)
+→ For position 2: n-2 choices
+→ ...
+→ For position n-1: 1 choice (last remaining element)
+→ Total: n × (n-1) × (n-2) × ... × 1 = n!
+
+Another example:
+  Input:  [5, 10]
+  Output: [[5,10], [10,5]]
+  Total: 2! = 2</code></pre></div>
+<hr>
+<h2>🔍 HOW TO APPROACH IT</h2>
+<h3>Step 1 — Understand How Permutations Differ from Subsets</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>SUBSETS (Project 28):
+</span>  Input: [1, 2, 3]
+  Question: "Which elements to INCLUDE?"
+  {1,2} and {2,1} are the SAME → only generate once
+  Use startIndex to prevent backward selection
+  Total: 2^n (binary choice per element)
+
+PERMUTATIONS (This Project):
+  Input: [1, 2, 3]
+  Question: "What ORDER to arrange ALL elements?"
+  [1,2,3] and [3,2,1] are DIFFERENT → generate both
+  Must use ALL elements (no skipping)
+  Total: n! (positional choice per slot)
+
+KEY STRUCTURAL DIFFERENCE:
+  Subsets:      variable-length results, order irrelevant
+  Permutations: fixed-length results (always n), order matters</code></pre></div>
+<h3>Step 2 — See the Decision Tree for Permutations</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>For [1, 2, 3], the decision tree asks "which element fills position i?"
+</span>
+                         Position 0: choose from {1,2,3}
+                    /            |             \
+                  1              2               3
+              Pos 1:{2,3}    Pos 1:{1,3}     Pos 1:{1,2}
+              /       \       /       \       /       \
+            2          3    1          3    1          2
+          Pos2:{3}  Pos2:{2} Pos2:{3} Pos2:{1} Pos2:{2} Pos2:{1}
+            |         |       |        |       |        |
+            3         2       3        1       2        1
+          [1,2,3]  [1,3,2]  [2,1,3]  [2,3,1] [3,1,2]  [3,2,1]
+
+Each LEAF is a complete permutation.
+6 leaves = 3! = 6 permutations ✓
+
+At each level:
+→ We pick from REMAINING elements (not yet used)
+→ Unlike subsets where we picked from elements AFTER startIndex
+→ Here we can pick ANY unused element → order varies</code></pre></div>
+<h3>Step 3 — Why startIndex Doesn't Work Here</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>In Project 28 (subsets):
+</span>  for (int i = startIndex; i &lt; nums.length; i++)
+  → This prevents going BACKWARD → avoids [2,1] after [1,2]
+  → Perfect for subsets where order is irrelevant
+
+For permutations:
+  → We WANT [2,1] and [1,2] — they're different permutations
+  → We MUST allow going backward to earlier elements
+  → But we must NOT reuse the same element in one permutation
+
+SOLUTION: Instead of startIndex, use a TRACKING mechanism:
+  Option A: boolean[] visited → tracks which elements are used
+  Option B: swap technique → partitions array into "placed" and "remaining"</code></pre></div>
+<h3>Step 4 — Approach A: Visited Array Method</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>Use a boolean[] visited to track which elements are currently in the permutation.
+</span>
+backtrack(nums, visited, currentPerm, results):
+    if currentPerm.size() == nums.length:
+        results.add(copy of currentPerm)    ← complete permutation
+        return
+    
+    for i = 0 to nums.length - 1:          ← start from 0, not startIndex!
+        if visited[i]: continue              ← skip already-used elements
+        
+        visited[i] = true                    ← MARK as used
+        currentPerm.add(nums[i])             ← CHOOSE
+        backtrack(nums, visited, currentPerm, results)  ← EXPLORE
+        currentPerm.remove(last)             ← UN-CHOOSE
+        visited[i] = false                   ← UNMARK
+
+Walkthrough for [1, 2, 3]:
+  Start: visited=[F,F,F], perm=[]
+  
+  i=0: visit 1 → visited=[T,F,F], perm=[1]
+    i=0: visited[0]=T → skip
+    i=1: visit 2 → visited=[T,T,F], perm=[1,2]
+      i=0: skip, i=1: skip
+      i=2: visit 3 → visited=[T,T,T], perm=[1,2,3]
+        SIZE == 3 → SAVE [1,2,3] ✓
+        unvisit 3 → visited=[T,T,F], perm=[1,2]
+    unvisit 2 → visited=[T,F,F], perm=[1]
+    i=2: visit 3 → visited=[T,F,T], perm=[1,3]
+      i=0: skip
+      i=1: visit 2 → visited=[T,T,T], perm=[1,3,2]
+        SIZE == 3 → SAVE [1,3,2] ✓
+        ...
+  ...and so on for all 6 permutations</code></pre></div>
+<h3>Step 5 — Approach B: Swap Method</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>Instead of a visited array, use the ARRAY ITSELF to track placement.
+</span>
+Idea: Partition the array into two regions:
+  → indices [0, fixedIndex-1]: elements already PLACED (fixed positions)
+  → indices [fixedIndex, n-1]: elements still AVAILABLE to place
+
+At each level, swap an available element into the current position:
+
+backtrack(nums, fixedIndex, results):
+    if fixedIndex == nums.length:
+        results.add(arrayToList(nums))    ← all positions filled
+        return
+    
+    for i = fixedIndex to nums.length - 1:
+        swap(nums, fixedIndex, i)          ← place nums[i] at fixedIndex
+        backtrack(nums, fixedIndex + 1, results)   ← fix next position
+        swap(nums, fixedIndex, i)          ← UNDO swap (backtrack)
+
+Walkthrough for [1, 2, 3]:
+  fixedIndex=0: array=[1,2,3]
+    swap(0,0): [1,2,3] → fix pos 0 as 1
+      fixedIndex=1: array=[1,2,3]
+        swap(1,1): [1,2,3] → fix pos 1 as 2
+          fixedIndex=2: [1,2,3] → SAVE ✓
+        unswap: [1,2,3]
+        swap(1,2): [1,3,2] → fix pos 1 as 3
+          fixedIndex=2: [1,3,2] → SAVE ✓
+        unswap: [1,2,3]
+    unswap: [1,2,3]
+    
+    swap(0,1): [2,1,3] → fix pos 0 as 2
+      fixedIndex=1: array=[2,1,3]
+        swap(1,1): [2,1,3] → fix pos 1 as 1
+          fixedIndex=2: [2,1,3] → SAVE ✓
+        unswap: [2,1,3]
+        swap(1,2): [2,3,1] → fix pos 1 as 3
+          fixedIndex=2: [2,3,1] → SAVE ✓
+        unswap: [2,1,3]
+    unswap: [1,2,3]
+    
+    swap(0,2): [3,2,1] → fix pos 0 as 3
+      fixedIndex=1: array=[3,2,1]
+        swap(1,1): [3,2,1] → fix pos 1 as 2
+          fixedIndex=2: [3,2,1] → SAVE ✓
+        unswap: [3,2,1]
+        swap(1,2): [3,1,2] → fix pos 1 as 1
+          fixedIndex=2: [3,1,2] → SAVE ✓
+        unswap: [3,2,1]
+    unswap: [1,2,3]
+
+All 6 permutations generated ✓
+
+ADVANTAGE of swap method:
+→ No extra visited array → O(1) auxiliary space
+→ No separate currentPerm list → array IS the permutation
+→ More memory efficient
+→ But harder to understand initially</code></pre></div>
+<h3>Step 6 — Comparing the Two Approaches</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>                    VISITED ARRAY          SWAP METHOD
+</span>Extra space         O(n) visited[]         O(1)
+                    O(n) currentPerm
+Clarity             Very intuitive         Requires practice
+Deep copy needed?   Yes (currentPerm)      Yes (array snapshot)
+Preserves input?    Yes (nums unchanged)   Yes (swaps undone)
+Duplicate handling  Easy to add            Harder to add
+Interview choice    More common            More elegant
+
+RECOMMENDATION:
+→ Learn BOTH
+→ Use visited method for clarity and when extending to complex variants
+→ Use swap method when space matters or interviewer asks for it
+→ The CORE BACKTRACKING PATTERN is the same in both</code></pre></div>
+<hr>
+<h2>🛠️ HOW CAN WE SOLVE IT — Detailed Mechanics</h2>
+<h3>Visited Method: The Loop Logic</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>for (int i = 0; i &lt; nums.length; i++):
+</span>    → Starts from 0 EVERY TIME (not from startIndex like subsets)
+    → WHY? Because element at index 0 might not be used yet
+    → Example: we placed element at index 2 first → index 0 is still available
+    → The visited[] array tells us which are taken
+
+    if (visited[i]) continue:
+    → This element is already in the current permutation
+    → Cannot reuse → skip it
+    → This replaces startIndex's role of preventing duplicates
+    → But allows ANY ordering (startIndex prevented backward ordering)
+
+The combination of "loop from 0" + "skip visited" =
+    → Can pick any unused element at any position
+    → But never picks the same element twice in one permutation</code></pre></div>
+<h3>Swap Method: Why Swaps Are Backtracking</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>swap(fixedIndex, i):
+</span>    → Takes element at index i and places it at fixedIndex
+    → This "assigns" that element to position fixedIndex
+    → All elements before fixedIndex are "fixed" (placed)
+    → All elements from fixedIndex onward are "available"
+
+After recursion, swap(fixedIndex, i) again:
+    → UNDOES the assignment
+    → Puts the element BACK where it was
+    → Restores the array to pre-swap state
+    → This IS backtracking — just expressed as swap/unswap
+
+The array acts as BOTH:
+    → The source of available elements (right portion)
+    → The current permutation being built (left portion)
+    → No separate currentPerm list needed</code></pre></div>
+<hr>
+<h2>✅ WHAT SHOULD YOU DO</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ ALWAYS loop from 0 (not startIndex) in the visited method
+</span>     → Every unused element is a candidate for every position
+     → startIndex would prevent backward ordering → wrong for permutations
+
+→ ALWAYS mark visited BEFORE recursing, unmark AFTER
+     → visited[i] = true → add → recurse → remove → visited[i] = false
+     → This is the "choose → explore → unchoose" template
+
+→ ALWAYS deep copy when saving a complete permutation
+     → Visited method: results.add(new ArrayList&lt;&gt;(currentPerm))
+     → Swap method: copy the array into a new list
+
+→ ALWAYS verify the base case
+     → Permutation is complete when currentPerm.size() == nums.length
+     → Or when fixedIndex == nums.length (swap method)
+     → This is when ALL elements have been placed
+
+→ ALWAYS undo BOTH the add and the visited mark
+     → Forgetting either one corrupts subsequent explorations
+     → add/remove handles the permutation list
+     → true/false handles the availability tracking
+     → Both must be symmetric
+
+→ ALWAYS verify output count = n!
+     → n=1 → 1, n=2 → 2, n=3 → 6, n=4 → 24, n=5 → 120
+     → If count is wrong → backtracking logic has a bug</code></pre></div>
+<hr>
+<h2>🚫 WHAT SHOULD YOU NOT DO</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ DO NOT use startIndex like subsets
+</span>     BAD:
+       for (int i = startIndex; i &lt; nums.length; i++) {
+           currentPerm.add(nums[i]);
+           backtrack(nums, i + 1, currentPerm, results);
+           currentPerm.remove(last);
+       }
+     → This generates SUBSETS, not permutations
+     → [2,1] is never generated because 1 comes before 2 (startIndex blocks it)
+     → Missing half the permutations
+
+→ DO NOT forget the visited check
+     BAD:
+       for (int i = 0; i &lt; nums.length; i++) {
+           // no visited check!
+           currentPerm.add(nums[i]);
+           backtrack(nums, visited, currentPerm, results);
+           currentPerm.remove(last);
+       }
+     → This generates [1,1,1], [1,1,2], [1,1,3], etc.
+     → Same element used multiple times → NOT permutations
+
+→ DO NOT forget to unswap in the swap method
+     BAD:
+       for (int i = fixedIndex; i &lt; nums.length; i++) {
+           swap(nums, fixedIndex, i);
+           backtrack(nums, fixedIndex + 1, results);
+           // MISSING: swap(nums, fixedIndex, i);
+       }
+     → Array is permanently modified after each iteration
+     → Second iteration works on corrupted array
+     → Results are garbage
+
+→ DO NOT confuse "permutation" with "arrangement of subset"
+     → Permutation of [1,2,3] → all arrangements of ALL three elements
+     → Arrangement of subsets → all orderings of all subset sizes
+     → If problem says "permutations" → use all elements, order matters
+     → If problem says "arrangements of k elements" → combine subsets + permutations
+
+→ DO NOT try to generate permutations for large n (n &gt; 10-12)
+     → 10! = 3,628,800 → feasible
+     → 12! = 479,001,600 → borderline
+     → 15! = 1,307,674,368,000 → absolutely impossible
+     → n! grows FASTER than 2^n → even more restrictive than subsets</code></pre></div>
+<hr>
+<h2>🔀 WHEN TO USE THIS PATTERN</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>✓ Problem asks for "all permutations" or "all orderings"
+</span>✓ Problem asks for "all arrangements" of n elements
+✓ Every element must appear EXACTLY ONCE in each result
+✓ ORDER of elements matters in the output
+✓ The output is n! and that's expected (n ≤ ~10-12)
+
+RECOGNIZABLE KEYWORDS:
+→ "generate all permutations"
+→ "all possible orderings"
+→ "rearrange in all ways"
+→ "next permutation" (related but different technique)
+
+VARIANTS:
+→ Permutations of distinct elements → this project
+→ Permutations with duplicate elements → sort + skip at same level
+→ Permutations of size k from n → stop when size == k
+→ Next permutation (single next) → different algorithm entirely</code></pre></div>
+<hr>
+<h2>🚫 WHEN NOT TO USE THIS PATTERN</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>✗ Order doesn't matter → that's subsets (Project 28)
+</span>✗ Elements can be reused → that's "permutations with repetition" → different structure
+✗ n &gt; 12 → n! is too large to enumerate
+✗ Problem asks for SINGLE specific permutation (e.g., next permutation)
+     → Don't enumerate all — use targeted algorithm
+✗ Problem asks for COUNT of permutations → just compute n! mathematically
+✗ Problem asks for OPTIMAL permutation → use DP or greedy, not enumeration</code></pre></div>
+<hr>
+<h2>⚙️ HOW IT ONLY WORKS — Internal Mechanics</h2>
+<h3>Visited Method: State Tracking Analysis</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>At any point during recursion, the state is:
+</span>
+  visited[] = [T, F, T, F]  → elements 0 and 2 are used
+  currentPerm = [nums[0], nums[2]]  → current partial permutation
+  
+  Available elements: those with visited[i] = false
+  → nums[1] and nums[3] can still be placed
+  
+  Next recursive call tries:
+    → Place nums[1] at position 2 → perm becomes [nums[0], nums[2], nums[1]]
+    → Place nums[3] at position 2 → perm becomes [nums[0], nums[2], nums[3]]
+
+The visited array creates a PARTITION:
+  → USED set: elements in currentPerm (visited = true)
+  → AVAILABLE set: elements not in currentPerm (visited = false)
+  → Each recursive level moves one element from AVAILABLE to USED
+  → Backtracking moves it back from USED to AVAILABLE</code></pre></div>
+<h3>Swap Method: Array Partition Analysis</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>At any point during recursion with fixedIndex = k:
+</span>
+  nums = [fixed₀, fixed₁, ..., fixedₖ₋₁ | available_k, available_{k+1}, ..., available_{n-1}]
+         ←——— placed (positions 0..k-1) ——→←——— remaining (positions k..n-1) ———→
+
+  The array IS the state:
+  → Left portion [0..k-1]: the partial permutation built so far
+  → Right portion [k..n-1]: elements still available to place
+
+  swap(fixedIndex, i) with i ≥ fixedIndex:
+  → Takes an available element (at index i) and places it at position fixedIndex
+  → Effectively: "I choose nums[i] for position k"
+  → Then recurse with fixedIndex+1 → right portion shrinks by 1
+  
+  After recursion, swap again:
+  → Puts the element back → right portion restored
+  → Ready to try a different element at position k</code></pre></div>
+<h3>Why Swap Method Produces Correct Permutations</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>CLAIM: The swap method generates all n! permutations exactly once.
+</span>
+PROOF:
+→ At fixedIndex=0: we try all n elements at position 0
+     → Each element gets its turn (loop i from 0 to n-1)
+→ For each choice at position 0: we try all (n-1) remaining at position 1
+→ For each choice at positions 0,1: we try all (n-2) remaining at position 2
+→ ...
+→ Total: n × (n-1) × (n-2) × ... × 1 = n! permutations
+
+No duplicates because:
+→ At each level, we only swap with elements in the "available" portion
+→ Each element appears in the available portion exactly once
+→ So each element is tried at each position exactly once
+
+Completeness because:
+→ The loop tries ALL available elements at each position
+→ No element is skipped
+→ Every possible assignment is explored</code></pre></div>
+<h3>Time Complexity</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ Total permutations: n!
+</span>→ Each permutation requires O(n) work to copy into results
+→ Total: O(n × n!)
+
+Breakdown of work at each level:
+  Level 0: n choices → n branches
+  Level 1: n-1 choices per branch → n(n-1) branches
+  Level 2: n-2 choices per branch → n(n-1)(n-2) branches
+  ...
+  Level n-1: 1 choice → n! branches (leaves)
+
+Total nodes in decision tree:
+  n!/0! + n!/1! + n!/2! + ... + n!/n! = n! × (1/0! + 1/1! + ... + 1/n!) ≈ n! × e ≈ 2.718 × n!
+  → O(n!) nodes, each doing O(1) work (excluding copy)
+  → Plus O(n) per leaf for copying
+  → Total: O(n × n!)</code></pre></div>
+<h3>Space Complexity</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>VISITED METHOD:
+</span>→ visited[]: O(n)
+→ currentPerm: O(n)
+→ Recursion depth: O(n)
+→ Auxiliary: O(n)
+→ Output: O(n × n!)
+
+SWAP METHOD:
+→ No extra arrays (uses input array)
+→ Recursion depth: O(n)
+→ Auxiliary: O(n) (stack only)
+→ Output: O(n × n!)
+
+Swap method wins on auxiliary space: O(n) vs O(n) — same big-O,
+but swap avoids the visited[] and currentPerm list allocations.</code></pre></div>
+<hr>
+<h2>⚠️ COMMON PITFALLS AND FAILURE MODES</h2>
+<h3>Pitfall 1: Using startIndex Instead of Visited</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span class="token" style="color: rgb(0, 128, 0); font-style: italic;">// ❌ WRONG — this generates subsets, not permutations</span><span>
+</span><span></span><span class="token" style="color: rgb(0, 0, 255);">void</span><span> </span><span class="token" style="color: rgb(57, 58, 52);">backtrack</span><span class="token" style="color: rgb(57, 58, 52);">(</span><span class="token" style="color: rgb(0, 0, 255);">int</span><span class="token" style="color: rgb(57, 58, 52);">[</span><span class="token" style="color: rgb(57, 58, 52);">]</span><span> nums</span><span class="token" style="color: rgb(57, 58, 52);">,</span><span> </span><span class="token" style="color: rgb(0, 0, 255);">int</span><span> start</span><span class="token" style="color: rgb(57, 58, 52);">,</span><span> </span><span class="token" style="color: rgb(43, 145, 175);">List</span><span class="token generics" style="color: rgb(57, 58, 52);">&lt;</span><span class="token generics" style="color: rgb(43, 145, 175);">Integer</span><span class="token generics" style="color: rgb(57, 58, 52);">&gt;</span><span> perm</span><span class="token" style="color: rgb(57, 58, 52);">,</span><span> </span><span class="token" style="color: rgb(43, 145, 175);">List</span><span class="token generics" style="color: rgb(57, 58, 52);">&lt;</span><span class="token generics" style="color: rgb(43, 145, 175);">List</span><span class="token generics" style="color: rgb(57, 58, 52);">&lt;</span><span class="token generics" style="color: rgb(43, 145, 175);">Integer</span><span class="token generics" style="color: rgb(57, 58, 52);">&gt;</span><span class="token generics" style="color: rgb(57, 58, 52);">&gt;</span><span> res</span><span class="token" style="color: rgb(57, 58, 52);">)</span><span> </span><span class="token" style="color: rgb(57, 58, 52);">{</span><span>
+</span><span>    </span><span class="token" style="color: rgb(0, 0, 255);">if</span><span> </span><span class="token" style="color: rgb(57, 58, 52);">(</span><span>perm</span><span class="token" style="color: rgb(57, 58, 52);">.</span><span class="token" style="color: rgb(57, 58, 52);">size</span><span class="token" style="color: rgb(57, 58, 52);">(</span><span class="token" style="color: rgb(57, 58, 52);">)</span><span> </span><span class="token" style="color: rgb(57, 58, 52);">==</span><span> nums</span><span class="token" style="color: rgb(57, 58, 52);">.</span><span>length</span><span class="token" style="color: rgb(57, 58, 52);">)</span><span> </span><span class="token" style="color: rgb(57, 58, 52);">{</span><span>
+</span><span>        res</span><span class="token" style="color: rgb(57, 58, 52);">.</span><span class="token" style="color: rgb(57, 58, 52);">add</span><span class="token" style="color: rgb(57, 58, 52);">(</span><span class="token" style="color: rgb(0, 0, 255);">new</span><span> </span><span class="token" style="color: rgb(43, 145, 175);">ArrayList</span><span class="token generics" style="color: rgb(57, 58, 52);">&lt;</span><span class="token generics" style="color: rgb(57, 58, 52);">&gt;</span><span class="token" style="color: rgb(57, 58, 52);">(</span><span>perm</span><span class="token" style="color: rgb(57, 58, 52);">)</span><span class="token" style="color: rgb(57, 58, 52);">)</span><span class="token" style="color: rgb(57, 58, 52);">;</span><span>
+</span><span>        </span><span class="token" style="color: rgb(0, 0, 255);">return</span><span class="token" style="color: rgb(57, 58, 52);">;</span><span>
+</span><span>    </span><span class="token" style="color: rgb(57, 58, 52);">}</span><span>
+</span><span>    </span><span class="token" style="color: rgb(0, 0, 255);">for</span><span> </span><span class="token" style="color: rgb(57, 58, 52);">(</span><span class="token" style="color: rgb(0, 0, 255);">int</span><span> i </span><span class="token" style="color: rgb(57, 58, 52);">=</span><span> start</span><span class="token" style="color: rgb(57, 58, 52);">;</span><span> i </span><span class="token" style="color: rgb(57, 58, 52);">&lt;</span><span> nums</span><span class="token" style="color: rgb(57, 58, 52);">.</span><span>length</span><span class="token" style="color: rgb(57, 58, 52);">;</span><span> i</span><span class="token" style="color: rgb(57, 58, 52);">++</span><span class="token" style="color: rgb(57, 58, 52);">)</span><span> </span><span class="token" style="color: rgb(57, 58, 52);">{</span><span>  </span><span class="token" style="color: rgb(0, 128, 0); font-style: italic;">// start, not 0!</span><span>
+</span><span>        perm</span><span class="token" style="color: rgb(57, 58, 52);">.</span><span class="token" style="color: rgb(57, 58, 52);">add</span><span class="token" style="color: rgb(57, 58, 52);">(</span><span>nums</span><span class="token" style="color: rgb(57, 58, 52);">[</span><span>i</span><span class="token" style="color: rgb(57, 58, 52);">]</span><span class="token" style="color: rgb(57, 58, 52);">)</span><span class="token" style="color: rgb(57, 58, 52);">;</span><span>
+</span><span>        </span><span class="token" style="color: rgb(57, 58, 52);">backtrack</span><span class="token" style="color: rgb(57, 58, 52);">(</span><span>nums</span><span class="token" style="color: rgb(57, 58, 52);">,</span><span> i </span><span class="token" style="color: rgb(57, 58, 52);">+</span><span> </span><span class="token" style="color: rgb(54, 172, 170);">1</span><span class="token" style="color: rgb(57, 58, 52);">,</span><span> perm</span><span class="token" style="color: rgb(57, 58, 52);">,</span><span> res</span><span class="token" style="color: rgb(57, 58, 52);">)</span><span class="token" style="color: rgb(57, 58, 52);">;</span><span>  </span><span class="token" style="color: rgb(0, 128, 0); font-style: italic;">// i+1 prevents backward</span><span>
+</span><span>        perm</span><span class="token" style="color: rgb(57, 58, 52);">.</span><span class="token" style="color: rgb(57, 58, 52);">remove</span><span class="token" style="color: rgb(57, 58, 52);">(</span><span>perm</span><span class="token" style="color: rgb(57, 58, 52);">.</span><span class="token" style="color: rgb(57, 58, 52);">size</span><span class="token" style="color: rgb(57, 58, 52);">(</span><span class="token" style="color: rgb(57, 58, 52);">)</span><span> </span><span class="token" style="color: rgb(57, 58, 52);">-</span><span> </span><span class="token" style="color: rgb(54, 172, 170);">1</span><span class="token" style="color: rgb(57, 58, 52);">)</span><span class="token" style="color: rgb(57, 58, 52);">;</span><span>
+</span><span>    </span><span class="token" style="color: rgb(57, 58, 52);">}</span><span>
+</span><span></span><span class="token" style="color: rgb(57, 58, 52);">}</span><span>
+</span><span></span><span class="token" style="color: rgb(0, 128, 0); font-style: italic;">// For [1,2,3]: generates [1,2,3] but NEVER [2,1,3] or [3,1,2]</span><span>
+</span><span></span><span class="token" style="color: rgb(0, 128, 0); font-style: italic;">// Because once we pass index 0, we can never use element at index 0</span><span>
+</span>
+<span></span><span class="token" style="color: rgb(0, 128, 0); font-style: italic;">// ✅ CORRECT — loop from 0 with visited check</span><span>
+</span><span></span><span class="token" style="color: rgb(0, 0, 255);">void</span><span> </span><span class="token" style="color: rgb(57, 58, 52);">backtrack</span><span class="token" style="color: rgb(57, 58, 52);">(</span><span class="token" style="color: rgb(0, 0, 255);">int</span><span class="token" style="color: rgb(57, 58, 52);">[</span><span class="token" style="color: rgb(57, 58, 52);">]</span><span> nums</span><span class="token" style="color: rgb(57, 58, 52);">,</span><span> </span><span class="token" style="color: rgb(0, 0, 255);">boolean</span><span class="token" style="color: rgb(57, 58, 52);">[</span><span class="token" style="color: rgb(57, 58, 52);">]</span><span> visited</span><span class="token" style="color: rgb(57, 58, 52);">,</span><span> </span><span class="token" style="color: rgb(43, 145, 175);">List</span><span class="token generics" style="color: rgb(57, 58, 52);">&lt;</span><span class="token generics" style="color: rgb(43, 145, 175);">Integer</span><span class="token generics" style="color: rgb(57, 58, 52);">&gt;</span><span> perm</span><span class="token" style="color: rgb(57, 58, 52);">,</span><span> </span><span class="token" style="color: rgb(43, 145, 175);">List</span><span class="token generics" style="color: rgb(57, 58, 52);">&lt;</span><span class="token generics" style="color: rgb(43, 145, 175);">List</span><span class="token generics" style="color: rgb(57, 58, 52);">&lt;</span><span class="token generics" style="color: rgb(43, 145, 175);">Integer</span><span class="token generics" style="color: rgb(57, 58, 52);">&gt;</span><span class="token generics" style="color: rgb(57, 58, 52);">&gt;</span><span> res</span><span class="token" style="color: rgb(57, 58, 52);">)</span><span> </span><span class="token" style="color: rgb(57, 58, 52);">{</span><span>
+</span><span>    </span><span class="token" style="color: rgb(0, 0, 255);">if</span><span> </span><span class="token" style="color: rgb(57, 58, 52);">(</span><span>perm</span><span class="token" style="color: rgb(57, 58, 52);">.</span><span class="token" style="color: rgb(57, 58, 52);">size</span><span class="token" style="color: rgb(57, 58, 52);">(</span><span class="token" style="color: rgb(57, 58, 52);">)</span><span> </span><span class="token" style="color: rgb(57, 58, 52);">==</span><span> nums</span><span class="token" style="color: rgb(57, 58, 52);">.</span><span>length</span><span class="token" style="color: rgb(57, 58, 52);">)</span><span> </span><span class="token" style="color: rgb(57, 58, 52);">{</span><span>
+</span><span>        res</span><span class="token" style="color: rgb(57, 58, 52);">.</span><span class="token" style="color: rgb(57, 58, 52);">add</span><span class="token" style="color: rgb(57, 58, 52);">(</span><span class="token" style="color: rgb(0, 0, 255);">new</span><span> </span><span class="token" style="color: rgb(43, 145, 175);">ArrayList</span><span class="token generics" style="color: rgb(57, 58, 52);">&lt;</span><span class="token generics" style="color: rgb(57, 58, 52);">&gt;</span><span class="token" style="color: rgb(57, 58, 52);">(</span><span>perm</span><span class="token" style="color: rgb(57, 58, 52);">)</span><span class="token" style="color: rgb(57, 58, 52);">)</span><span class="token" style="color: rgb(57, 58, 52);">;</span><span>
+</span><span>        </span><span class="token" style="color: rgb(0, 0, 255);">return</span><span class="token" style="color: rgb(57, 58, 52);">;</span><span>
+</span><span>    </span><span class="token" style="color: rgb(57, 58, 52);">}</span><span>
+</span><span>    </span><span class="token" style="color: rgb(0, 0, 255);">for</span><span> </span><span class="token" style="color: rgb(57, 58, 52);">(</span><span class="token" style="color: rgb(0, 0, 255);">int</span><span> i </span><span class="token" style="color: rgb(57, 58, 52);">=</span><span> </span><span class="token" style="color: rgb(54, 172, 170);">0</span><span class="token" style="color: rgb(57, 58, 52);">;</span><span> i </span><span class="token" style="color: rgb(57, 58, 52);">&lt;</span><span> nums</span><span class="token" style="color: rgb(57, 58, 52);">.</span><span>length</span><span class="token" style="color: rgb(57, 58, 52);">;</span><span> i</span><span class="token" style="color: rgb(57, 58, 52);">++</span><span class="token" style="color: rgb(57, 58, 52);">)</span><span> </span><span class="token" style="color: rgb(57, 58, 52);">{</span><span>  </span><span class="token" style="color: rgb(0, 128, 0); font-style: italic;">// ALWAYS from 0</span><span>
+</span><span>        </span><span class="token" style="color: rgb(0, 0, 255);">if</span><span> </span><span class="token" style="color: rgb(57, 58, 52);">(</span><span>visited</span><span class="token" style="color: rgb(57, 58, 52);">[</span><span>i</span><span class="token" style="color: rgb(57, 58, 52);">]</span><span class="token" style="color: rgb(57, 58, 52);">)</span><span> </span><span class="token" style="color: rgb(0, 0, 255);">continue</span><span class="token" style="color: rgb(57, 58, 52);">;</span><span>             </span><span class="token" style="color: rgb(0, 128, 0); font-style: italic;">// skip used elements</span><span>
+</span><span>        visited</span><span class="token" style="color: rgb(57, 58, 52);">[</span><span>i</span><span class="token" style="color: rgb(57, 58, 52);">]</span><span> </span><span class="token" style="color: rgb(57, 58, 52);">=</span><span> </span><span class="token" style="color: rgb(54, 172, 170);">true</span><span class="token" style="color: rgb(57, 58, 52);">;</span><span>
+</span><span>        perm</span><span class="token" style="color: rgb(57, 58, 52);">.</span><span class="token" style="color: rgb(57, 58, 52);">add</span><span class="token" style="color: rgb(57, 58, 52);">(</span><span>nums</span><span class="token" style="color: rgb(57, 58, 52);">[</span><span>i</span><span class="token" style="color: rgb(57, 58, 52);">]</span><span class="token" style="color: rgb(57, 58, 52);">)</span><span class="token" style="color: rgb(57, 58, 52);">;</span><span>
+</span><span>        </span><span class="token" style="color: rgb(57, 58, 52);">backtrack</span><span class="token" style="color: rgb(57, 58, 52);">(</span><span>nums</span><span class="token" style="color: rgb(57, 58, 52);">,</span><span> visited</span><span class="token" style="color: rgb(57, 58, 52);">,</span><span> perm</span><span class="token" style="color: rgb(57, 58, 52);">,</span><span> res</span><span class="token" style="color: rgb(57, 58, 52);">)</span><span class="token" style="color: rgb(57, 58, 52);">;</span><span>
+</span><span>        perm</span><span class="token" style="color: rgb(57, 58, 52);">.</span><span class="token" style="color: rgb(57, 58, 52);">remove</span><span class="token" style="color: rgb(57, 58, 52);">(</span><span>perm</span><span class="token" style="color: rgb(57, 58, 52);">.</span><span class="token" style="color: rgb(57, 58, 52);">size</span><span class="token" style="color: rgb(57, 58, 52);">(</span><span class="token" style="color: rgb(57, 58, 52);">)</span><span> </span><span class="token" style="color: rgb(57, 58, 52);">-</span><span> </span><span class="token" style="color: rgb(54, 172, 170);">1</span><span class="token" style="color: rgb(57, 58, 52);">)</span><span class="token" style="color: rgb(57, 58, 52);">;</span><span>
+</span><span>        visited</span><span class="token" style="color: rgb(57, 58, 52);">[</span><span>i</span><span class="token" style="color: rgb(57, 58, 52);">]</span><span> </span><span class="token" style="color: rgb(57, 58, 52);">=</span><span> </span><span class="token" style="color: rgb(54, 172, 170);">false</span><span class="token" style="color: rgb(57, 58, 52);">;</span><span>
+</span><span>    </span><span class="token" style="color: rgb(57, 58, 52);">}</span><span>
+</span><span></span><span class="token" style="color: rgb(57, 58, 52);">}</span></code></pre></div>
+<h3>Pitfall 2: Asymmetric Visited Marking</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span class="token" style="color: rgb(0, 128, 0); font-style: italic;">// ❌ BROKEN — marks but never unmarks</span><span>
+</span><span>visited</span><span class="token" style="color: rgb(57, 58, 52);">[</span><span>i</span><span class="token" style="color: rgb(57, 58, 52);">]</span><span> </span><span class="token" style="color: rgb(57, 58, 52);">=</span><span> </span><span class="token" style="color: rgb(54, 172, 170);">true</span><span class="token" style="color: rgb(57, 58, 52);">;</span><span>
+</span><span>perm</span><span class="token" style="color: rgb(57, 58, 52);">.</span><span class="token" style="color: rgb(57, 58, 52);">add</span><span class="token" style="color: rgb(57, 58, 52);">(</span><span>nums</span><span class="token" style="color: rgb(57, 58, 52);">[</span><span>i</span><span class="token" style="color: rgb(57, 58, 52);">]</span><span class="token" style="color: rgb(57, 58, 52);">)</span><span class="token" style="color: rgb(57, 58, 52);">;</span><span>
+</span><span></span><span class="token" style="color: rgb(57, 58, 52);">backtrack</span><span class="token" style="color: rgb(57, 58, 52);">(</span><span>nums</span><span class="token" style="color: rgb(57, 58, 52);">,</span><span> visited</span><span class="token" style="color: rgb(57, 58, 52);">,</span><span> perm</span><span class="token" style="color: rgb(57, 58, 52);">,</span><span> res</span><span class="token" style="color: rgb(57, 58, 52);">)</span><span class="token" style="color: rgb(57, 58, 52);">;</span><span>
+</span><span>perm</span><span class="token" style="color: rgb(57, 58, 52);">.</span><span class="token" style="color: rgb(57, 58, 52);">remove</span><span class="token" style="color: rgb(57, 58, 52);">(</span><span>perm</span><span class="token" style="color: rgb(57, 58, 52);">.</span><span class="token" style="color: rgb(57, 58, 52);">size</span><span class="token" style="color: rgb(57, 58, 52);">(</span><span class="token" style="color: rgb(57, 58, 52);">)</span><span> </span><span class="token" style="color: rgb(57, 58, 52);">-</span><span> </span><span class="token" style="color: rgb(54, 172, 170);">1</span><span class="token" style="color: rgb(57, 58, 52);">)</span><span class="token" style="color: rgb(57, 58, 52);">;</span><span>
+</span><span></span><span class="token" style="color: rgb(0, 128, 0); font-style: italic;">// MISSING: visited[i] = false;</span><span>
+</span>
+<span></span><span class="token" style="color: rgb(0, 128, 0); font-style: italic;">// After exploring with nums[0] as first element:</span><span>
+</span><span></span><span class="token" style="color: rgb(0, 128, 0); font-style: italic;">// visited[0] is STILL true</span><span>
+</span><span></span><span class="token" style="color: rgb(0, 128, 0); font-style: italic;">// When we try nums[1] as first element:</span><span>
+</span><span></span><span class="token" style="color: rgb(0, 128, 0); font-style: italic;">// nums[0] is permanently marked → never available again</span><span>
+</span><span></span><span class="token" style="color: rgb(0, 128, 0); font-style: italic;">// Results: only permutations starting with nums[0]</span><span>
+</span>
+<span></span><span class="token" style="color: rgb(0, 128, 0); font-style: italic;">// ✅ CORRECT — symmetric mark/unmark</span><span>
+</span><span>visited</span><span class="token" style="color: rgb(57, 58, 52);">[</span><span>i</span><span class="token" style="color: rgb(57, 58, 52);">]</span><span> </span><span class="token" style="color: rgb(57, 58, 52);">=</span><span> </span><span class="token" style="color: rgb(54, 172, 170);">true</span><span class="token" style="color: rgb(57, 58, 52);">;</span><span>
+</span><span>perm</span><span class="token" style="color: rgb(57, 58, 52);">.</span><span class="token" style="color: rgb(57, 58, 52);">add</span><span class="token" style="color: rgb(57, 58, 52);">(</span><span>nums</span><span class="token" style="color: rgb(57, 58, 52);">[</span><span>i</span><span class="token" style="color: rgb(57, 58, 52);">]</span><span class="token" style="color: rgb(57, 58, 52);">)</span><span class="token" style="color: rgb(57, 58, 52);">;</span><span>
+</span><span></span><span class="token" style="color: rgb(57, 58, 52);">backtrack</span><span class="token" style="color: rgb(57, 58, 52);">(</span><span>nums</span><span class="token" style="color: rgb(57, 58, 52);">,</span><span> visited</span><span class="token" style="color: rgb(57, 58, 52);">,</span><span> perm</span><span class="token" style="color: rgb(57, 58, 52);">,</span><span> res</span><span class="token" style="color: rgb(57, 58, 52);">)</span><span class="token" style="color: rgb(57, 58, 52);">;</span><span>
+</span><span>perm</span><span class="token" style="color: rgb(57, 58, 52);">.</span><span class="token" style="color: rgb(57, 58, 52);">remove</span><span class="token" style="color: rgb(57, 58, 52);">(</span><span>perm</span><span class="token" style="color: rgb(57, 58, 52);">.</span><span class="token" style="color: rgb(57, 58, 52);">size</span><span class="token" style="color: rgb(57, 58, 52);">(</span><span class="token" style="color: rgb(57, 58, 52);">)</span><span> </span><span class="token" style="color: rgb(57, 58, 52);">-</span><span> </span><span class="token" style="color: rgb(54, 172, 170);">1</span><span class="token" style="color: rgb(57, 58, 52);">)</span><span class="token" style="color: rgb(57, 58, 52);">;</span><span>
+</span><span>visited</span><span class="token" style="color: rgb(57, 58, 52);">[</span><span>i</span><span class="token" style="color: rgb(57, 58, 52);">]</span><span> </span><span class="token" style="color: rgb(57, 58, 52);">=</span><span> </span><span class="token" style="color: rgb(54, 172, 170);">false</span><span class="token" style="color: rgb(57, 58, 52);">;</span><span>  </span><span class="token" style="color: rgb(0, 128, 0); font-style: italic;">// MUST unmark!</span></code></pre></div>
+<h3>Pitfall 3: Swap Method — Forgetting to Unswap</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span class="token" style="color: rgb(0, 128, 0); font-style: italic;">// ❌ BROKEN — array stays modified</span><span>
+</span><span></span><span class="token" style="color: rgb(0, 0, 255);">for</span><span> </span><span class="token" style="color: rgb(57, 58, 52);">(</span><span class="token" style="color: rgb(0, 0, 255);">int</span><span> i </span><span class="token" style="color: rgb(57, 58, 52);">=</span><span> fixedIndex</span><span class="token" style="color: rgb(57, 58, 52);">;</span><span> i </span><span class="token" style="color: rgb(57, 58, 52);">&lt;</span><span> nums</span><span class="token" style="color: rgb(57, 58, 52);">.</span><span>length</span><span class="token" style="color: rgb(57, 58, 52);">;</span><span> i</span><span class="token" style="color: rgb(57, 58, 52);">++</span><span class="token" style="color: rgb(57, 58, 52);">)</span><span> </span><span class="token" style="color: rgb(57, 58, 52);">{</span><span>
+</span><span>    </span><span class="token" style="color: rgb(57, 58, 52);">swap</span><span class="token" style="color: rgb(57, 58, 52);">(</span><span>nums</span><span class="token" style="color: rgb(57, 58, 52);">,</span><span> fixedIndex</span><span class="token" style="color: rgb(57, 58, 52);">,</span><span> i</span><span class="token" style="color: rgb(57, 58, 52);">)</span><span class="token" style="color: rgb(57, 58, 52);">;</span><span>
+</span><span>    </span><span class="token" style="color: rgb(57, 58, 52);">backtrack</span><span class="token" style="color: rgb(57, 58, 52);">(</span><span>nums</span><span class="token" style="color: rgb(57, 58, 52);">,</span><span> fixedIndex </span><span class="token" style="color: rgb(57, 58, 52);">+</span><span> </span><span class="token" style="color: rgb(54, 172, 170);">1</span><span class="token" style="color: rgb(57, 58, 52);">,</span><span> results</span><span class="token" style="color: rgb(57, 58, 52);">)</span><span class="token" style="color: rgb(57, 58, 52);">;</span><span>
+</span><span>    </span><span class="token" style="color: rgb(0, 128, 0); font-style: italic;">// MISSING: swap(nums, fixedIndex, i);</span><span>
+</span><span></span><span class="token" style="color: rgb(57, 58, 52);">}</span><span>
+</span>
+<span></span><span class="token" style="color: rgb(0, 128, 0); font-style: italic;">// After first iteration (i=fixedIndex):</span><span>
+</span><span></span><span class="token" style="color: rgb(0, 128, 0); font-style: italic;">//   swap(0,0) → no change → recurse → no unswap → no change → fine</span><span>
+</span><span></span><span class="token" style="color: rgb(0, 128, 0); font-style: italic;">// After second iteration (i=fixedIndex+1):</span><span>
+</span><span></span><span class="token" style="color: rgb(0, 128, 0); font-style: italic;">//   swap(0,1) → [2,1,3] → recurse → no unswap → array stays [2,1,3]</span><span>
+</span><span></span><span class="token" style="color: rgb(0, 128, 0); font-style: italic;">// Third iteration (i=fixedIndex+2):</span><span>
+</span><span></span><span class="token" style="color: rgb(0, 128, 0); font-style: italic;">//   swap(0,2) on [2,1,3] → [3,1,2] → but expected [3,2,1]!</span><span>
+</span><span></span><span class="token" style="color: rgb(0, 128, 0); font-style: italic;">// Array was corrupted → wrong permutations generated</span></code></pre></div>
+<h3>Pitfall 4: Deep Copy in Swap Method</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span class="token" style="color: rgb(0, 128, 0); font-style: italic;">// ❌ WRONG — converts the MUTATING array directly</span><span>
+</span><span></span><span class="token" style="color: rgb(0, 0, 255);">if</span><span> </span><span class="token" style="color: rgb(57, 58, 52);">(</span><span>fixedIndex </span><span class="token" style="color: rgb(57, 58, 52);">==</span><span> nums</span><span class="token" style="color: rgb(57, 58, 52);">.</span><span>length</span><span class="token" style="color: rgb(57, 58, 52);">)</span><span> </span><span class="token" style="color: rgb(57, 58, 52);">{</span><span>
+</span><span>    results</span><span class="token" style="color: rgb(57, 58, 52);">.</span><span class="token" style="color: rgb(57, 58, 52);">add</span><span class="token" style="color: rgb(57, 58, 52);">(</span><span class="token" style="color: rgb(43, 145, 175);">Arrays</span><span class="token" style="color: rgb(57, 58, 52);">.</span><span class="token" style="color: rgb(57, 58, 52);">asList</span><span class="token" style="color: rgb(57, 58, 52);">(</span><span>nums</span><span class="token" style="color: rgb(57, 58, 52);">)</span><span class="token" style="color: rgb(57, 58, 52);">)</span><span class="token" style="color: rgb(57, 58, 52);">;</span><span>  </span><span class="token" style="color: rgb(0, 128, 0); font-style: italic;">// nums is int[] → won't work with generics</span><span>
+</span><span>    </span><span class="token" style="color: rgb(0, 128, 0); font-style: italic;">// Also: even if it worked, the array keeps changing!</span><span>
+</span><span></span><span class="token" style="color: rgb(57, 58, 52);">}</span><span>
+</span>
+<span></span><span class="token" style="color: rgb(0, 128, 0); font-style: italic;">// ✅ CORRECT — create independent copy</span><span>
+</span><span></span><span class="token" style="color: rgb(0, 0, 255);">if</span><span> </span><span class="token" style="color: rgb(57, 58, 52);">(</span><span>fixedIndex </span><span class="token" style="color: rgb(57, 58, 52);">==</span><span> nums</span><span class="token" style="color: rgb(57, 58, 52);">.</span><span>length</span><span class="token" style="color: rgb(57, 58, 52);">)</span><span> </span><span class="token" style="color: rgb(57, 58, 52);">{</span><span>
+</span><span>    </span><span class="token" style="color: rgb(43, 145, 175);">List</span><span class="token generics" style="color: rgb(57, 58, 52);">&lt;</span><span class="token generics" style="color: rgb(43, 145, 175);">Integer</span><span class="token generics" style="color: rgb(57, 58, 52);">&gt;</span><span> perm </span><span class="token" style="color: rgb(57, 58, 52);">=</span><span> </span><span class="token" style="color: rgb(0, 0, 255);">new</span><span> </span><span class="token" style="color: rgb(43, 145, 175);">ArrayList</span><span class="token generics" style="color: rgb(57, 58, 52);">&lt;</span><span class="token generics" style="color: rgb(57, 58, 52);">&gt;</span><span class="token" style="color: rgb(57, 58, 52);">(</span><span class="token" style="color: rgb(57, 58, 52);">)</span><span class="token" style="color: rgb(57, 58, 52);">;</span><span>
+</span><span>    </span><span class="token" style="color: rgb(0, 0, 255);">for</span><span> </span><span class="token" style="color: rgb(57, 58, 52);">(</span><span class="token" style="color: rgb(0, 0, 255);">int</span><span> num </span><span class="token" style="color: rgb(57, 58, 52);">:</span><span> nums</span><span class="token" style="color: rgb(57, 58, 52);">)</span><span> </span><span class="token" style="color: rgb(57, 58, 52);">{</span><span>
+</span><span>        perm</span><span class="token" style="color: rgb(57, 58, 52);">.</span><span class="token" style="color: rgb(57, 58, 52);">add</span><span class="token" style="color: rgb(57, 58, 52);">(</span><span>num</span><span class="token" style="color: rgb(57, 58, 52);">)</span><span class="token" style="color: rgb(57, 58, 52);">;</span><span>
+</span><span>    </span><span class="token" style="color: rgb(57, 58, 52);">}</span><span>
+</span><span>    results</span><span class="token" style="color: rgb(57, 58, 52);">.</span><span class="token" style="color: rgb(57, 58, 52);">add</span><span class="token" style="color: rgb(57, 58, 52);">(</span><span>perm</span><span class="token" style="color: rgb(57, 58, 52);">)</span><span class="token" style="color: rgb(57, 58, 52);">;</span><span>
+</span><span>    </span><span class="token" style="color: rgb(0, 0, 255);">return</span><span class="token" style="color: rgb(57, 58, 52);">;</span><span>
+</span><span></span><span class="token" style="color: rgb(57, 58, 52);">}</span></code></pre></div>
+<h3>Pitfall 5: Duplicate Elements (Preview)</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span class="token" style="color: rgb(0, 128, 0); font-style: italic;">// For input [1, 1, 2]:</span><span>
+</span><span></span><span class="token" style="color: rgb(0, 128, 0); font-style: italic;">// Naive approach generates:</span><span>
+</span><span></span><span class="token" style="color: rgb(0, 128, 0); font-style: italic;">// [1,1,2], [1,2,1], [1,1,2], [1,2,1], [2,1,1], [2,1,1]</span><span>
+</span><span></span><span class="token" style="color: rgb(0, 128, 0); font-style: italic;">//          ^^^^^^^^duplicate^^^^^^^^   ^^^^^^^^duplicate</span><span>
+</span>
+<span></span><span class="token" style="color: rgb(0, 128, 0); font-style: italic;">// FIX for visited method: sort + skip same value at same level</span><span>
+</span><span></span><span class="token" style="color: rgb(43, 145, 175);">Arrays</span><span class="token" style="color: rgb(57, 58, 52);">.</span><span class="token" style="color: rgb(57, 58, 52);">sort</span><span class="token" style="color: rgb(57, 58, 52);">(</span><span>nums</span><span class="token" style="color: rgb(57, 58, 52);">)</span><span class="token" style="color: rgb(57, 58, 52);">;</span><span>
+</span><span></span><span class="token" style="color: rgb(0, 0, 255);">for</span><span> </span><span class="token" style="color: rgb(57, 58, 52);">(</span><span class="token" style="color: rgb(0, 0, 255);">int</span><span> i </span><span class="token" style="color: rgb(57, 58, 52);">=</span><span> </span><span class="token" style="color: rgb(54, 172, 170);">0</span><span class="token" style="color: rgb(57, 58, 52);">;</span><span> i </span><span class="token" style="color: rgb(57, 58, 52);">&lt;</span><span> nums</span><span class="token" style="color: rgb(57, 58, 52);">.</span><span>length</span><span class="token" style="color: rgb(57, 58, 52);">;</span><span> i</span><span class="token" style="color: rgb(57, 58, 52);">++</span><span class="token" style="color: rgb(57, 58, 52);">)</span><span> </span><span class="token" style="color: rgb(57, 58, 52);">{</span><span>
+</span><span>    </span><span class="token" style="color: rgb(0, 0, 255);">if</span><span> </span><span class="token" style="color: rgb(57, 58, 52);">(</span><span>visited</span><span class="token" style="color: rgb(57, 58, 52);">[</span><span>i</span><span class="token" style="color: rgb(57, 58, 52);">]</span><span class="token" style="color: rgb(57, 58, 52);">)</span><span> </span><span class="token" style="color: rgb(0, 0, 255);">continue</span><span class="token" style="color: rgb(57, 58, 52);">;</span><span>
+</span><span>    </span><span class="token" style="color: rgb(0, 128, 0); font-style: italic;">// Skip duplicate values at the same decision level</span><span>
+</span><span>    </span><span class="token" style="color: rgb(0, 0, 255);">if</span><span> </span><span class="token" style="color: rgb(57, 58, 52);">(</span><span>i </span><span class="token" style="color: rgb(57, 58, 52);">&gt;</span><span> </span><span class="token" style="color: rgb(54, 172, 170);">0</span><span> </span><span class="token" style="color: rgb(57, 58, 52);">&amp;&amp;</span><span> nums</span><span class="token" style="color: rgb(57, 58, 52);">[</span><span>i</span><span class="token" style="color: rgb(57, 58, 52);">]</span><span> </span><span class="token" style="color: rgb(57, 58, 52);">==</span><span> nums</span><span class="token" style="color: rgb(57, 58, 52);">[</span><span>i</span><span class="token" style="color: rgb(57, 58, 52);">-</span><span class="token" style="color: rgb(54, 172, 170);">1</span><span class="token" style="color: rgb(57, 58, 52);">]</span><span> </span><span class="token" style="color: rgb(57, 58, 52);">&amp;&amp;</span><span> </span><span class="token" style="color: rgb(57, 58, 52);">!</span><span>visited</span><span class="token" style="color: rgb(57, 58, 52);">[</span><span>i</span><span class="token" style="color: rgb(57, 58, 52);">-</span><span class="token" style="color: rgb(54, 172, 170);">1</span><span class="token" style="color: rgb(57, 58, 52);">]</span><span class="token" style="color: rgb(57, 58, 52);">)</span><span> </span><span class="token" style="color: rgb(0, 0, 255);">continue</span><span class="token" style="color: rgb(57, 58, 52);">;</span><span>
+</span>    
+<span>    visited</span><span class="token" style="color: rgb(57, 58, 52);">[</span><span>i</span><span class="token" style="color: rgb(57, 58, 52);">]</span><span> </span><span class="token" style="color: rgb(57, 58, 52);">=</span><span> </span><span class="token" style="color: rgb(54, 172, 170);">true</span><span class="token" style="color: rgb(57, 58, 52);">;</span><span>
+</span><span>    perm</span><span class="token" style="color: rgb(57, 58, 52);">.</span><span class="token" style="color: rgb(57, 58, 52);">add</span><span class="token" style="color: rgb(57, 58, 52);">(</span><span>nums</span><span class="token" style="color: rgb(57, 58, 52);">[</span><span>i</span><span class="token" style="color: rgb(57, 58, 52);">]</span><span class="token" style="color: rgb(57, 58, 52);">)</span><span class="token" style="color: rgb(57, 58, 52);">;</span><span>
+</span><span>    </span><span class="token" style="color: rgb(57, 58, 52);">backtrack</span><span class="token" style="color: rgb(57, 58, 52);">(</span><span>nums</span><span class="token" style="color: rgb(57, 58, 52);">,</span><span> visited</span><span class="token" style="color: rgb(57, 58, 52);">,</span><span> perm</span><span class="token" style="color: rgb(57, 58, 52);">,</span><span> res</span><span class="token" style="color: rgb(57, 58, 52);">)</span><span class="token" style="color: rgb(57, 58, 52);">;</span><span>
+</span><span>    perm</span><span class="token" style="color: rgb(57, 58, 52);">.</span><span class="token" style="color: rgb(57, 58, 52);">remove</span><span class="token" style="color: rgb(57, 58, 52);">(</span><span>perm</span><span class="token" style="color: rgb(57, 58, 52);">.</span><span class="token" style="color: rgb(57, 58, 52);">size</span><span class="token" style="color: rgb(57, 58, 52);">(</span><span class="token" style="color: rgb(57, 58, 52);">)</span><span> </span><span class="token" style="color: rgb(57, 58, 52);">-</span><span> </span><span class="token" style="color: rgb(54, 172, 170);">1</span><span class="token" style="color: rgb(57, 58, 52);">)</span><span class="token" style="color: rgb(57, 58, 52);">;</span><span>
+</span><span>    visited</span><span class="token" style="color: rgb(57, 58, 52);">[</span><span>i</span><span class="token" style="color: rgb(57, 58, 52);">]</span><span> </span><span class="token" style="color: rgb(57, 58, 52);">=</span><span> </span><span class="token" style="color: rgb(54, 172, 170);">false</span><span class="token" style="color: rgb(57, 58, 52);">;</span><span>
+</span><span></span><span class="token" style="color: rgb(57, 58, 52);">}</span><span>
+</span>
+<span></span><span class="token" style="color: rgb(0, 128, 0); font-style: italic;">// FIX for swap method: use HashSet to track values swapped at each level</span><span>
+</span><span></span><span class="token" style="color: rgb(43, 145, 175);">Set</span><span class="token generics" style="color: rgb(57, 58, 52);">&lt;</span><span class="token generics" style="color: rgb(43, 145, 175);">Integer</span><span class="token generics" style="color: rgb(57, 58, 52);">&gt;</span><span> usedAtThisLevel </span><span class="token" style="color: rgb(57, 58, 52);">=</span><span> </span><span class="token" style="color: rgb(0, 0, 255);">new</span><span> </span><span class="token" style="color: rgb(43, 145, 175);">HashSet</span><span class="token generics" style="color: rgb(57, 58, 52);">&lt;</span><span class="token generics" style="color: rgb(57, 58, 52);">&gt;</span><span class="token" style="color: rgb(57, 58, 52);">(</span><span class="token" style="color: rgb(57, 58, 52);">)</span><span class="token" style="color: rgb(57, 58, 52);">;</span><span>
+</span><span></span><span class="token" style="color: rgb(0, 0, 255);">for</span><span> </span><span class="token" style="color: rgb(57, 58, 52);">(</span><span class="token" style="color: rgb(0, 0, 255);">int</span><span> i </span><span class="token" style="color: rgb(57, 58, 52);">=</span><span> fixedIndex</span><span class="token" style="color: rgb(57, 58, 52);">;</span><span> i </span><span class="token" style="color: rgb(57, 58, 52);">&lt;</span><span> nums</span><span class="token" style="color: rgb(57, 58, 52);">.</span><span>length</span><span class="token" style="color: rgb(57, 58, 52);">;</span><span> i</span><span class="token" style="color: rgb(57, 58, 52);">++</span><span class="token" style="color: rgb(57, 58, 52);">)</span><span> </span><span class="token" style="color: rgb(57, 58, 52);">{</span><span>
+</span><span>    </span><span class="token" style="color: rgb(0, 0, 255);">if</span><span> </span><span class="token" style="color: rgb(57, 58, 52);">(</span><span>usedAtThisLevel</span><span class="token" style="color: rgb(57, 58, 52);">.</span><span class="token" style="color: rgb(57, 58, 52);">contains</span><span class="token" style="color: rgb(57, 58, 52);">(</span><span>nums</span><span class="token" style="color: rgb(57, 58, 52);">[</span><span>i</span><span class="token" style="color: rgb(57, 58, 52);">]</span><span class="token" style="color: rgb(57, 58, 52);">)</span><span class="token" style="color: rgb(57, 58, 52);">)</span><span> </span><span class="token" style="color: rgb(0, 0, 255);">continue</span><span class="token" style="color: rgb(57, 58, 52);">;</span><span>
+</span><span>    usedAtThisLevel</span><span class="token" style="color: rgb(57, 58, 52);">.</span><span class="token" style="color: rgb(57, 58, 52);">add</span><span class="token" style="color: rgb(57, 58, 52);">(</span><span>nums</span><span class="token" style="color: rgb(57, 58, 52);">[</span><span>i</span><span class="token" style="color: rgb(57, 58, 52);">]</span><span class="token" style="color: rgb(57, 58, 52);">)</span><span class="token" style="color: rgb(57, 58, 52);">;</span><span>
+</span><span>    </span><span class="token" style="color: rgb(57, 58, 52);">swap</span><span class="token" style="color: rgb(57, 58, 52);">(</span><span>nums</span><span class="token" style="color: rgb(57, 58, 52);">,</span><span> fixedIndex</span><span class="token" style="color: rgb(57, 58, 52);">,</span><span> i</span><span class="token" style="color: rgb(57, 58, 52);">)</span><span class="token" style="color: rgb(57, 58, 52);">;</span><span>
+</span><span>    </span><span class="token" style="color: rgb(57, 58, 52);">backtrack</span><span class="token" style="color: rgb(57, 58, 52);">(</span><span>nums</span><span class="token" style="color: rgb(57, 58, 52);">,</span><span> fixedIndex </span><span class="token" style="color: rgb(57, 58, 52);">+</span><span> </span><span class="token" style="color: rgb(54, 172, 170);">1</span><span class="token" style="color: rgb(57, 58, 52);">,</span><span> results</span><span class="token" style="color: rgb(57, 58, 52);">)</span><span class="token" style="color: rgb(57, 58, 52);">;</span><span>
+</span><span>    </span><span class="token" style="color: rgb(57, 58, 52);">swap</span><span class="token" style="color: rgb(57, 58, 52);">(</span><span>nums</span><span class="token" style="color: rgb(57, 58, 52);">,</span><span> fixedIndex</span><span class="token" style="color: rgb(57, 58, 52);">,</span><span> i</span><span class="token" style="color: rgb(57, 58, 52);">)</span><span class="token" style="color: rgb(57, 58, 52);">;</span><span>
+</span><span></span><span class="token" style="color: rgb(57, 58, 52);">}</span></code></pre></div>
+<hr>
+<h2>📈 SCALABILITY CONSIDERATIONS</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>THE FACTORIAL EXPLOSION:
+</span>
+n     n!              Permutations    Memory (approx)
+1     1               1               trivial
+3     6               6               trivial
+5     120             120             ~5 KB
+8     40,320          40,320          ~3 MB
+10    3,628,800       ~3.6M           ~300 MB
+12    479,001,600     ~479M           ~50 GB → IMPOSSIBLE
+15    1.3 × 10^12     ~1.3T          → IMPOSSIBLE
+
+→ n ≤ 8: instant on any machine
+→ n = 9-10: feasible but takes seconds and significant memory
+→ n = 11: borderline — may need streaming output instead of collecting all
+→ n ≥ 12: physically impossible to enumerate all permutations
+
+COMPARISON WITH SUBSETS:
+  n=20: 2^20 = ~1M subsets → feasible
+  n=20: 20! = ~2.4 × 10^18 permutations → IMPOSSIBLE
+
+Factorial grows MUCH faster than exponential:
+  n! &gt; 2^n for all n ≥ 4
+  The gap widens rapidly
+  
+INTERVIEW CONSTRAINTS:
+→ Permutation problems typically have n ≤ 8-10
+→ If n is larger, the problem likely needs a different approach</code></pre></div>
+<hr>
+<h2>🔍 INTERPRETABILITY CONSIDERATIONS</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>MENTAL MODEL — The Seating Arrangement:
+</span>→ You have n guests and n chairs
+→ Each guest must sit in exactly one chair
+→ How many different seating arrangements exist?
+→ Guest 1: n choices of chairs
+→ Guest 2: n-1 remaining chairs
+→ Guest 3: n-2 remaining chairs
+→ Total: n!
+
+MENTAL MODEL — The Visited Method:
+→ Building a word from a bag of letters
+→ Pick any letter from the bag → write it down
+→ Pick another from remaining letters → write it next
+→ Continue until bag is empty
+→ That's one permutation → put all letters back → try differently
+
+MENTAL MODEL — The Swap Method:
+→ Arranging books on a shelf
+→ For position 1: pick any book from the pile, place it
+→ For position 2: pick any remaining book, place it
+→ Swapping = "let me try a different book in this position"
+→ Unswapping = "put the book back so I can try another"
+
+DEBUGGING STRATEGY:
+→ Print currentPerm and visited[] at each recursive entry
+→ Verify visited matches the elements in currentPerm
+→ Count results — must be exactly n!
+→ Verify every permutation has exactly n elements
+→ Verify no permutation appears twice</code></pre></div>
+<hr>
+<div class="github-btn-wrap"><a class="github-btn" href="https://github.com/Shakti4640/leetcode-patterns-guide-java/tree/main/project- (29)" target="_blank" rel="noopener"><svg viewBox="0 0 24 24"><path d="M12 .5C5.37.5 0 5.87 0 12.5c0 5.3 3.44 9.8 8.2 11.39.6.11.82-.26.82-.58v-2.03c-3.34.73-4.04-1.61-4.04-1.61-.55-1.39-1.34-1.76-1.34-1.76-1.09-.74.08-.73.08-.73 1.2.09 1.84 1.24 1.84 1.24 1.07 1.83 2.8 1.3 3.49 1 .1-.78.42-1.3.76-1.6-2.67-.3-5.47-1.33-5.47-5.93 0-1.31.47-2.38 1.24-3.22-.14-.3-.54-1.52.1-3.18 0 0 1.01-.32 3.3 1.23a11.5 11.5 0 0 1 3-.4c1.02 0 2.04.13 3 .4 2.28-1.55 3.29-1.23 3.29-1.23.64 1.66.24 2.88.12 3.18.77.84 1.23 1.91 1.23 3.22 0 4.61-2.81 5.63-5.48 5.92.43.37.81 1.1.81 2.22v3.29c0 .32.21.7.82.58C20.56 22.3 24 17.8 24 12.5 24 5.87 18.63.5 12 .5z"/></svg>💻 View Complete Java Code on GitHub</a></div>
+<hr>
+<h2>🔑 EXPECTED OUTPUT</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>╔══════════════════════════════════════════════════════╗
+</span>║  PROJECT 29: Generate All Permutations of an Array   ║
+║  Pattern: Backtracking → Visited / Swap Methods      ║
+║           → Positional Placement                     ║
+╚══════════════════════════════════════════════════════╝
+
+═══ TEST 1: Permutations of [1,2,3] — Visited Method ═══
+Count: 6 (expected 6)
+  [1, 2, 3]
+  [1, 3, 2]
+  [2, 1, 3]
+  [2, 3, 1]
+  [3, 1, 2]
+  [3, 2, 1]
+
+═══ TEST 2: Permutations of [1,2,3] — Swap Method ═══
+Count: 6 (expected 6)
+  [1, 2, 3]
+  [1, 3, 2]
+  [2, 1, 3]
+  [2, 3, 1]
+  [3, 2, 1]
+  [3, 1, 2]
+
+═══ TEST 3: Traced Visited Method [1,2] ═══
+Input: [1, 2]
+─────────────────────────────────────
+Position 0 | current=[] | visited=[false, false]
+  [1 at index 0] → SKIP (already used)... no, not visited
+  ➕ CHOOSE 1 at index 0
+  Position 1 | current=[1] | visited=[true, false]
+    [1 at index 0] → SKIP (already used)
+    ➕ CHOOSE 2 at index 1
+    ✅ COMPLETE: [1, 2]
+    ➖ UNCHOOSE 2 → back to [1]
+  ➖ UNCHOOSE 1 → back to []
+  ➕ CHOOSE 2 at index 1
+  Position 1 | current=[2] | visited=[false, true]
+    ➕ CHOOSE 1 at index 0
+    ✅ COMPLETE: [2, 1]
+    ➖ UNCHOOSE 1 → back to [2]
+    [2 at index 1] → SKIP (already used)
+  ➖ UNCHOOSE 2 → back to []
+
+All permutations: [[1, 2], [2, 1]]
+
+═══ TEST 5: Subsets vs Permutations [1,2,3] ═══
+Input: [1, 2, 3]
+
+SUBSETS (order irrelevant, variable length):
+  Count: 8 (2^3)
+    []
+    [1]
+    [1, 2]
+    [1, 2, 3]
+    [1, 3]
+    [2]
+    [2, 3]
+    [3]
+
+PERMUTATIONS (order matters, fixed length = 3):
+  Count: 6 (3!)
+    [1, 2, 3]
+    [1, 3, 2]
+    [2, 1, 3]
+    [2, 3, 1]
+    [3, 1, 2]
+    [3, 2, 1]
+
+═══ TEST 8: Permutations with Duplicates ═══
+Input: [1, 1, 2]
+Without duplicate handling: 6 permutations
+  [[1, 1, 2], [1, 2, 1], [1, 1, 2], [1, 2, 1], [2, 1, 1], [2, 1, 1]]
+With duplicate handling:    3 permutations
+  [[1, 1, 2], [1, 2, 1], [2, 1, 1]]
+
+═══ TEST 9: Permutations of Size K ═══
+Input: [1, 2, 3, 4]
+  Size 1: 4 permutations (P(4,1))
+    [1]
+    [2]
+    [3]
+    [4]
+  Size 2: 12 permutations (P(4,2))
+    [1, 2]
+    [1, 3]
+    [1, 4]
+    [2, 1]
+    [2, 3]
+    [2, 4]
+    [3, 1]
+    [3, 2]
+    [3, 4]
+    [4, 1]
+    [4, 2]
+    [4, 3]
+  Size 3: 24 permutations (P(4,3))
+  Size 4: 24 permutations (P(4,4))
+
+═══ TEST 10: Verify n! Count ═══
+  n=1 | visited=1 | swap=1 | n!=1 | match=true
+  n=2 | visited=2 | swap=2 | n!=2 | match=true
+  n=3 | visited=6 | swap=6 | n!=6 | match=true
+  n=4 | visited=24 | swap=24 | n!=24 | match=true
+  n=5 | visited=120 | swap=120 | n!=120 | match=true
+  n=6 | visited=720 | swap=720 | n!=720 | match=true
+  n=7 | visited=5040 | swap=5040 | n!=5040 | match=true
+
+═══ TEST 12: Performance Comparison ═══
+Visited method: 362880 permutations in ~150ms
+Swap method:    362880 permutations in ~120ms
+Expected: 362880 (9!)
+Both correct: true</code></pre></div>
+<hr>
+<h2>🧠 THE BACKTRACKING FAMILY — Complete Picture</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>Now that we've completed Projects 26, 28, and 29, let's see
+</span>the UNIFIED backtracking template and how each problem customizes it:
+
+╔════════════════════════════════════════════════════════════════════╗
+║              THE UNIVERSAL BACKTRACKING TEMPLATE                  ║
+╠════════════════════════════════════════════════════════════════════╣
+║                                                                    ║
+║  backtrack(choices, state, constraints, results):                  ║
+║      if COMPLETE(state):                                          ║
+║          results.add(COPY(state))                                 ║
+║          return                                                    ║
+║                                                                    ║
+║      for each CANDIDATE in choices:                               ║
+║          if VALID(candidate, constraints):                        ║
+║              APPLY(candidate, state)        ← CHOOSE              ║
+║              backtrack(updated choices, state, constraints)        ║
+║              UNDO(candidate, state)         ← UN-CHOOSE           ║
+║                                                                    ║
+╚════════════════════════════════════════════════════════════════════╝
+
+How each project fills in this template:
+
+┌──────────────┬──────────────────┬───────────────────┬─────────────────┐
+│              │ Project 26       │ Project 28        │ Project 29      │
+│              │ (Tree Paths)     │ (Subsets)         │ (Permutations)  │
+├──────────────┼──────────────────┼───────────────────┼─────────────────┤
+│ CHOICES      │ left/right child │ elements after    │ ALL unused      │
+│              │ (tree structure) │ startIndex        │ elements        │
+├──────────────┼──────────────────┼───────────────────┼─────────────────┤
+│ STATE        │ currentPath      │ currentSubset     │ currentPerm     │
+├──────────────┼──────────────────┼───────────────────┼─────────────────┤
+│ COMPLETE     │ leaf node        │ every node        │ size == n       │
+│  condition   │ + sum matches    │ (collect always)  │ (all placed)    │
+├──────────────┼──────────────────┼───────────────────┼─────────────────┤
+│ VALID check  │ node != null     │ i &gt;= startIndex   │ !visited[i]     │
+├──────────────┼──────────────────┼───────────────────┼─────────────────┤
+│ APPLY        │ path.add(val)    │ subset.add(val)   │ visited=true    │
+│              │                  │                   │ perm.add(val)   │
+├──────────────┼──────────────────┼───────────────────┼─────────────────┤
+│ UNDO         │ path.removeLast  │ subset.removeLast │ perm.removeLast │
+│              │                  │                   │ visited=false   │
+├──────────────┼──────────────────┼───────────────────┼─────────────────┤
+│ Loop start   │ N/A (2 children) │ i = startIndex    │ i = 0           │
+├──────────────┼──────────────────┼───────────────────┼─────────────────┤
+│ Next call    │ node.left/right  │ startIndex = i+1  │ same (i=0)      │
+│  parameter   │ (fixed by tree)  │ (move forward)    │ (visited gates) │
+├──────────────┼──────────────────┼───────────────────┼─────────────────┤
+│ Output size  │ varies           │ 2^n               │ n!              │
+├──────────────┼──────────────────┼───────────────────┼─────────────────┤
+│ Order        │ determined       │ irrelevant        │ matters         │
+│  matters?    │ by tree          │ {1,2}=={2,1}      │ [1,2]≠[2,1]    │
+├──────────────┼──────────────────┼───────────────────┼─────────────────┤
+│ Duplicate    │ not applicable   │ sort + skip       │ sort + skip     │
+│  handling    │ (tree is fixed)  │ at same level     │ + visited[i-1]  │
+└──────────────┴──────────────────┴───────────────────┴─────────────────┘</code></pre></div>
+<h3>The Decision Point Flowchart</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>When you see a backtracking problem, ask these questions:
+</span>
+Q1: Does a physical structure (tree/graph) guide the recursion?
+    YES → Project 26 style (traverse the structure)
+    NO  → Q2
+
+Q2: Does ORDER of elements matter in the result?
+    NO  → Q3 (subsets/combinations family)
+    YES → Q4 (permutations family)
+
+Q3: What SIZE are the results?
+    ANY size     → Subsets (Project 28) — collect at every node
+    Fixed size K → Combinations of size K — collect when size == K
+    Sum = target → Combination Sum (Project 42) — collect when sum matches
+
+Q4: Are ALL elements used in each result?
+    YES → Full Permutations (Project 29) — collect when size == n
+    NO  → Partial Permutations of size K — collect when size == K
+
+Q5: Does the input contain DUPLICATES?
+    NO  → Use standard approach
+    YES → Sort first + skip duplicates at same decision level</code></pre></div>
+<h3>Why the Three Approaches Exist</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>SUBSETS (startIndex approach):
+</span>→ "Which elements to INCLUDE?" — binary decision per element
+→ startIndex prevents: [2,1] after [1,2] (same subset)
+→ Loop: for i = startIndex to n-1
+→ Recurse: startIndex = i + 1
+→ EFFECT: elements can only move FORWARD → canonical ordering
+
+PERMUTATIONS — VISITED approach:
+→ "Which element fills this POSITION?" — positional assignment
+→ visited[] prevents: same element used twice
+→ Loop: for i = 0 to n-1
+→ Recurse: same loop range (i = 0 to n-1)
+→ EFFECT: any unused element can go anywhere → all orderings
+
+PERMUTATIONS — SWAP approach:
+→ Same question, different bookkeeping
+→ Array partition prevents: same element used twice
+→ Loop: for i = fixedIndex to n-1
+→ Recurse: fixedIndex + 1
+→ EFFECT: swap puts element in place, unswap restores → all orderings
+
+All three are the SAME template with different CHOICES and CONSTRAINTS.</code></pre></div>
+<hr>
+<h2>🧠 KEY TAKEAWAY</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>WHAT PROJECT 28 GAVE US:
+</span>→ Backtracking on implicit decision trees
+→ startIndex to prevent duplicate subsets
+→ Order-irrelevant selection: {1,2} == {2,1}
+→ Output size: 2^n
+
+WHAT PROJECT 29 ADDS:
+→ Order-relevant arrangement: [1,2] ≠ [2,1]
+→ TWO new techniques for tracking availability:
+     → visited[] array: explicit tracking
+     → swap method: implicit tracking via array partition
+→ Loop starts from 0 (not startIndex) because ANY unused element is valid
+→ Output size: n! (much larger than 2^n)
+→ Duplicate handling requires different skip conditions
+
+THE CORE DISTINCTION TO MEMORIZE:
+
+  ┌─────────────────────────────────────────────────────────────┐
+  │                                                             │
+  │  SUBSETS:       for i = startIndex    →  prevents reorder   │
+  │  PERMUTATIONS:  for i = 0 + visited[] →  allows all orders  │
+  │                                                             │
+  │  That ONE difference in the loop structure produces          │
+  │  fundamentally different output:                             │
+  │    2^n subsets  vs  n! permutations                          │
+  │                                                             │
+  └─────────────────────────────────────────────────────────────┘
+
+WHY THIS MATTERS:
+→ Almost EVERY backtracking problem is a variant of subsets or permutations
+→ Once you recognize which family the problem belongs to
+→ You know the exact template to use
+→ Only the COMPLETE condition and VALID check change per problem
+→ The skeleton stays identical</code></pre></div>
+<hr>
+<h2>🌉 BRIDGE TO NEXT PROJECT</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>PROJECT 29 taught us:
+</span>→ Backtracking for generating ALL arrangements
+→ The visited[] and swap methods for tracking used elements
+→ The difference between order-irrelevant (subsets) and order-relevant (permutations)
+
+We have now completed THREE backtracking projects:
+  Project 26: Backtracking on TREES (guided by tree structure)
+  Project 28: Backtracking for SUBSETS (guided by startIndex)
+  Project 29: Backtracking for PERMUTATIONS (guided by visited[])
+
+PROJECT 30 (Search in a Rotated Sorted Array) shifts to a completely different pattern:
+→ Returns to BINARY SEARCH (from Project 9)
+→ But the array is ROTATED — not purely sorted
+→ The challenge: binary search needs sorted data to work
+→ The trick: even in a rotated array, ONE HALF is always sorted
+→ We identify the sorted half, check if target is in that range
+→ If yes → search that half; if no → search the other half
+
+This is a PIVOT from backtracking back to binary search:
+  Project 9:  Standard binary search on sorted array
+  Project 30: Modified binary search on ROTATED sorted array
+  Project 31: Modified binary search on array with PEAK (no sorting at all)
+
+The progression:
+  Backtracking: explore ALL possibilities → exponential output
+  Binary Search: eliminate HALF the possibilities → logarithmic time
+  
+→ Opposite philosophies — both essential
+→ Backtracking when you NEED all answers
+→ Binary search when you need ONE answer FAST</code></pre></div>
+<hr>
+<p><strong>Ready for Project 30: Search in a Rotated Sorted Array (Modified Binary Search → Sorted-Half Identification → Pivot-Aware Elimination)?</strong></p>
+</div>
+</div>
+
+<!-- ========== data-index="15" ========== -->
+<div class="chat-message" data-index="15"></div>
+</div>
+<div class="bottom-nav">
+  <a href="project-28.html" class="nav-btn prev">← Prev</a>
+  <div class="nav-center">
+    <span class="nav-project-label">PROJECT 29 of 60</span>
+    <span class="nav-project-title">Generate All Permutations of an Array</span>
+    <span class="kbd-hint">← → arrow keys to navigate</span>
+  </div>
+  <a href="project-30.html" class="nav-btn next">Next →</a>
+  <a href="index.html" class="nav-btn home">🏠 TOC</a>
+</div>
+<div id="progress-track"><div id="progress-fill"></div></div>
+<div id="progress-pct">0%</div>
+<script src="script.js"></script>
+<script>
+document.addEventListener('keydown', function(e) {
+  if (['INPUT','TEXTAREA'].includes(document.activeElement.tagName)) return;
+  if (e.key === 'ArrowRight' && "project-30.html" !== null) window.location = "project-30.html";
+  if (e.key === 'ArrowLeft' && "project-28.html" !== null) window.location = "project-28.html";
+});
+</script>
+</body>
+</html>

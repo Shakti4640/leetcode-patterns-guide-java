@@ -1,0 +1,884 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PROJECT 16: Reverse a Linked List</title>
+<link rel="icon" type="image/png" href="images/favicon.png">
+<link rel="stylesheet" href="styles.css">
+
+</head>
+<body>
+<div id="progress-bar-container"><div id="progress-bar" style="width:28%"></div></div>
+<div id="progress-label">28%</div>
+<div class="page-wrapper">
+<div class="chat-message"><div class="px-2"><h1>PROJECT 16: Reverse a Linked List</h1>
+<h2>🎯 In-place Reversal → Prev/Curr/Next Pointer Dance → No Extra Space</h2>
+<hr>
+<h2>🔗 DEPENDENCY CHAIN</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>Project 1  → Two Pointers → managing multiple variables simultaneously
+</span>Project 7  → Fast &amp; Slow → linked list traversal → understanding .next pointers
+Project 15 → Middle of Linked List → one-pass linked list processing → read operation
+Project 16 → Reverse a Linked List → WRITE operation on linked list
+             → the Prev/Curr/Next pointer dance
+             → each node's .next pointer is REDIRECTED
+             → this is the most fundamental linked list MODIFICATION operation
+             → building block for: palindrome, merge sort, reorder, sub-reversal</code></pre></div>
+<hr>
+<h2>🧩 THE HYPOTHETICAL PROBLEM</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ You are given the HEAD of a singly linked list
+</span>→ REVERSE the list
+→ Return the new head (which was the old tail)
+→ Must be done IN-PLACE (no new list, no array conversion)
+
+Example 1:
+  Input:  1 → 2 → 3 → 4 → 5
+  Output: 5 → 4 → 3 → 2 → 1
+
+Example 2:
+  Input:  1 → 2
+  Output: 2 → 1
+
+Example 3:
+  Input:  1
+  Output: 1
+
+Example 4:
+  Input:  null (empty list)
+  Output: null
+
+WHAT "REVERSE" MEANS AT THE POINTER LEVEL:
+
+  BEFORE:
+    1 → 2 → 3 → 4 → 5 → null
+    Each node points FORWARD to the next node
+
+  AFTER:
+    null ← 1 ← 2 ← 3 ← 4 ← 5
+    Each node points BACKWARD to the previous node
+    The old tail (5) is now the head
+    The old head (1) now points to null (it's the new tail)
+
+→ We don't move nodes in memory
+→ We only REDIRECT their .next pointers
+→ The values stay in the same node objects
+→ Only the LINKS between them change direction</code></pre></div>
+<hr>
+<h2>🔍 HOW TO APPROACH IT</h2>
+<h3>Step 1 — Understand What Needs to Change</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>Node 1: currently points to Node 2 → must point to null (new tail)
+</span>Node 2: currently points to Node 3 → must point to Node 1
+Node 3: currently points to Node 4 → must point to Node 2
+Node 4: currently points to Node 5 → must point to Node 3
+Node 5: currently points to null   → must point to Node 4 (new head)
+
+PATTERN:
+  → Every node's .next must point to its PREVIOUS node
+  → The first node's .next becomes null
+  → The last node becomes the new head
+
+TO REDIRECT node.next TO point backward:
+  → We need to KNOW the previous node
+  → But singly linked list has NO "previous" pointer
+  → We must TRACK the previous node ourselves
+  → This is where the "prev" variable comes in</code></pre></div>
+<h3>Step 2 — The Fundamental Challenge</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>PROBLEM:
+</span>  Consider node 2: currently 2.next → 3
+  We want to change: 2.next → 1 (point backward)
+
+  But THE MOMENT we do 2.next = 1:
+    → We LOSE the link to node 3
+    → Node 3 is now unreachable
+    → The rest of the list is GONE
+
+VISUALIZATION:
+  Before: 1 ← 2    3 → 4 → 5 → null
+                ↑    ↑
+                |    LOST! Can't reach 3 anymore
+                |
+          We set 2.next = 1
+
+SOLUTION:
+  → SAVE the reference to node 3 BEFORE redirecting 2.next
+  → Store it in a temporary variable: next = 2.next (saves reference to 3)
+  → THEN redirect: 2.next = 1 (safe now, we have 3 saved)
+  → THEN move forward using the saved reference: current = next (move to 3)
+
+THIS IS THE "POINTER DANCE":
+  1. SAVE the next node       → next = current.next
+  2. REDIRECT the pointer     → current.next = prev
+  3. ADVANCE prev             → prev = current
+  4. ADVANCE current          → current = next
+
+  These four operations, in THIS ORDER, are the entire algorithm</code></pre></div>
+<h3>Step 3 — The Complete Pointer Dance Walkthrough</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>List: 1 → 2 → 3 → 4 → 5 → null
+</span>
+INITIALIZE:
+  prev = null     (nothing before the first node)
+  curr = head     (start at node 1)
+
+═══════════════════════════════════════════
+
+ITERATION 1 (curr = node 1):
+  
+  Step A: next = curr.next → next = node 2 (SAVE before we lose it)
+  
+    prev    curr    next
+    null     1   →   2  →  3  →  4  →  5  → null
+
+  Step B: curr.next = prev → 1.next = null (REDIRECT backward)
+  
+    prev    curr    next
+    null  ←  1       2  →  3  →  4  →  5  → null
+
+  Step C: prev = curr → prev = node 1 (ADVANCE prev)
+  
+            prev    next
+    null  ←  1       2  →  3  →  4  →  5  → null
+
+  Step D: curr = next → curr = node 2 (ADVANCE curr)
+  
+            prev    curr
+    null  ←  1       2  →  3  →  4  →  5  → null
+
+═══════════════════════════════════════════
+
+ITERATION 2 (curr = node 2):
+  
+  Step A: next = curr.next → next = node 3
+  
+            prev    curr   next
+    null  ←  1       2  →   3  →  4  →  5  → null
+
+  Step B: curr.next = prev → 2.next = node 1
+  
+            prev    curr   next
+    null  ←  1  ←   2       3  →  4  →  5  → null
+
+  Step C: prev = curr → prev = node 2
+  
+                    prev   next
+    null  ←  1  ←   2       3  →  4  →  5  → null
+
+  Step D: curr = next → curr = node 3
+  
+                    prev   curr
+    null  ←  1  ←   2       3  →  4  →  5  → null
+
+═══════════════════════════════════════════
+
+ITERATION 3 (curr = node 3):
+  
+  Step A: next = node 4
+  Step B: 3.next = node 2
+  Step C: prev = node 3
+  Step D: curr = node 4
+
+    null  ←  1  ←  2  ←  3       4  →  5  → null
+                        prev     curr
+
+═══════════════════════════════════════════
+
+ITERATION 4 (curr = node 4):
+  
+  Step A: next = node 5
+  Step B: 4.next = node 3
+  Step C: prev = node 4
+  Step D: curr = node 5
+
+    null  ←  1  ←  2  ←  3  ←  4       5  → null
+                              prev     curr
+
+═══════════════════════════════════════════
+
+ITERATION 5 (curr = node 5):
+  
+  Step A: next = null (node 5 was the last node)
+  Step B: 5.next = node 4
+  Step C: prev = node 5
+  Step D: curr = null (next was null)
+
+    null  ←  1  ←  2  ←  3  ←  4  ←  5
+                                     prev     curr=null
+
+═══════════════════════════════════════════
+
+LOOP ENDS: curr == null → stop
+
+RETURN prev → prev is node 5 → the new head ✓
+
+RESULT: 5 → 4 → 3 → 2 → 1 → null ✓</code></pre></div>
+<h3>Step 4 — Why prev Starts at null</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>The FIRST node of the original list becomes the LAST node of the reversed list
+</span>The last node's .next must be null (end of list)
+
+By starting prev = null:
+  → First iteration: curr.next = prev → 1.next = null
+  → Node 1 correctly becomes the new tail
+
+If prev started at something else:
+  → Node 1 would point to that something → corrupted list
+  → The reversed list would never terminate → potential infinite loop
+
+prev = null is the "anchor" of the reversal
+  → It represents "there is nothing before the first node"
+  → After reversal: the first node points to nothing → correct tail</code></pre></div>
+<h3>Step 5 — Why the Order of Operations Matters</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>THE CORRECT ORDER:
+</span>  1. next = curr.next      (SAVE)
+  2. curr.next = prev      (REDIRECT)
+  3. prev = curr           (ADVANCE prev)
+  4. curr = next           (ADVANCE curr)
+
+WHAT HAPPENS IF WE CHANGE THE ORDER?
+
+WRONG ORDER 1: Redirect before save
+  1. curr.next = prev      → we just LOST the reference to the next node
+  2. next = curr.next      → this now gives us prev, NOT the original next!
+  → BROKEN: we go backward instead of forward → infinite loop
+
+WRONG ORDER 2: Advance curr before redirect
+  1. next = curr.next
+  2. curr = next            → we moved past the node we wanted to redirect
+  3. curr.next = prev       → we're redirecting the WRONG node now
+  → BROKEN: wrong node gets modified
+
+WRONG ORDER 3: Advance prev before redirect
+  1. next = curr.next
+  2. prev = curr            → prev now points to curr
+  3. curr.next = prev       → curr.next = curr → SELF-LOOP!
+  → BROKEN: node points to itself → infinite loop
+
+→ The order is NON-NEGOTIABLE
+→ SAVE → REDIRECT → ADVANCE PREV → ADVANCE CURR
+→ Each step depends on the previous step's state
+→ Think of it as a careful HANDOFF sequence</code></pre></div>
+<hr>
+<h2>🛠️ HOW CAN WE SOLVE IT</h2>
+<h3>The Iterative Algorithm</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>1. Initialize:
+</span>     → prev = null
+     → curr = head
+
+2. WHILE curr is not null:
+     a. next = curr.next        (save next before we break the link)
+     b. curr.next = prev        (reverse the pointer)
+     c. prev = curr             (advance prev one step)
+     d. curr = next             (advance curr one step)
+
+3. RETURN prev (new head of reversed list)</code></pre></div>
+<h3>The Recursive Algorithm</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>BASE CASE:
+</span>  → If head is null OR head.next is null → return head
+  → Empty list or single node → already reversed
+
+RECURSIVE STEP:
+  → Recursively reverse everything after the first node
+  → Then make the second node point back to the first
+  → Then make the first node point to null
+
+VISUALIZATION:
+  reverseList(1 → 2 → 3 → 4 → 5)
+  
+  → Recurse: reverseList(2 → 3 → 4 → 5) returns 5 → 4 → 3 → 2 → null
+  → Now: head = 1, head.next = 2, reversed rest = 5 → 4 → 3 → 2 → null
+  → Make 2 point back to 1: head.next.next = head → 2.next = 1
+  → Make 1 point to null: head.next = null → 1.next = null
+  → Return the new head (5) from the recursive call
+
+  Result: 5 → 4 → 3 → 2 → 1 → null ✓
+
+THE KEY LINE:
+  head.next.next = head
+  
+  → head.next is node 2 (the node after head)
+  → head.next.next is where node 2 points
+  → We set node 2 to point back to node 1 (head)
+  → This creates the backward link</code></pre></div>
+<hr>
+<h2>✅ WHAT SHOULD YOU DO</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ ALWAYS save curr.next BEFORE redirecting curr.next
+</span>     → Once you change curr.next, the original next is GONE
+     → The save must happen FIRST — this is the most critical step
+
+→ ALWAYS start prev at null
+     → The old head becomes the new tail → must point to null
+     → prev = null ensures this happens in the first iteration
+
+→ ALWAYS return prev (not curr) at the end
+     → When loop ends, curr is null (went past the last node)
+     → prev is the last node we processed → the new head
+
+→ ALWAYS handle edge cases before the loop
+     → null head → return null
+     → Single node → return head (already reversed)
+     → Both handled naturally by the loop (0 or 1 iterations)
+     → But explicit checks improve clarity
+
+→ ALWAYS draw the pointer diagram when debugging
+     → Linked list bugs are INVISIBLE without visualization
+     → Draw boxes and arrows → trace each step → find the break
+
+→ ALWAYS prefer iterative over recursive for interviews (unless asked)
+     → Iterative: O(1) space → truly in-place
+     → Recursive: O(n) space for call stack → not truly in-place
+     → But know BOTH approaches → shows depth</code></pre></div>
+<hr>
+<h2>🚫 WHAT SHOULD YOU NOT DO</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ DO NOT create a new list and copy values in reverse
+</span>     WRONG:
+       Create new nodes → traverse original → add each value to front of new list
+     → This uses O(n) extra space → violates in-place requirement
+     → Also creates garbage (old nodes) → memory waste
+
+→ DO NOT use a stack to reverse
+     WRONG:
+       Push all nodes onto stack → pop them out → relink
+     → Uses O(n) extra space for the stack
+     → Correct but not in-place
+
+→ DO NOT use an array to reverse
+     WRONG:
+       Collect all values into array → reverse array → build new list
+     → O(n) extra space → not in-place
+     → Also loses the original node objects
+
+→ DO NOT change the ORDER of the four operations
+     → As proven above, any reordering breaks the algorithm
+     → SAVE → REDIRECT → ADVANCE PREV → ADVANCE CURR → memorize this
+
+→ DO NOT forget to update BOTH prev AND curr
+     → Missing prev = curr → prev stays at null forever → all nodes point to null
+     → Missing curr = next → curr stays at same node → infinite loop
+
+→ DO NOT return curr at the end
+     → curr is null when the loop ends → returning null means "empty list"
+     → prev is the new head → return prev
+
+→ DO NOT try to reverse by swapping values
+     WRONG (for linked lists):
+       Swap first and last values, then second and second-to-last, etc.
+     → Singly linked list → can't efficiently access the end
+     → Would need O(n) per swap to find the partner → O(n²) total
+     → Works for arrays → NOT for linked lists</code></pre></div>
+<hr>
+<h2>🔀 WHEN TO USE THIS PATTERN</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>✓ Problem explicitly asks to REVERSE a linked list
+</span>     → The direct application
+
+✓ Problem asks to check if a linked list is a PALINDROME
+     → Find middle (Project 15) → reverse second half → compare
+     → Reversal is the key building block
+
+✓ Problem asks to REORDER a linked list (L0→Ln→L1→Ln-1→...)
+     → Find middle → reverse second half → interleave
+
+✓ Problem asks to reverse a SUB-PORTION of a linked list
+     → "Reverse nodes from position m to n"
+     → Same pointer dance, with boundary stitching (Project 23)
+
+✓ Problem asks to reverse in GROUPS of K
+     → "Reverse every K nodes" → apply reversal K times, reconnect groups
+     → Extension of basic reversal
+
+✓ Problem involves linked list MERGE SORT
+     → Split at middle (Project 15) → recursively sort halves → merge
+     → Reversal not directly used but pointer manipulation skills transfer
+
+✓ Any problem requiring STRUCTURAL MODIFICATION of a linked list
+     → Reversal teaches the core skill: safely redirecting .next pointers
+     → All linked list modifications use the same careful save-then-modify approach</code></pre></div>
+<hr>
+<h2>🚫 WHEN NOT TO USE THIS PATTERN</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>✗ Data is in an ARRAY (not linked list)
+</span>     → Array reversal: swap elements from both ends → two pointers → O(n)
+     → No pointer dance needed → simple swaps
+     → Collections.reverse() or manual two-pointer swap
+
+✗ List is DOUBLY linked
+     → Each node has .prev and .next
+     → Reversal: swap .prev and .next for each node → simpler
+     → OR just swap head and tail pointers
+     → The prev/curr/next dance is overkill
+
+✗ You only need the reversed VALUES (not the reversed structure)
+     → Traverse the list → collect values in array → reverse array
+     → Simpler if you don't need the linked structure afterward
+
+✗ The list is IMMUTABLE (functional programming context)
+     → Can't modify .next pointers
+     → Must create a new reversed list → O(n) space
+     → Different approach entirely
+
+✗ You need STABLE references to nodes
+     → If other parts of the code hold references to specific nodes
+     → Reversing changes what .next points to → may break external references
+     → Consider creating a copy instead</code></pre></div>
+<hr>
+<h2>⚙️ HOW IT ONLY WORKS — Internal Mechanics</h2>
+<h3>Mechanic 1: The Three-Variable Invariant</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>AT EVERY POINT IN THE LOOP, three regions exist:
+</span>
+  [REVERSED PORTION]  ←  prev  ←  ...  ←  null
+  [CURRENT NODE]      =  curr
+  [REMAINING PORTION] →  curr.next  →  ...  →  null
+
+BEFORE FIRST ITERATION:
+  Reversed: empty (prev = null)
+  Current:  node 1 (curr = head)
+  Remaining: node 2 → ... → null
+
+AFTER EACH ITERATION:
+  → One node moves from "remaining" to "reversed"
+  → curr advances to the next remaining node
+  → prev advances to the newly reversed node
+
+AFTER LAST ITERATION:
+  Reversed: all nodes (prev = last node = new head)
+  Current:  null (past the end)
+  Remaining: empty
+
+→ The algorithm PEELS OFF one node at a time from the front of "remaining"
+→ And PREPENDS it to the front of "reversed"
+→ Like moving cards from one pile to another, one at a time, reversing order</code></pre></div>
+<h3>Mechanic 2: Why Iterative is O(1) Space</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>VARIABLES USED:
+</span>  → prev: one pointer → 8 bytes (64-bit JVM)
+  → curr: one pointer → 8 bytes
+  → next: one pointer → 8 bytes
+  → Total: 24 bytes → CONSTANT regardless of list size
+
+NO ADDITIONAL ALLOCATIONS:
+  → No new nodes created
+  → No arrays or lists
+  → No recursion stack
+  → Existing nodes are reused — only their .next pointers change
+
+THIS IS TRUE IN-PLACE:
+  → The same memory footprint before and after
+  → Only the LINKS between existing objects change
+  → The objects themselves don't move in memory</code></pre></div>
+<h3>Mechanic 3: Why Recursive Uses O(n) Space</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>RECURSIVE VERSION:
+</span>  reverseList(node 1)
+    → reverseList(node 2)
+      → reverseList(node 3)
+        → reverseList(node 4)
+          → reverseList(node 5)
+            → return node 5 (base case)
+          → redirect 5→4, return node 5
+        → redirect 4→3, return node 5
+      → redirect 3→2, return node 5
+    → redirect 2→1, return node 5
+  → return node 5
+
+CALL STACK DEPTH: n frames (one per node)
+  → Each frame stores: head, the return value, local variables
+  → n frames × ~20-40 bytes each ≈ O(n) space
+
+FOR n = 10,000:
+  → 10,000 stack frames → might cause StackOverflowError in Java
+  → Java default stack size: ~512KB-1MB
+  → Each frame: ~40 bytes → 10,000 × 40 = 400KB → borderline
+  → For n = 100,000 → likely stack overflow
+
+→ Iterative is ALWAYS safer for large lists
+→ Recursive is elegant but has practical limitations</code></pre></div>
+<h3>Mechanic 4: The Recursive Trick Explained</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>The key line: head.next.next = head
+</span>
+WHAT DOES THIS MEAN?
+
+  Consider: head = node 2, head.next = node 3
+  
+  After recursion, everything after node 2 is already reversed:
+    5 → 4 → 3 → null
+  
+  But node 2 still points to node 3:
+    2 → 3 (and 3 now points to null from the reversal)
+  
+  We need: 3 → 2 (make 3 point back to 2)
+  
+  head.next is node 3
+  head.next.next = head means: node3.next = node2
+  
+  Now: 3 → 2
+  
+  But node 2 still points to node 3: 2 → 3 → 2 → 3 → ... (CYCLE!)
+  
+  Fix: head.next = null → node2.next = null
+  
+  Now: 5 → 4 → 3 → 2 → null ✓
+
+→ head.next.next = head creates the backward link
+→ head.next = null breaks the forward link
+→ Both are necessary to avoid cycles</code></pre></div>
+<h3>Time and Space Complexity</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>ITERATIVE:
+</span>  TIME:  O(n) → visit each node exactly once
+  SPACE: O(1) → three pointer variables
+
+RECURSIVE:
+  TIME:  O(n) → one recursive call per node
+  SPACE: O(n) → call stack depth equals list length</code></pre></div>
+<hr>
+<h2>⚠️ COMMON PITFALLS AND FAILURE MODES</h2>
+<h3>Pitfall 1: Forgetting to Save next Before Redirecting</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>WRONG:
+</span>  while (curr != null) {
+      curr.next = prev;        // ← OOPS: lost reference to original next
+      prev = curr;
+      curr = curr.next;        // ← curr.next is now prev, not the original next!
+  }
+
+  → After curr.next = prev: curr.next now points BACKWARD
+  → curr = curr.next moves us BACKWARD → we revisit prev → infinite loop
+
+CORRECT:
+  while (curr != null) {
+      ListNode next = curr.next;   // ← SAVE first
+      curr.next = prev;            // ← now safe to redirect
+      prev = curr;
+      curr = next;                 // ← use the saved reference
+  }</code></pre></div>
+<h3>Pitfall 2: Returning curr Instead of prev</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>WRONG:
+</span>  return curr;   // curr is null when loop ends → returns null → "empty list"
+
+CORRECT:
+  return prev;   // prev is the last processed node → the new head
+
+TRACE:
+  List: 1 → 2 → 3
+
+  After iteration 3:
+    null ← 1 ← 2 ← 3
+                     ↑     ↑
+                    prev   curr = null
+
+  return prev → returns node 3 → correct new head ✓
+  return curr → returns null → WRONG</code></pre></div>
+<h3>Pitfall 3: Creating a Cycle in Recursive Version</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>WRONG:
+</span>  public ListNode reverseList(ListNode head) {
+      if (head == null || head.next == null) return head;
+      ListNode newHead = reverseList(head.next);
+      head.next.next = head;
+      // MISSING: head.next = null
+      return newHead;
+  }
+
+  → After head.next.next = head: node2 → node1 AND node1 → node2
+  → CYCLE: 1 ↔ 2 → traversal never ends
+  → Must add: head.next = null to break the forward link
+
+CORRECT:
+  head.next.next = head;
+  head.next = null;        // ← CRITICAL: break the old forward link</code></pre></div>
+<h3>Pitfall 4: Not Handling Single-Node or Empty Lists</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>Empty list: head = null
+</span>  → Loop condition: curr != null → false → loop skipped
+  → Return prev = null ✓ (empty reversed list is still empty)
+
+Single node: head = node1, node1.next = null
+  → Iteration 1: next = null, 1.next = null (already null), prev = 1, curr = null
+  → Loop ends → return prev = node1 ✓
+
+→ Both handled correctly by the algorithm naturally
+→ But explicit guards improve readability:
+  if (head == null || head.next == null) return head;</code></pre></div>
+<h3>Pitfall 5: Assuming the Original Head is Still Usable as Head</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>AFTER REVERSAL:
+</span>  Original head (node 1) is now the TAIL → its .next is null
+  
+  If caller still uses the old head reference:
+    ListNode head = buildList(1,2,3,4,5);
+    ListNode reversed = reverseList(head);
+    
+    // head still points to node 1
+    // but node 1.next is now null
+    // traversing from head gives: 1 → null (only one node visible)
+    
+    // Must use reversed as the new head:
+    // reversed points to node 5 → 5 → 4 → 3 → 2 → 1 → null ✓
+
+→ Always use the RETURNED value as the new head
+→ The old head variable is now a reference to the TAIL
+→ This is a common source of confusion</code></pre></div>
+<hr>
+<h2>📈 SCALABILITY CONSIDERATIONS</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>ITERATIVE:
+</span>→ n = 100         → 100 pointer redirections → instant
+→ n = 1,000,000   → 1M redirections → ~5ms
+→ n = 100,000,000 → 100M redirections → ~500ms
+→ Memory: O(1) always → never a bottleneck
+
+RECURSIVE:
+→ n = 1,000   → 1,000 stack frames → fine
+→ n = 10,000  → 10,000 stack frames → might overflow (Java default stack)
+→ n = 100,000 → 100,000 stack frames → WILL overflow
+→ Memory: O(n) → scales linearly → problematic for large lists
+
+JAVA STACK SIZE:
+  → Default: ~512KB-1MB
+  → Each frame: ~40-80 bytes (references, return address)
+  → Max safe depth: ~10,000-25,000 frames
+  → Can increase with -Xss flag: java -Xss4m MyProgram
+  → But iterative is always better for production code
+
+RECOMMENDATION:
+  → ALWAYS use iterative for production/interviews
+  → Show recursive as "I also know this approach" bonus
+  → Recursive is more elegant but less practical</code></pre></div>
+<hr>
+<h2>🔍 INTERPRETABILITY CONSIDERATIONS</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>MENTAL MODEL:
+</span>  → Imagine a train of carriages
+  → Each carriage is coupled to the next one
+  → To reverse: disconnect each coupling and reconnect it backward
+  → Work from front to back, one coupling at a time
+  → The caboose becomes the engine
+
+DEBUGGING:
+  → Print: prev, curr, next at each step
+  → Draw the pointer diagram after each iteration
+  → Verify: reversed portion grows by one node per iteration
+  → Verify: curr advances forward through the original list
+
+INTERVIEW COMMUNICATION:
+  → "I use three pointers: prev, curr, and next"
+  → "At each step, I save the next node, reverse the current link, then advance"
+  → "prev starts at null because the old head becomes the new tail"
+  → "When curr reaches null, prev is the new head"
+  → "Time: O(n), Space: O(1)"
+
+THE FOUR-STEP MANTRA:
+  → "Save, Redirect, Advance Prev, Advance Curr"
+  → Say this out loud while coding → never miss a step
+  → This is the linked list equivalent of "left, right, mid" for binary search</code></pre></div>
+<hr>
+<div class="github-btn-wrap"><a class="github-btn" href="https://github.com/Shakti4640/leetcode-patterns-guide-java/tree/main/project- (16)" target="_blank" rel="noopener"><svg viewBox="0 0 24 24"><path d="M12 .5C5.37.5 0 5.87 0 12.5c0 5.3 3.44 9.8 8.2 11.39.6.11.82-.26.82-.58v-2.03c-3.34.73-4.04-1.61-4.04-1.61-.55-1.39-1.34-1.76-1.34-1.76-1.09-.74.08-.73.08-.73 1.2.09 1.84 1.24 1.84 1.24 1.07 1.83 2.8 1.3 3.49 1 .1-.78.42-1.3.76-1.6-2.67-.3-5.47-1.33-5.47-5.93 0-1.31.47-2.38 1.24-3.22-.14-.3-.54-1.52.1-3.18 0 0 1.01-.32 3.3 1.23a11.5 11.5 0 0 1 3-.4c1.02 0 2.04.13 3 .4 2.28-1.55 3.29-1.23 3.29-1.23.64 1.66.24 2.88.12 3.18.77.84 1.23 1.91 1.23 3.22 0 4.61-2.81 5.63-5.48 5.92.43.37.81 1.1.81 2.22v3.29c0 .32.21.7.82.58C20.56 22.3 24 17.8 24 12.5 24 5.87 18.63.5 12 .5z"/></svg>💻 View Complete Java Code on GitHub</a></div>
+
+<hr>
+<h2>🔑 EXPECTED OUTPUT</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>╔══════════════════════════════════════════════════════╗
+</span>║  PROJECT 16: Reverse a Linked List                   ║
+║  Pattern: In-place Reversal → Prev/Curr/Next Dance   ║
+╚══════════════════════════════════════════════════════╝
+
+═══ TEST 1: Visual Reversal Overview ═══
+  ┌─── REVERSAL VISUALIZATION ───┐
+
+  ORIGINAL: [1]→[2]→[3]→[4]→[5]→null
+
+  STEP 1:   null←[1]  [2]→[3]→[4]→[5]→null
+  STEP 2:   null←[1]←[2]  [3]→[4]→[5]→null
+  STEP 3:   null←[1]←[2]←[3]  [4]→[5]→null
+  STEP 4:   null←[1]←[2]←[3]←[4]  [5]→null
+  STEP 5:   null←[1]←[2]←[3]←[4]←[5]
+
+  REVERSED: [5]→[4]→[3]→[2]→[1]→null
+
+  └────────────────────────────────┘
+
+═══ TEST 2: Iterative Trace (5 nodes) ═══
+  Original: 1 → 2 → 3 → 4 → 5
+  ─────────────────────────────────────────
+  INIT: prev=null, curr=1
+
+  STEP 1 (curr=1):
+    A. Save:     next = 2
+    B. Redirect: 1.next = null
+    C. Advance:  prev = 1
+    D. Advance:  curr = 2
+    State: reversed=[1] remaining=[2→3→4→5]
+
+  STEP 2 (curr=2):
+    A. Save:     next = 3
+    B. Redirect: 2.next = 1
+    C. Advance:  prev = 2
+    D. Advance:  curr = 3
+    State: reversed=[2←1] remaining=[3→4→5]
+
+  STEP 3 (curr=3):
+    A. Save:     next = 4
+    B. Redirect: 3.next = 2
+    C. Advance:  prev = 3
+    D. Advance:  curr = 4
+    State: reversed=[3←2←1] remaining=[4→5]
+
+  STEP 4 (curr=4):
+    A. Save:     next = 5
+    B. Redirect: 4.next = 3
+    C. Advance:  prev = 4
+    D. Advance:  curr = 5
+    State: reversed=[4←3←2←1] remaining=[5]
+
+  STEP 5 (curr=5):
+    A. Save:     next = null
+    B. Redirect: 5.next = 4
+    C. Advance:  prev = 5
+    D. Advance:  curr = null
+    State: reversed=[5←4←3←2←1] remaining=[]
+
+  ★ Reversed: 5 → 4 → 3 → 2 → 1
+
+═══ TEST 4: Recursive Trace ═══
+  Original: 1 → 2 → 3 → 4
+
+  RECURSE: node=1 → going deeper with node 2
+    RECURSE: node=2 → going deeper with node 3
+      RECURSE: node=3 → going deeper with node 4
+        BASE CASE: node=4 → return as new head
+      RETURN to node=3:
+        4.next = 3 (backward link)
+        3.next = null (break forward link)
+        new head remains: 4
+    RETURN to node=2:
+      3.next = 2 (backward link)
+      2.next = null (break forward link)
+      new head remains: 4
+  RETURN to node=1:
+    2.next = 1 (backward link)
+    1.next = null (break forward link)
+    new head remains: 4
+
+  ★ Reversed: 4 → 3 → 2 → 1
+
+═══ TEST 5: Edge Cases ═══
+  null → null
+  [42] → 42
+  [1,2] → 2 → 1
+  [5,5,5,5] → 5 → 5 → 5 → 5
+
+═══ TEST 6: Iterative vs Recursive Correctness ═══
+  [1,2,3,4,5] → 5 → 4 → 3 → 2 → 1  ✓
+  [10,20] → 20 → 10  ✓
+  [7] → 7  ✓
+  [1,2,3,4,5,6,7,8,9,10] → 10 → 9 → 8 → 7 → 6 → 5 → 4 → 3 → 2 → 1  ✓
+  [-3,-2,-1,0,1,2,3] → 3 → 2 → 1 → 0 → -1 → -2 → -3  ✓
+  All match: true
+
+═══ TEST 7: Double Reverse = Original ═══
+  1 → 2 → 3 → 4 → 5 → reverse → reverse → 1 → 2 → 3 → 4 → 5  ✓
+  10 → 20 → 30 → reverse → reverse → 10 → 20 → 30  ✓
+  7 → reverse → reverse → 7  ✓
+  1 → 2 → reverse → reverse → 1 → 2  ✓
+  All restored: true
+
+═══ TEST 8: Reverse First N Nodes ═══
+  Reverse first 1: 1 → 2 → 3 → 4 → 5
+  Reverse first 2: 2 → 1 → 3 → 4 → 5
+  Reverse first 3: 3 → 2 → 1 → 4 → 5
+  Reverse first 4: 4 → 3 → 2 → 1 → 5
+  Reverse first 5: 5 → 4 → 3 → 2 → 1
+
+═══ TEST 9: Reverse in Groups of K ═══
+  Original: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8
+  K=2: 2 → 1 → 4 → 3 → 6 → 5 → 8 → 7
+  K=3: 3 → 2 → 1 → 6 → 5 → 4 → 7 → 8
+  K=4: 4 → 3 → 2 → 1 → 8 → 7 → 6 → 5
+
+═══ TEST 10: Performance Benchmark ═══
+  List size: 10000000 nodes
+  Iterative reversal: ~85 ms
+  New head value: 9999999 (expected: 9999999)
+  Correct: true
+  Recursive: SKIPPED (would StackOverflow at n=10000000)</code></pre></div>
+<hr>
+<h2>🧠 KEY TAKEAWAY</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>WHAT WE LEARNED:
+</span>→ Linked list reversal uses the Prev/Curr/Next pointer dance
+→ Four steps per node: SAVE → REDIRECT → ADVANCE PREV → ADVANCE CURR
+→ Order is NON-NEGOTIABLE → any reordering breaks the algorithm
+→ prev starts at null → ensures old head becomes new tail
+→ Return prev (not curr) → curr is null when loop ends
+→ Iterative: O(n) time, O(1) space → preferred for production
+→ Recursive: O(n) time, O(n) space → elegant but stack-limited
+
+EVOLUTION OF LINKED LIST OPERATIONS:
+  Project 7:  READ → detect cycle → fast/slow → boolean answer
+  Project 15: READ → find middle → fast/slow → positional answer
+  Project 16: WRITE → reverse entire list → prev/curr/next → structural change
+
+THE FOUR-STEP MANTRA:
+  "Save, Redirect, Advance Prev, Advance Curr"
+  → This is the ATOMIC OPERATION of linked list modification
+  → Every linked list mutation is built from variations of this dance
+  → Master this → master all linked list problems
+
+KEY INSIGHT:
+  → Linked list modification requires CAREFUL ORDERING of operations
+  → One wrong step → lost references, cycles, or corrupted structure
+  → Always SAVE before REDIRECT
+  → Always draw the diagram when debugging
+  → This discipline transfers to all pointer manipulation problems
+
+VARIANTS INTRODUCED:
+  → Reverse first N nodes → partial reversal + reconnection
+  → Reverse in groups of K → repeated reversal + group connection
+  → Both build directly on the basic reversal
+  → Project 23 will add boundary stitching for sub-portion reversal</code></pre></div>
+<hr>
+<h2>🌉 BRIDGE TO NEXT PROJECT</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>PROJECT 16 solved:
+</span>→ Reverse an ENTIRE linked list in-place
+→ The Prev/Curr/Next pointer dance
+→ Variants: reverse first N, reverse in groups of K
+
+PROJECT 17 (Binary Tree Level Order Traversal) shifts to:
+→ A completely new data structure: BINARY TREES
+→ Introduces Breadth-First Search (BFS) using a QUEUE
+→ Process tree nodes LEVEL BY LEVEL (top to bottom, left to right)
+→ Queue-based processing with level boundary tracking
+
+THE CONNECTION:
+  → Linked lists are LINEAR → one path from head to tail
+  → Trees are HIERARCHICAL → one root, multiple branches
+  → Linked list traversal: follow .next pointer sequentially
+  → Tree traversal: follow .left and .right pointers → need a STRATEGY
+  → BFS (level-by-level) is one such strategy
+  → DFS (depth-first) is another → covered in Project 18
+
+THE BIGGER PICTURE — DATA STRUCTURES COVERED SO FAR:
+  Projects 1-4:   Arrays (Two Pointers)
+  Projects 5-6:   Arrays (Sliding Window)
+  Projects 12-13: Strings (Sliding Window + HashMap)
+  Project 14:     Intervals (Sort-then-Scan)
+  Projects 7,15,16: Linked Lists (Fast/Slow, Middle, Reverse)
+  Project 17:     Trees (BFS) → NEW DATA STRUCTURE
+
+→ Each data structure has its own family of patterns
+→ We systematically cover all major structures</code></pre></div>
+<hr>
+<p><strong>Ready for Project 17: Binary Tree Level Order Traversal (Tree BFS → Queue-Based Processing → Level Boundary Tracking)?</strong></p>
+</div>
+</div>
+
+<!-- ========== data-index="19" ========== -->
+<div class="chat-message" data-index="19"></div>
+</div>
+<div class="bottom-nav">
+  <a href="project-15.html" class="nav-btn prev">← Prev</a>
+  <div class="nav-center">
+    <span class="nav-project-label">PROJECT 16 of 60</span>
+    <span class="nav-project-title">Reverse a Linked List</span>
+    <span class="kbd-hint">← → arrow keys to navigate</span>
+  </div>
+  <a href="project-17.html" class="nav-btn next">Next →</a>
+  <a href="index.html" class="nav-btn home">🏠 TOC</a>
+</div>
+<div id="progress-track"><div id="progress-fill"></div></div>
+<div id="progress-pct">0%</div>
+<script src="script.js"></script>
+<script>
+document.addEventListener('keydown', function(e) {
+  if (['INPUT','TEXTAREA'].includes(document.activeElement.tagName)) return;
+  if (e.key === 'ArrowRight' && "project-17.html" !== null) window.location = "project-17.html";
+  if (e.key === 'ArrowLeft' && "project-15.html" !== null) window.location = "project-15.html";
+});
+</script>
+</body>
+</html>

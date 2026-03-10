@@ -1,0 +1,701 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PROJECT 21: Find All Duplicate Numbers in Array</title>
+<link rel="icon" type="image/png" href="images/favicon.png">
+<link rel="stylesheet" href="styles.css">
+
+</head>
+<body>
+<div id="progress-bar-container"><div id="progress-bar" style="width:36%"></div></div>
+<div id="progress-label">36%</div>
+<div class="page-wrapper">
+<div class="chat-message"><div class="px-2"><h1>PROJECT 21: Find All Duplicate Numbers in Array</h1>
+<h2>🎯 Cyclic Sort → Negative Marking / Placement Conflict → All-Duplicates Variant</h2>
+<hr>
+<h2>🧩 THE HYPOTHETICAL PROBLEM</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ You are given an array of N integers
+</span>→ Each integer is in the range [1, N] inclusive
+→ Some elements appear TWICE, others appear ONCE
+→ Find ALL the elements that appear TWICE
+→ You must do it in O(n) time and O(1) extra space
+→ The output list does NOT count as extra space
+
+Example 1:
+  Input:  [4, 3, 2, 7, 8, 2, 3, 1]
+  N = 8, values range [1, 8]
+  
+  Value 2 appears at index 2 and index 5 → DUPLICATE
+  Value 3 appears at index 1 and index 6 → DUPLICATE
+  Output: [2, 3]
+
+Example 2:
+  Input:  [1, 1, 2]
+  N = 3, values range [1, 3]
+  
+  Value 1 appears twice → DUPLICATE
+  Value 3 is missing
+  Output: [1]
+
+Example 3:
+  Input:  [1, 2, 3, 4, 5]
+  N = 5, all unique
+  Output: []  (empty — no duplicates)
+
+CONSTRAINTS:
+  → O(n) time → no sorting allowed (that's O(n log n))
+  → O(1) extra space → no HashSet/HashMap allowed
+  → Must use the ARRAY ITSELF as the tracking mechanism</code></pre></div>
+<hr>
+<h2>🔍 HOW TO APPROACH IT</h2>
+<h3>Step 1 — Recall Project 8: Cyclic Sort and Missing Number</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ Project 8 taught us: when values are in range [1, N] or [0, N]
+</span>→ Each value has a "home index" → value V belongs at index V-1
+→ We can PLACE each value at its correct position
+→ After placement, any index where value ≠ index+1 reveals anomalies
+
+→ Project 8 found ONE missing number
+→ Project 21 finds ALL duplicate numbers
+→ Same index-value mapping → different detection strategy</code></pre></div>
+<h3>Step 2 — Why Standard Approaches Fail the Constraints</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>APPROACH 1: Sorting
+</span>  → Sort the array → duplicates become adjacent
+  → Time: O(n log n) → VIOLATES O(n) requirement
+  → Also modifies the array in a destructive way
+
+APPROACH 2: HashSet
+  → Traverse array, add to set, if already in set → duplicate
+  → Time: O(n) ✓
+  → Space: O(n) → VIOLATES O(1) space requirement
+
+APPROACH 3: Brute Force
+  → For each element, scan entire array for duplicates
+  → Time: O(n²) → VIOLATES O(n) requirement
+
+→ All standard approaches fail at least one constraint
+→ We need a CLEVER trick that uses the array itself as storage</code></pre></div>
+<h3>Step 3 — The Core Insight: Array as HashMap</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ Values are in range [1, N]
+</span>→ Array has indices [0, N-1]
+→ There's a NATURAL MAPPING: value V → index (V-1)
+
+→ If we could "mark" index (V-1) when we see value V:
+     → First time we see V → mark index (V-1)
+     → Second time we see V → index (V-1) is ALREADY marked → V is a duplicate
+
+→ HOW to mark without extra space?
+→ TWO techniques:
+
+TECHNIQUE 1: Negative Marking
+  → Negate the value at index (V-1) to indicate "V has been seen"
+  → If arr[V-1] is already negative → V was already seen → DUPLICATE
+
+TECHNIQUE 2: Cyclic Sort Placement
+  → Try to place each value at its home index
+  → If home already has the correct value → DUPLICATE
+  → Same as Project 8 but detecting conflicts instead of gaps</code></pre></div>
+<h3>Step 4 — Technique 1: Negative Marking (Detailed)</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>Array: [4, 3, 2, 7, 8, 2, 3, 1]
+</span>Index:  0  1  2  3  4  5  6  7
+
+Process each element:
+  → For value V, go to index |V|-1 (absolute value because we may have negated)
+  → If arr[|V|-1] is POSITIVE → first time seeing V → negate it
+  → If arr[|V|-1] is NEGATIVE → second time seeing V → V is a DUPLICATE
+
+Step-by-step:
+  i=0: val = |4| = 4 → check index 3 → arr[3] = 7 (positive) → negate → arr = [4,3,2,-7,8,2,3,1]
+  i=1: val = |3| = 3 → check index 2 → arr[2] = 2 (positive) → negate → arr = [4,3,-2,-7,8,2,3,1]
+  i=2: val = |-2| = 2 → check index 1 → arr[1] = 3 (positive) → negate → arr = [4,-3,-2,-7,8,2,3,1]
+  i=3: val = |-7| = 7 → check index 6 → arr[6] = 3 (positive) → negate → arr = [4,-3,-2,-7,8,2,-3,1]
+  i=4: val = |8| = 8 → check index 7 → arr[7] = 1 (positive) → negate → arr = [4,-3,-2,-7,8,2,-3,-1]
+  i=5: val = |2| = 2 → check index 1 → arr[1] = -3 (NEGATIVE!) → 2 is DUPLICATE → add to result
+  i=6: val = |-3| = 3 → check index 2 → arr[2] = -2 (NEGATIVE!) → 3 is DUPLICATE → add to result
+  i=7: val = |-1| = 1 → check index 0 → arr[0] = 4 (positive) → negate → arr = [-4,-3,-2,-7,8,2,-3,-1]
+
+Result: [2, 3] ✓</code></pre></div>
+<h3>Step 5 — Technique 2: Cyclic Sort Placement (Detailed)</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>Array: [4, 3, 2, 7, 8, 2, 3, 1]
+</span>Index:  0  1  2  3  4  5  6  7
+
+Goal: Place each value V at index V-1
+
+CYCLIC SORT PROCESS:
+  i=0: arr[0]=4, should be at index 3
+       arr[3]=7 ≠ 4 → swap → arr = [7,3,2,4,8,2,3,1]
+       arr[0]=7, should be at index 6
+       arr[6]=3 ≠ 7 → swap → arr = [3,3,2,4,8,2,7,1]
+       arr[0]=3, should be at index 2
+       arr[2]=2 ≠ 3 → swap → arr = [2,3,3,4,8,2,7,1]
+       arr[0]=2, should be at index 1
+       arr[1]=3 ≠ 2 → swap → arr = [3,2,3,4,8,2,7,1]
+       arr[0]=3, should be at index 2
+       arr[2]=3 == 3 → ALREADY CORRECT → SKIP (would swap same values forever)
+       → Move to i=1
+       
+  i=1: arr[1]=2, should be at index 1 → ALREADY CORRECT → move on
+  i=2: arr[2]=3, should be at index 2 → ALREADY CORRECT → move on
+  i=3: arr[3]=4, should be at index 3 → ALREADY CORRECT → move on
+  i=4: arr[4]=8, should be at index 7
+       arr[7]=1 ≠ 8 → swap → arr = [3,2,3,4,1,2,7,8]
+       arr[4]=1, should be at index 0
+       arr[0]=3 ≠ 1 → swap → arr = [1,2,3,4,3,2,7,8]
+       arr[4]=3, should be at index 2
+       arr[2]=3 == 3 → ALREADY CORRECT → SKIP
+       → Move to i=5
+       
+  i=5: arr[5]=2, should be at index 1
+       arr[1]=2 == 2 → ALREADY CORRECT → SKIP
+       → Move to i=6
+       
+  i=6: arr[6]=7, should be at index 6 → ALREADY CORRECT → move on
+  i=7: arr[7]=8, should be at index 7 → ALREADY CORRECT → move on
+
+Final array: [1, 2, 3, 4, 3, 2, 7, 8]
+                                         
+Now scan for mismatches:
+  i=0: arr[0]=1 == 0+1 ✓
+  i=1: arr[1]=2 == 1+1 ✓
+  i=2: arr[2]=3 == 2+1 ✓
+  i=3: arr[3]=4 == 3+1 ✓
+  i=4: arr[4]=3 ≠ 4+1 → 3 is DUPLICATE ← the value 3 couldn't go home
+  i=5: arr[5]=2 ≠ 5+1 → 2 is DUPLICATE ← the value 2 couldn't go home
+  i=6: arr[6]=7 == 6+1 ✓
+  i=7: arr[7]=8 == 7+1 ✓
+
+Result: [3, 2] → sorted: [2, 3] ✓</code></pre></div>
+<hr>
+<h2>🛠️ HOW CAN WE SOLVE IT</h2>
+<h3>Algorithm 1: Negative Marking — Precise Steps</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>findDuplicates_NegativeMarking(nums):
+</span>
+  1. CREATE empty result list
+  
+  2. FOR each index i from 0 to n-1:
+     a. Get the actual value: val = |nums[i]|   (absolute value — may have been negated)
+     b. Compute the "home" index: homeIdx = val - 1
+     c. CHECK nums[homeIdx]:
+        → IF nums[homeIdx] &gt; 0:
+             → First time seeing val → negate: nums[homeIdx] = -nums[homeIdx]
+        → IF nums[homeIdx] &lt; 0:
+             → Second time seeing val → val is a DUPLICATE → add to result
+  
+  3. (Optional) RESTORE array: negate all negative values back to positive
+  
+  4. RETURN result</code></pre></div>
+<h3>Algorithm 2: Cyclic Sort — Precise Steps</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>findDuplicates_CyclicSort(nums):
+</span>
+  1. CYCLIC SORT phase:
+     → FOR each index i from 0 to n-1:
+          → WHILE nums[i] != nums[nums[i] - 1]:
+               → Swap nums[i] with nums[nums[i] - 1]
+          → (Loop exits when value is at home OR home already has correct value)
+  
+  2. DETECTION phase:
+     → FOR each index i from 0 to n-1:
+          → IF nums[i] != i + 1:
+               → nums[i] is a duplicate → add to result
+  
+  3. RETURN result</code></pre></div>
+<hr>
+<h2>✅ WHAT SHOULD YOU DO</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ ALWAYS take absolute value before computing home index (negative marking)
+</span>     → Previous iterations may have negated the value
+     → |nums[i]| gives the TRUE value regardless of marking state
+
+→ ALWAYS check if value is in valid range [1, N]
+     → If problem guarantees range → no check needed
+     → If not guaranteed → out-of-range values would cause ArrayIndexOutOfBounds
+
+→ ALWAYS understand WHY each technique works:
+     → Negative marking: array[V-1] &lt; 0 means "V has been seen"
+     → Cyclic sort: value at wrong index means "correct value is a duplicate"
+
+→ ALWAYS consider restoring the array if required
+     → Negative marking modifies the array
+     → Some problems require the array to remain unchanged
+     → Restore by negating all negatives back to positive at the end
+
+→ ALWAYS use the while loop (not if) in cyclic sort
+     → One swap may bring a new displaced element to current index
+     → Keep swapping until current index has its correct value
+     → Or until we detect a conflict (duplicate blocking)</code></pre></div>
+<hr>
+<h2>🚫 WHAT SHOULD YOU NOT DO</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ DO NOT forget absolute value in negative marking
+</span>     WRONG:
+       int val = nums[i];        // could be negative from earlier marking
+       int homeIdx = val - 1;     // negative index → crash!
+     
+     RIGHT:
+       int val = Math.abs(nums[i]);
+       int homeIdx = val - 1;
+
+→ DO NOT create infinite loop in cyclic sort
+     WRONG:
+       while (nums[i] != i + 1) {
+           swap(nums, i, nums[i] - 1);
+       }
+     → If nums[i]=3 and nums[2]=3 → swap gives same result → INFINITE LOOP
+     
+     RIGHT:
+       while (nums[i] != nums[nums[i] - 1]) {
+           swap(nums, i, nums[i] - 1);
+       }
+     → Check if TARGET position already has correct value
+     → If yes → stop → duplicate detected later in scan phase
+
+→ DO NOT use both techniques simultaneously
+     → Pick ONE → either negative marking OR cyclic sort
+     → Mixing them creates confusion and bugs
+     → Negative marking is simpler → prefer it unless asked specifically
+
+→ DO NOT add a value to result more than once
+     → Negative marking naturally prevents this:
+          → First encounter: positive → negate → don't add
+          → Second encounter: negative → add to result
+          → Third encounter? Can't happen → values appear at most twice
+
+→ DO NOT confuse this with "find missing numbers"
+     → Missing: which values in [1,N] are ABSENT from array?
+     → Duplicates: which values in [1,N] appear MORE THAN ONCE?
+     → Same technique → different detection logic:
+          → Missing: after sort, arr[i] != i+1 → i+1 is missing
+          → Duplicate: after sort, arr[i] != i+1 → arr[i] is duplicate</code></pre></div>
+<hr>
+<h2>🔀 WHEN TO USE THIS PATTERN</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>✓ Values are bounded in range [1, N] or [0, N-1]
+</span>     → This range allows index-value mapping
+     → Each value maps to exactly one index
+     
+✓ O(1) extra space is required
+     → Can't use HashSet or HashMap
+     → Must use the array itself as a tracking mechanism
+     
+✓ Finding duplicates, missing numbers, or both
+     → Cyclic sort family handles all variants:
+          → Project 8: find ONE missing number
+          → Project 21: find ALL duplicates
+          → Variant: find all missing numbers (same technique)
+          → Variant: find the first missing positive
+          
+✓ Elements appear at most TWICE (for negative marking)
+     → Negative marking works cleanly for at-most-twice
+     → For more occurrences → cyclic sort is safer
+
+✓ Array can be modified in-place
+     → Both techniques alter the array during processing
+     → If array must stay unchanged → need different approach</code></pre></div>
+<hr>
+<h2>🚫 WHEN NOT TO USE THIS PATTERN</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>✗ Values are NOT bounded in a small range
+</span>     → Array [1000000, 5, 3] with N=3 → value 1000000 has no valid home index
+     → Index-value mapping requires values ≈ indices
+     → For unbounded values → use HashMap or sorting
+
+✗ O(1) space is NOT required
+     → HashSet is simpler and more readable
+     → If space constraint is relaxed → prefer HashSet for clarity
+     
+✗ Array cannot be modified
+     → Both techniques modify the array
+     → If modification is forbidden AND O(1) space required → very constrained
+     → May need XOR-based or math-based tricks
+     
+✗ Elements can appear more than twice
+     → Negative marking breaks: third occurrence sees negative → adds again
+     → Would need additional handling
+     → Cyclic sort still works but detection changes
+
+✗ Array contains zeros or negative values
+     → Negative marking relies on sign as a flag → zeros break it
+     → Cyclic sort relies on value-1 as index → negatives break it
+     → Need value transformation or different technique</code></pre></div>
+<hr>
+<h2>⚙️ HOW IT ONLY WORKS — Internal Mechanics</h2>
+<h3>Negative Marking: The Sign-as-Flag Trick</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>CORE IDEA:
+</span>→ Each index position serves as a "bucket" for one value
+→ Index 0 is the bucket for value 1
+→ Index 1 is the bucket for value 2
+→ Index k is the bucket for value k+1
+
+→ The SIGN of arr[k] serves as a boolean flag:
+     → Positive: value (k+1) has NOT been seen yet
+     → Negative: value (k+1) HAS been seen
+
+→ The MAGNITUDE of arr[k] preserves the original value
+     → We need this because arr[k] itself may be processed later
+     → |arr[k]| gives the true value regardless of flag state
+
+WALK THROUGH THE STATE:
+  Initial:  [4, 3, 2, 7, 8, 2, 3, 1]
+  
+  Process 4: flag index 3 → [4, 3, 2, -7, 8, 2, 3, 1]
+                                       ^
+                                    "4 seen"
+  
+  Process 3: flag index 2 → [4, 3, -2, -7, 8, 2, 3, 1]
+                                    ^
+                                 "3 seen"
+  
+  Process |-2|=2: flag index 1 → [4, -3, -2, -7, 8, 2, 3, 1]
+                                      ^
+                                   "2 seen"
+  
+  Process |-7|=7: flag index 6 → [4, -3, -2, -7, 8, 2, -3, 1]
+                                                     ^
+                                                  "7 seen"
+  
+  Process 8: flag index 7 → [4, -3, -2, -7, 8, 2, -3, -1]
+                                                        ^
+                                                     "8 seen"
+  
+  Process 2: check index 1 → arr[1] = -3 → ALREADY NEGATIVE
+             → 2 was already seen → DUPLICATE! → add 2 to result
+  
+  Process |-3|=3: check index 2 → arr[2] = -2 → ALREADY NEGATIVE
+                  → 3 was already seen → DUPLICATE! → add 3 to result
+  
+  Process |-1|=1: flag index 0 → [-4, -3, -2, -7, 8, 2, -3, -1]
+                                    ^
+                                 "1 seen"
+
+FINAL STATE: [-4, -3, -2, -7, 8, 2, -3, -1]
+→ Negative positions: 0,1,2,3,6,7 → values 1,2,3,4,7,8 were seen
+→ Positive positions: 4,5 → values 5,6 were NOT seen (these are MISSING)
+→ Duplicates found during process: 2, 3
+
+BONUS INSIGHT:
+→ After negative marking, you can find BOTH duplicates AND missing numbers!
+→ Duplicates: detected during the process (second encounter of negative)
+→ Missing: indices that remain POSITIVE after the process
+→ This dual capability makes negative marking very powerful</code></pre></div>
+<h3>Cyclic Sort: The Placement Approach</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>CORE IDEA:
+</span>→ Put each value at its "home" → value V goes to index V-1
+→ After sorting, scan for misplaced values
+→ Any value not at home is a duplicate (because its home is occupied by another copy)
+
+WHY THE WHILE LOOP TERMINATES:
+→ Each swap places AT LEAST ONE value at its correct home
+→ A value at its correct home is NEVER moved again
+→ Maximum N values → maximum N swaps total across ALL iterations
+→ Total work across all i iterations: O(n) → amortized O(1) per element
+
+PROOF OF O(n) TOTAL SWAPS:
+→ Define "displaced count" = number of values NOT at their home
+→ Initially: displaced count ≤ n
+→ Each swap: at least one value reaches home → displaced count decreases by ≥ 1
+→ Displaced count can never go below 0
+→ Therefore: total swaps ≤ n
+→ Each swap is O(1) → total sort phase: O(n) ✓
+
+THE DUPLICATE DETECTION:
+→ After cyclic sort: value V is at index V-1 for all non-duplicate values
+→ Duplicate values: one copy is at home, other is "homeless"
+→ Homeless copies end up at indices where the MISSING values should be
+→ Scan: if arr[i] ≠ i+1 → arr[i] is homeless → arr[i] is a duplicate</code></pre></div>
+<h3>Why Values Appear at Most Twice Matters</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>FOR NEGATIVE MARKING:
+</span>→ If value V appears 3 times:
+     → First encounter: arr[V-1] positive → negate → correct
+     → Second encounter: arr[V-1] negative → add V to result → correct
+     → Third encounter: arr[V-1] is still negative → add V AGAIN → DUPLICATE IN RESULT
+→ Need additional logic to prevent re-adding
+
+FOR CYCLIC SORT:
+→ If value V appears 3 times:
+     → One copy goes to home index V-1
+     → Two copies are homeless → both detected in scan
+     → V appears twice in result → need deduplication
+→ At-most-twice constraint simplifies both techniques significantly</code></pre></div>
+<h3>Time and Space Complexity — Both Approaches</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>NEGATIVE MARKING:
+</span>  Time:  O(n) → single pass through array
+  Space: O(1) extra → only loop variable and temporary values
+  
+CYCLIC SORT:
+  Time:  O(n) → sort phase O(n) amortized + scan phase O(n)
+  Space: O(1) extra → only loop variables and swap temp
+
+Both are optimal for this problem.
+Negative marking is simpler → fewer lines of code → less error-prone.
+Cyclic sort is more general → works for more variants of the problem.</code></pre></div>
+<hr>
+<h2>⚠️ COMMON PITFALLS AND FAILURE MODES</h2>
+<h3>Pitfall 1: Forgetting Math.abs() — The #1 Bug</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>SCENARIO:
+</span>  Array: [3, 1, 3]
+  
+  i=0: val = 3, homeIdx = 2, arr[2] = 3 (positive) → negate → arr = [3, 1, -3]
+  i=1: val = 1, homeIdx = 0, arr[0] = 3 (positive) → negate → arr = [-3, 1, -3]
+  i=2: val = arr[2] = -3
+  
+  WITHOUT Math.abs():
+    val = -3, homeIdx = -3-1 = -4 → ArrayIndexOutOfBoundsException!
+  
+  WITH Math.abs():
+    val = |-3| = 3, homeIdx = 3-1 = 2, arr[2] = -3 (negative) → DUPLICATE → add 3 ✓
+
+→ ALWAYS use Math.abs(nums[i]) when reading values
+→ The negation from previous iterations WILL cause crashes without it</code></pre></div>
+<h3>Pitfall 2: Infinite Loop in Cyclic Sort</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>SCENARIO:
+</span>  Array: [2, 2]
+  
+  i=0: nums[0] = 2, home = index 1
+       nums[1] = 2 → nums[0] == nums[nums[0]-1] → 2 == 2 → STOP
+  
+  If we used the WRONG condition:
+    while (nums[i] != i + 1):
+      nums[0] = 2, i+1 = 1 → 2 ≠ 1 → swap
+      swap(nums[0], nums[1]) → [2, 2] → SAME ARRAY → INFINITE LOOP
+
+  RIGHT condition:
+    while (nums[i] != nums[nums[i] - 1]):
+      nums[0] = 2, nums[nums[0]-1] = nums[1] = 2 → 2 == 2 → STOP → no swap ✓
+
+→ Compare value at CURRENT index with value at HOME index
+→ NOT value with expected value at current index
+→ This correctly handles duplicates without infinite loops</code></pre></div>
+<h3>Pitfall 3: Index Off-by-One</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ Values range [1, N] → indices range [0, N-1]
+</span>→ Value V maps to index V-1 (NOT V)
+→ Index i expects value i+1 (NOT i)
+
+WRONG: homeIdx = val;      → off by one → crash at val=N
+RIGHT: homeIdx = val - 1;  → correct mapping
+
+WRONG: if (nums[i] != i)   → checks for [0,N-1] range values
+RIGHT: if (nums[i] != i+1) → checks for [1,N] range values</code></pre></div>
+<h3>Pitfall 4: Modifying Array When Not Allowed</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ Some problem variants say "do not modify the input array"
+</span>→ Negative marking modifies the array
+→ Cyclic sort modifies the array
+
+OPTIONS:
+  a) Restore array after processing (negate back all negatives)
+  b) Clone the array first → work on the clone
+  c) Use a different approach entirely (Floyd's cycle detection on array)
+     → Treat array as linked list: index → value → next index
+     → Find duplicate = find cycle start (Project 20 technique!)
+     → O(n) time, O(1) space, NO modification
+     → Advanced technique — combines Projects 20 and 21</code></pre></div>
+<h3>Pitfall 5: Result Order</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ Negative marking finds duplicates in ORDER OF SECOND OCCURRENCE
+</span>→ Cyclic sort finds duplicates in ORDER OF POSITION (left to right scan)
+→ These may differ
+
+Example: [4, 3, 2, 7, 8, 2, 3, 1]
+  Negative marking: finds 2 first (index 5), then 3 (index 6) → [2, 3]
+  Cyclic sort: finds 3 first (index 4), then 2 (index 5) → [3, 2]
+
+→ If problem requires sorted output → sort the result list
+→ If problem says "any order" → either technique is fine
+→ READ THE PROBLEM for output order requirements</code></pre></div>
+<hr>
+<h2>📈 SCALABILITY CONSIDERATIONS</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ n = 100 → instant for all approaches
+</span>→ n = 100,000 → O(n) approaches finish in &lt; 1ms
+→ n = 10,000,000 → O(n) approaches finish in ~100ms
+→ n = 100,000,000 → O(n) approaches finish in ~1s
+
+→ MEMORY COMPARISON:
+     HashSet approach: O(n) extra → n=10M → ~160MB extra memory
+     Negative marking: O(1) extra → 0 extra memory
+     Cyclic sort:      O(1) extra → 0 extra memory
+
+→ For memory-constrained environments → in-place techniques are essential
+→ For competitive programming → in-place techniques are faster (better cache)
+
+→ The O(n) time is TRUE O(n) → single pass (negative marking) or 
+  amortized O(n) (cyclic sort) → no hidden constants
+→ Very cache-friendly → sequential array access → hardware loves this</code></pre></div>
+<hr>
+<h2>🔍 INTERPRETABILITY CONSIDERATIONS</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ Negative marking is ELEGANT but TRICKY to understand:
+</span>     → "Why are we negating values?"
+     → "What does a negative number at index 3 mean?"
+     → Requires explanation of the sign-as-flag concept
+     → Once understood → very clean and compact code
+
+→ Cyclic sort is MORE INTUITIVE:
+     → "Put each number where it belongs"
+     → "Numbers that can't find a home are duplicates"
+     → Maps to physical sorting metaphors
+     → Easier to explain in interviews
+
+→ INTERVIEW RECOMMENDATION:
+     → Start by explaining the insight: "values in [1,N] → natural index mapping"
+     → Mention both techniques → let interviewer choose
+     → Negative marking → fewer lines → faster to code
+     → Cyclic sort → more intuitive → easier to explain
+     → Code whichever you're more comfortable with
+
+→ DEBUGGING:
+     → Negative marking: print array state after each step → see flags
+     → Cyclic sort: print array after sort phase → see placement
+     → Both have clear intermediate states that are easy to inspect</code></pre></div>
+<hr>
+<div class="github-btn-wrap"><a class="github-btn" href="https://github.com/Shakti4640/leetcode-patterns-guide-java/tree/main/project- (21)" target="_blank" rel="noopener"><svg viewBox="0 0 24 24"><path d="M12 .5C5.37.5 0 5.87 0 12.5c0 5.3 3.44 9.8 8.2 11.39.6.11.82-.26.82-.58v-2.03c-3.34.73-4.04-1.61-4.04-1.61-.55-1.39-1.34-1.76-1.34-1.76-1.09-.74.08-.73.08-.73 1.2.09 1.84 1.24 1.84 1.24 1.07 1.83 2.8 1.3 3.49 1 .1-.78.42-1.3.76-1.6-2.67-.3-5.47-1.33-5.47-5.93 0-1.31.47-2.38 1.24-3.22-.14-.3-.54-1.52.1-3.18 0 0 1.01-.32 3.3 1.23a11.5 11.5 0 0 1 3-.4c1.02 0 2.04.13 3 .4 2.28-1.55 3.29-1.23 3.29-1.23.64 1.66.24 2.88.12 3.18.77.84 1.23 1.91 1.23 3.22 0 4.61-2.81 5.63-5.48 5.92.43.37.81 1.1.81 2.22v3.29c0 .32.21.7.82.58C20.56 22.3 24 17.8 24 12.5 24 5.87 18.63.5 12 .5z"/></svg>💻 View Complete Java Code on GitHub</a></div>
+
+<hr>
+<h2>🔑 EXPECTED OUTPUT (Key Sections)</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>═══ TEST 1: Negative Marking Trace ═══
+</span>  Initial array:
+  [  4,  3,  2,  7,  8,  2,  3,  1]
+
+  i=0 | raw=4 | val=|4|=4 | homeIdx=3 | arr[3]=7 → positive → negate → arr[3]=-7
+    State: [  4,  3,  2, -7,  8,  2,  3,  1]
+  i=1 | raw=3 | val=|3|=3 | homeIdx=2 | arr[2]=2 → positive → negate → arr[2]=-2
+    State: [  4,  3, -2, -7,  8,  2,  3,  1]
+  i=2 | raw=-2 | val=|-2|=2 | homeIdx=1 | arr[1]=3 → positive → negate → arr[1]=-3
+    State: [  4, -3, -2, -7,  8,  2,  3,  1]
+  i=3 | raw=-7 | val=|-7|=7 | homeIdx=6 | arr[6]=3 → positive → negate → arr[6]=-3
+    State: [  4, -3, -2, -7,  8,  2, -3,  1]
+  i=4 | raw=8 | val=|8|=8 | homeIdx=7 | arr[7]=1 → positive → negate → arr[7]=-1
+    State: [  4, -3, -2, -7,  8,  2, -3, -1]
+  i=5 | raw=2 | val=|2|=2 | homeIdx=1 | arr[1]=-3 → NEGATIVE → 2 is DUPLICATE ★
+    State: [  4, -3, -2, -7,  8,  2, -3, -1]
+  i=6 | raw=-3 | val=|-3|=3 | homeIdx=2 | arr[2]=-2 → NEGATIVE → 3 is DUPLICATE ★
+    State: [  4, -3, -2, -7,  8,  2, -3, -1]
+  i=7 | raw=-1 | val=|-1|=1 | homeIdx=0 | arr[0]=4 → positive → negate → arr[0]=-4
+    State: [ -4, -3, -2, -7,  8,  2, -3, -1]
+
+  Duplicates found: [2, 3]
+
+═══ TEST 8: BONUS — Find Both Duplicates AND Missing ═══
+  Input: [4, 3, 2, 7, 8, 2, 3, 1]
+  Range: [1, 8]
+  Duplicates: [2, 3]
+  Missing:    [5, 6]
+
+═══ TEST 9: Verification — All Approaches Agree ═══
+  Test 1: NegMark=[2, 3] CycSort=[2, 3] HashSet=[2, 3] ✓
+  Test 2: NegMark=[1] CycSort=[1] HashSet=[1] ✓
+  Test 3: NegMark=[] CycSort=[] HashSet=[] ✓
+  Test 4: NegMark=[1, 2, 3] CycSort=[1, 2, 3] HashSet=[1, 2, 3] ✓
+  Test 5: NegMark=[] CycSort=[] HashSet=[] ✓
+  Test 6: NegMark=[2] CycSort=[2] HashSet=[2] ✓
+  Test 7: NegMark=[1, 3, 5] CycSort=[1, 3, 5] HashSet=[1, 3, 5] ✓
+  Test 8: NegMark=[1, 10] CycSort=[1, 10] HashSet=[1, 10] ✓
+  All match: true</code></pre></div>
+<hr>
+<h2>🧠 The Cyclic Sort Family — Complete Picture</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>┌───────────────┬─────────────────────────┬──────────────────────────────┐
+</span>│ Problem       │ Project 8               │ Project 21                   │
+│               │ (Missing Number)        │ (All Duplicates)             │
+├───────────────┼─────────────────────────┼──────────────────────────────┤
+│ Question      │ Which value is absent?  │ Which values appear twice?   │
+│ Input range   │ [0, N] in size N array  │ [1, N] in size N array       │
+│ Technique     │ Cyclic sort or XOR      │ Negative marking or          │
+│               │                         │ cyclic sort                  │
+│ Detection     │ After sort: arr[i]≠i    │ After mark: arr[V-1] &lt; 0    │
+│               │ → i is missing          │ on second visit → V dup     │
+│ Key insight   │ N+1 values in N slots   │ Duplicates steal slots from  │
+│               │ → one must be missing   │ missing values               │
+│ Output        │ Single number           │ List of numbers              │
+│ Shared core   │ Index-value mapping     │ Index-value mapping          │
+└───────────────┴─────────────────────────┴──────────────────────────────┘
+
+EXTENDED FAMILY:
+→ Find one missing number → Project 8 (XOR or cyclic sort)
+→ Find all missing numbers → negative marking (positive indices = missing)
+→ Find one duplicate → Floyd's cycle (Project 20 on array) or cyclic sort
+→ Find all duplicates → Project 21 (negative marking or cyclic sort)
+→ Find missing AND duplicate → negative marking (single technique, both answers)
+→ Find first missing positive → cyclic sort variant
+
+ALL rely on the same insight:
+  Values in [1,N] → natural index mapping → array IS the hash table</code></pre></div>
+<hr>
+<h2>🧠 KEY TAKEAWAY</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>WHAT WE LEARNED:
+</span>→ When values are bounded in [1,N], the array ITSELF becomes a hash table
+→ Index-value mapping: value V → index V-1
+→ Negative marking: sign of arr[V-1] = boolean flag for "V was seen"
+→ Cyclic sort: place values at home → homeless values = duplicates
+→ Both achieve O(n) time, O(1) space → optimal
+→ Negative marking also reveals MISSING numbers as a bonus
+→ Math.abs() is critical → previous negations corrupt raw values
+
+THE CORE MENTAL MODEL:
+→ "Values fit into index range → I can use the array as a boolean flags array"
+→ "First visit → mark. Second visit → already marked → duplicate"
+→ "The array IS the data structure — no extra space needed"
+
+PATTERN SIGNATURE:
+→ Values in range [1, N] ✓
+→ Array of size N ✓
+→ Find duplicates / missing ✓
+→ O(1) extra space required ✓
+→ = CYCLIC SORT FAMILY → NEGATIVE MARKING or PLACEMENT
+
+CONNECTION TO PREVIOUS PROJECTS:
+→ Project 8: Same index-value mapping → found missing number
+→ Project 20: Floyd's cycle detection → can also find duplicates in array
+     → Treat array as linked list → value = next pointer
+     → Cycle start = duplicate value
+     → Different technique, same problem class</code></pre></div>
+<hr>
+<h2>🌉 BRIDGE TO NEXT PROJECT</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>PROJECT 21 taught us:
+</span>→ Clever in-place array manipulation
+→ Using the array itself as a tracking mechanism
+→ Detecting anomalies (duplicates) through index-value relationships
+
+PROJECT 22 (Insert a New Interval into Sorted Intervals) returns to:
+→ MERGE INTERVALS pattern from Project 14
+→ Project 14: given existing intervals → merge overlapping ones
+→ Project 22: given sorted non-overlapping intervals + ONE new interval
+     → Insert the new interval
+     → Merge any resulting overlaps
+     → Return the new clean interval list
+
+→ Key new concept: THREE-REGION processing
+     → Region 1: intervals completely BEFORE the new interval
+     → Region 2: intervals that OVERLAP with the new interval → merge
+     → Region 3: intervals completely AFTER the new interval
+
+→ Project 14 sorted then scanned → one pass
+→ Project 22 already has sorted input → but must handle insertion + merging
+
+The broader pattern evolution:
+  Project 14: Merge all overlaps (sort + scan)
+  Project 22: Insert + merge (three-region split)
+  Project 46: Count overlaps at any point (intervals + heap)
+→ Same interval foundation → progressively complex operations</code></pre></div>
+<hr>
+<p><strong>Ready for Project 22: Insert a New Interval into Sorted Intervals (Merge Intervals → Three-Region Split → Before/Overlap/After Logic)?</strong></p>
+</div>
+</div>
+
+<!-- ========== data-index="13" ========== -->
+<div class="chat-message" data-index="13"></div>
+</div>
+<div class="bottom-nav">
+  <a href="project-20.html" class="nav-btn prev">← Prev</a>
+  <div class="nav-center">
+    <span class="nav-project-label">PROJECT 21 of 60</span>
+    <span class="nav-project-title">Find All Duplicate Numbers in Array</span>
+    <span class="kbd-hint">← → arrow keys to navigate</span>
+  </div>
+  <a href="project-22.html" class="nav-btn next">Next →</a>
+  <a href="index.html" class="nav-btn home">🏠 TOC</a>
+</div>
+<div id="progress-track"><div id="progress-fill"></div></div>
+<div id="progress-pct">0%</div>
+<script src="script.js"></script>
+<script>
+document.addEventListener('keydown', function(e) {
+  if (['INPUT','TEXTAREA'].includes(document.activeElement.tagName)) return;
+  if (e.key === 'ArrowRight' && "project-22.html" !== null) window.location = "project-22.html";
+  if (e.key === 'ArrowLeft' && "project-20.html" !== null) window.location = "project-20.html";
+});
+</script>
+</body>
+</html>

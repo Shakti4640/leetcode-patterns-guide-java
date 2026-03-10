@@ -1,0 +1,887 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PROJECT 35: Find Median from a Data Stream</title>
+<link rel="icon" type="image/png" href="images/favicon.png">
+<link rel="stylesheet" href="styles.css">
+
+</head>
+<body>
+<div id="progress-bar-container"><div id="progress-bar" style="width:59%"></div></div>
+<div id="progress-label">59%</div>
+<div class="page-wrapper">
+<div class="chat-message"><div class="px-2"><h1>PROJECT 35: Find Median from a Data Stream</h1>
+<h2>🎯 Two Heaps → Max-Heap + Min-Heap Balancing → Running Median Maintenance</h2>
+<hr>
+<h2>🧩 THE HYPOTHETICAL PROBLEM</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ You are designing a system that receives STREAMING numbers
+</span>→ Numbers arrive ONE AT A TIME in arbitrary order
+→ At ANY point, you must be able to report the MEDIAN of all numbers received so far
+→ Median definition:
+     → If count is ODD: the middle element when sorted
+     → If count is EVEN: average of the two middle elements
+→ Design a data structure that supports:
+     → addNum(int num): Add a number from the stream
+     → findMedian(): Return the median of all numbers added so far
+
+Example:
+  addNum(1)    → stream: [1]           → median = 1.0
+  addNum(3)    → stream: [1, 3]        → median = (1+3)/2 = 2.0
+  addNum(5)    → stream: [1, 3, 5]     → median = 3.0
+  addNum(2)    → stream: [1, 2, 3, 5]  → median = (2+3)/2 = 2.5
+  addNum(4)    → stream: [1,2,3,4,5]   → median = 3.0
+  addNum(0)    → stream: [0,1,2,3,4,5] → median = (2+3)/2 = 2.5
+
+Another example:
+  addNum(41)   → median = 41.0
+  addNum(35)   → median = (35+41)/2 = 38.0
+  addNum(62)   → median = 41.0
+  addNum(4)    → median = (35+41)/2 = 38.0
+  addNum(97)   → median = 41.0
+  addNum(108)  → median = (41+62)/2 = 51.5</code></pre></div>
+<hr>
+<h2>🔍 HOW TO APPROACH IT</h2>
+<h3>Step 1 — Why Naive Approaches Fail</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>APPROACH 1 — Unsorted List + Sort Each Time:
+</span>  → addNum: O(1) — just append
+  → findMedian: O(n log n) — sort, then pick middle
+  → For n queries: O(n² log n) total → TOO SLOW
+
+APPROACH 2 — Sorted List (Insertion Sort):
+  → addNum: O(n) — find position via binary search O(log n), 
+                    but SHIFTING elements is O(n)
+  → findMedian: O(1) — just index into middle
+  → For n queries: O(n²) total → still slow for large n
+
+APPROACH 3 — Balanced BST (TreeMap):
+  → addNum: O(log n) — balanced tree insertion
+  → findMedian: O(log n) — but finding median in BST is tricky
+  → Handling duplicates adds complexity
+  → Works but implementation is complex
+
+WHAT WE NEED:
+  → addNum: O(log n)
+  → findMedian: O(1)
+  → Simple to implement
+  → This is what TWO HEAPS gives us</code></pre></div>
+<h3>Step 2 — The Two-Heap Insight</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ Imagine all numbers sorted: [1, 2, 3, 4, 5, 6, 7, 8]
+</span>→ Split them into TWO HALVES at the median:
+     Left half:  [1, 2, 3, 4]  → the SMALLER half
+     Right half: [5, 6, 7, 8]  → the LARGER half
+
+→ The MEDIAN is:
+     → If odd total: the top of whichever half has one extra
+     → If even total: average of the TOP of each half
+
+→ What do we need from each half?
+     → Left half: we need the MAXIMUM (the largest of the small numbers)
+     → Right half: we need the MINIMUM (the smallest of the large numbers)
+
+→ Data structure that gives the MAXIMUM efficiently? → MAX-HEAP
+→ Data structure that gives the MINIMUM efficiently? → MIN-HEAP
+
+→ So:
+     → Left half → MAX-HEAP (gives us the largest small number)
+     → Right half → MIN-HEAP (gives us the smallest large number)
+     → Median = peek at the tops of both heaps
+
+This is the TWO-HEAP pattern:
+  ┌─────────────┐     ┌─────────────┐
+  │  MAX-HEAP   │     │  MIN-HEAP   │
+  │ (left half) │     │(right half) │
+  │             │     │             │
+  │  smaller    │     │   larger    │
+  │  numbers    │     │  numbers    │
+  │             │     │             │
+  │   TOP = 4   │     │   TOP = 5   │
+  │  [1,2,3,4]  │     │  [5,6,7,8]  │
+  └─────────────┘     └─────────────┘
+       ↑                    ↑
+  largest of small    smallest of large
+       ↑                    ↑
+       └──── MEDIAN ────────┘
+           (4+5)/2 = 4.5</code></pre></div>
+<h3>Step 3 — The Balancing Rules</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>RULE 1: Every element in max-heap ≤ every element in min-heap
+</span>  → All "small" numbers are in the left heap
+  → All "large" numbers are in the right heap
+  → max-heap's top ≤ min-heap's top (always)
+
+RULE 2: Heaps differ in size by AT MOST 1
+  → |maxHeap.size() - minHeap.size()| ≤ 1
+  → This ensures the median is always at the top(s)
+
+RULE 3: We choose max-heap to be the "extra" one
+  → If odd count: max-heap has one more element
+  → maxHeap.size() == minHeap.size()  OR  maxHeap.size() == minHeap.size() + 1
+  → Convention: max-heap is always ≥ min-heap in size
+  → (Some implementations use the reverse — both work)
+
+MEDIAN EXTRACTION:
+  → If maxHeap.size() &gt; minHeap.size():
+       → Odd count → median = maxHeap.peek()
+  → If maxHeap.size() == minHeap.size():
+       → Even count → median = (maxHeap.peek() + minHeap.peek()) / 2.0</code></pre></div>
+<h3>Step 4 — The Add Algorithm</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>When a new number arrives, we need to:
+</span>  1. Place it in the correct heap
+  2. Rebalance if needed
+
+STRATEGY — Always add to max-heap first, then rebalance:
+
+Step A: Add to max-heap
+  → maxHeap.add(num)
+  → This might violate Rule 1 (max-heap's top &gt; min-heap's top)
+
+Step B: Move max-heap's top to min-heap
+  → minHeap.add(maxHeap.poll())
+  → Now Rule 1 is guaranteed (we moved the largest small to the large side)
+  → But Rule 2 might be violated (min-heap might be too big)
+
+Step C: Rebalance sizes
+  → If minHeap.size() &gt; maxHeap.size():
+       → maxHeap.add(minHeap.poll())
+       → Now sizes are balanced
+
+WHY THIS THREE-STEP DANCE WORKS:
+  → Step A: ensures new number enters the system
+  → Step B: ensures the split point is correct (no small number in large heap)
+  → Step C: ensures size balance (max-heap is always ≥ min-heap)
+
+ALTERNATIVE STRATEGY — Direct placement + rebalance:
+  → If num ≤ maxHeap.peek(): add to maxHeap
+  → Else: add to minHeap
+  → Then rebalance sizes
+  → Both approaches work — first is simpler to code</code></pre></div>
+<h3>Step 5 — Full Walkthrough</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>Stream: 5, 2, 8, 1, 4, 7
+</span>
+ADD 5:
+  maxHeap.add(5) → maxHeap=[5], minHeap=[]
+  Move: minHeap.add(maxHeap.poll()) → maxHeap=[], minHeap=[5]
+  Rebalance: minHeap bigger → maxHeap.add(minHeap.poll()) → maxHeap=[5], minHeap=[]
+  State: maxHeap=[5] minHeap=[]
+  Median: 5.0 (odd, max-heap top)
+
+ADD 2:
+  maxHeap.add(2) → maxHeap=[5,2], minHeap=[]
+  Move: minHeap.add(maxHeap.poll()=5) → maxHeap=[2], minHeap=[5]
+  Rebalance: sizes equal → no rebalance
+  State: maxHeap=[2] minHeap=[5]
+  Median: (2+5)/2 = 3.5
+
+ADD 8:
+  maxHeap.add(8) → maxHeap=[8,2], minHeap=[5]
+  Move: minHeap.add(maxHeap.poll()=8) → maxHeap=[2], minHeap=[5,8]
+  Rebalance: minHeap bigger → maxHeap.add(minHeap.poll()=5) → maxHeap=[5,2], minHeap=[8]
+  State: maxHeap=[5,2] minHeap=[8]
+  Median: 5.0 (odd, max-heap top)
+
+ADD 1:
+  maxHeap.add(1) → maxHeap=[5,2,1], minHeap=[8]
+  Move: minHeap.add(maxHeap.poll()=5) → maxHeap=[2,1], minHeap=[5,8]
+  Rebalance: sizes equal → no rebalance
+  State: maxHeap=[2,1] minHeap=[5,8]
+  Sorted view: [1, 2 | 5, 8]
+  Median: (2+5)/2 = 3.5
+
+ADD 4:
+  maxHeap.add(4) → maxHeap=[4,2,1], minHeap=[5,8]
+  Move: minHeap.add(maxHeap.poll()=4) → maxHeap=[2,1], minHeap=[4,5,8]
+  Rebalance: minHeap bigger → maxHeap.add(minHeap.poll()=4) → maxHeap=[4,2,1], minHeap=[5,8]
+  State: maxHeap=[4,2,1] minHeap=[5,8]
+  Sorted view: [1, 2, 4 | 5, 8]
+  Median: 4.0 (odd, max-heap top)
+
+ADD 7:
+  maxHeap.add(7) → maxHeap=[7,4,2,1], minHeap=[5,8]
+  Move: minHeap.add(maxHeap.poll()=7) → maxHeap=[4,2,1], minHeap=[5,7,8]
+  Rebalance: sizes equal → no rebalance
+  State: maxHeap=[4,2,1] minHeap=[5,7,8]
+  Sorted view: [1, 2, 4 | 5, 7, 8]
+  Median: (4+5)/2 = 4.5</code></pre></div>
+<h3>Step 6 — Why This is Connected to Previous Projects</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>Connection to Project 17 (Tree BFS — Queue-based processing):
+</span>  → BFS used a Queue (FIFO) for level-order traversal
+  → Heaps are PRIORITY QUEUES — elements come out in priority order
+  → Both are queue-based structures with different ordering guarantees
+  → Queue: first-in-first-out
+  → Priority Queue: highest-priority-first
+
+Connection to Project 1 (Two Pointers — Left/Right):
+  → Two pointers split sorted data into left and right
+  → Two heaps split streaming data into small half and large half
+  → Same conceptual split — different data structure
+
+Connection to Sliding Window (Projects 5, 6, 12, 33, 34):
+  → Sliding window maintains a RUNNING statistic as data changes
+  → Two heaps maintain a RUNNING MEDIAN as data arrives
+  → Same "maintain-as-you-go" philosophy
+  → Project 41 will COMBINE sliding window + two heaps
+
+THIS IS A NEW PATTERN — not a variation of an old one:
+  → It introduces HEAP as a fundamental data structure
+  → And the idea of SPLITTING data into two complementary halves
+  → Each half managed by a heap optimized for its access pattern</code></pre></div>
+<hr>
+<h2>🛠️ HOW CAN WE SOLVE IT</h2>
+<h3>Java Heap Fundamentals (Must Know Before Coding)</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>JAVA PriorityQueue:
+</span>  → Default: MIN-HEAP (smallest element at top)
+  → PriorityQueue&lt;Integer&gt; minHeap = new PriorityQueue&lt;&gt;();
+  → minHeap.add(5), minHeap.add(3), minHeap.add(7)
+  → minHeap.peek() → 3 (smallest)
+  → minHeap.poll() → 3 (removes smallest)
+
+MAX-HEAP in Java:
+  → Use Collections.reverseOrder() comparator
+  → PriorityQueue&lt;Integer&gt; maxHeap = new PriorityQueue&lt;&gt;(Collections.reverseOrder());
+  → maxHeap.add(5), maxHeap.add(3), maxHeap.add(7)
+  → maxHeap.peek() → 7 (largest)
+  → maxHeap.poll() → 7 (removes largest)
+
+OPERATIONS COMPLEXITY:
+  → add(): O(log n) — insert + bubble up
+  → poll(): O(log n) — remove top + bubble down
+  → peek(): O(1) — just look at top
+  → size(): O(1) — tracked internally</code></pre></div>
+<h3>The Algorithm — Precise Steps</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>DATA STRUCTURES:
+</span>  → maxHeap: stores the SMALLER half (left side)
+  → minHeap: stores the LARGER half (right side)
+
+addNum(int num):
+  1. maxHeap.add(num)                    // Always add to max-heap first
+  2. minHeap.add(maxHeap.poll())         // Move largest-of-small to min-heap
+  3. if (minHeap.size() &gt; maxHeap.size()): // Rebalance if needed
+        maxHeap.add(minHeap.poll())       // Move smallest-of-large back
+
+findMedian():
+  1. if (maxHeap.size() &gt; minHeap.size()):
+        return maxHeap.peek()             // Odd count → max-heap has extra
+  2. else:
+        return (maxHeap.peek() + minHeap.peek()) / 2.0  // Even count → average</code></pre></div>
+<h3>Why the Three-Step Add Works — Invariant Proof</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>INVARIANT 1: Every element in maxHeap ≤ every element in minHeap
+</span>
+PROOF:
+  → Step 1: We add num to maxHeap
+       → maxHeap might now have an element &gt; some element in minHeap → VIOLATION possible
+
+  → Step 2: We move maxHeap.poll() (the LARGEST in maxHeap) to minHeap
+       → After this: maxHeap's new top ≤ old top ≤ element just moved to minHeap
+       → And the moved element is ≤ all existing elements in minHeap?
+       → Not necessarily! But it doesn't matter because:
+       → The moved element IS the largest from maxHeap
+       → So everything remaining in maxHeap &lt; moved element
+       → And minHeap now contains this element (correctly on the "large" side)
+       → INVARIANT 1 HOLDS ✓
+
+INVARIANT 2: maxHeap.size() == minHeap.size() OR maxHeap.size() == minHeap.size() + 1
+
+PROOF:
+  → Before adding: let maxHeap.size() = M, minHeap.size() = N
+  → After Step 1: M+1, N
+  → After Step 2: M, N+1
+  → Step 3 check: if N+1 &gt; M → move one back → M+1, N
+  → Cases:
+       → If M == N (was balanced):
+            → After Step 2: M, N+1 = M, M+1 → minHeap bigger → Step 3 fires
+            → After Step 3: M+1, M → maxHeap has one more ✓
+       → If M == N+1 (maxHeap had one more):
+            → After Step 2: M, N+2 = M, M+1 → but wait, N+1 = M, so N+2 = M+1
+            → Actually: after Step 2: M, N+1
+            → N+1 vs M: since M = N+1, N+1 = M → sizes equal → no Step 3
+            → After: M, M → balanced ✓
+  → INVARIANT 2 HOLDS ✓</code></pre></div>
+<hr>
+<h2>✅ WHAT SHOULD YOU DO</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ ALWAYS use Collections.reverseOrder() for max-heap in Java
+</span>     → PriorityQueue&lt;Integer&gt; maxHeap = new PriorityQueue&lt;&gt;(Collections.reverseOrder());
+     → This is the standard Java idiom
+     → Alternative: new PriorityQueue&lt;&gt;((a, b) -&gt; b - a)
+          → WARNING: (b - a) can OVERFLOW for extreme values
+          → Use (a, b) -&gt; Integer.compare(b, a) for safety
+
+→ ALWAYS add to maxHeap first, then rebalance
+     → This ensures the "flow" goes: maxHeap → minHeap → back if needed
+     → The flow guarantees both invariants are maintained
+     → Alternative flows work too, but this one is simplest
+
+→ ALWAYS check size balance AFTER the transfer step
+     → Don't check before — the transfer might have fixed it already
+     → Don't skip the check — an imbalance &gt; 1 breaks median extraction
+
+→ ALWAYS use double for median return type
+     → Even count: (a + b) / 2.0 — must use 2.0 not 2
+     → Integer division truncates: (3 + 4) / 2 = 3 → WRONG
+     → Double division: (3 + 4) / 2.0 = 3.5 → CORRECT
+
+→ ALWAYS handle the empty heap edge case
+     → findMedian() when no numbers added → both heaps empty → NPE on peek()
+     → Guard with: if (maxHeap.isEmpty()) throw or return 0
+
+→ ALWAYS consider integer overflow in median calculation
+     → maxHeap.peek() + minHeap.peek() could overflow int
+     → Use: maxHeap.peek() / 2.0 + minHeap.peek() / 2.0
+     → Or cast to long first: ((long)a + (long)b) / 2.0</code></pre></div>
+<hr>
+<h2>🚫 WHAT SHOULD YOU NOT DO</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ DO NOT use (b - a) as max-heap comparator
+</span>     → (b - a) overflows when b = Integer.MIN_VALUE, a = positive
+     → Use Integer.compare(b, a) or Collections.reverseOrder()
+
+→ DO NOT maintain a sorted list alongside heaps
+     → Defeats the purpose — heaps ARE the efficient structure
+     → Adding a sorted list means O(n) insertion → worse than heaps
+
+→ DO NOT try to find median by merging heaps
+     → Merging heaps to sort = O(n log n) → same as naive approach
+     → The whole point is that median is at the TOPS → O(1) extraction
+
+→ DO NOT forget to handle the odd/even case in findMedian
+     → Odd: return maxHeap.peek() (single middle element)
+     → Even: return average of both tops
+     → Returning wrong value for odd/even = wrong answer
+
+→ DO NOT allow maxHeap to be smaller than minHeap
+     → Our convention: maxHeap.size() ≥ minHeap.size()
+     → If reversed: the odd-case median would come from minHeap
+     → Inconsistent convention leads to bugs
+
+→ DO NOT use add() to both heaps independently without rebalancing
+     → "If num &lt; median, add to maxHeap; else add to minHeap"
+     → This works for PLACEMENT but doesn't guarantee SIZE BALANCE
+     → Must still rebalance after each add
+
+→ DO NOT use this pattern for finding Kth element (not median)
+     → Two heaps finds the MEDIAN (middle element)
+     → For Kth largest → use single heap of size K (Project 38)
+     → Two heaps is overkill and wrong for arbitrary K</code></pre></div>
+<hr>
+<h2>🔀 WHEN TO USE THIS PATTERN</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>✓ You need the MEDIAN of a dynamically changing dataset
+</span>     → Numbers arriving in a stream
+     → Running median over time
+     → Real-time median computation
+
+✓ You need the MIDDLE element(s) with O(1) access
+     → After O(log n) maintenance per insertion
+     → The "maintenance + access" tradeoff is key
+
+✓ You need to split data into "smaller half" and "larger half"
+     → Any problem requiring a balanced partition
+     → Where the partition point must be efficiently accessible
+
+✓ Sliding window median (Project 41)
+     → Combine two heaps with sliding window
+     → Add new element, remove old element, find median
+     → Requires additional "lazy deletion" technique
+
+✓ Similar problems:
+     → Sliding window median
+     → Balance two groups to minimize difference
+     → IPO problem (maximize capital with project selection)
+     → Find median salary in real-time payroll system
+
+✓ When you see "streaming" + "median" or "middle":
+     → Immediately think TWO HEAPS
+     → This is the signature clue</code></pre></div>
+<hr>
+<h2>🚫 WHEN NOT TO USE THIS PATTERN</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>✗ You need the Kth element (not specifically the median)
+</span>     → K = 1 (maximum): just track max
+     → K = n (minimum): just track min
+     → K = arbitrary: use single heap of size K (Project 38)
+     → K = n/2 (median): use two heaps (this project)
+
+✗ You need to find median of a STATIC array
+     → QuickSelect: O(n) average → better than building heaps O(n log n)
+     → Sorting: O(n log n) → simpler for one-time computation
+     → Two heaps are for REPEATED median queries on changing data
+
+✗ Data is removed from arbitrary positions (not just the window edges)
+     → Heaps don't support efficient arbitrary removal
+     → Standard heap: remove by value is O(n)
+     → Need indexed priority queue or balanced BST instead
+
+✗ You need all elements sorted, not just the median
+     → Heaps give you the top element, not the full sorted order
+     → For full sorting: use a different structure
+
+✗ Memory is extremely constrained
+     → Two heaps store ALL elements → O(n) space
+     → For approximate median with less space → use reservoir sampling or t-digest</code></pre></div>
+<hr>
+<h2>⚙️ HOW IT ONLY WORKS — Internal Mechanics</h2>
+<h3>Heap Internals (Brief Review)</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>A HEAP is a complete binary tree stored as an ARRAY:
+</span>  → Parent of index i: (i - 1) / 2
+  → Left child of i: 2*i + 1
+  → Right child of i: 2*i + 2
+
+MAX-HEAP property: parent ≥ both children
+  → Root (index 0) is the MAXIMUM
+
+MIN-HEAP property: parent ≤ both children
+  → Root (index 0) is the MINIMUM
+
+ADD operation (O(log n)):
+  → Place new element at the END of array
+  → "Bubble up": swap with parent while parent &lt; child (max-heap)
+  → At most log₂(n) swaps (height of tree)
+
+POLL operation (O(log n)):
+  → Remove root (the max/min)
+  → Move LAST element to root position
+  → "Bubble down": swap with larger child while violating heap property
+  → At most log₂(n) swaps
+
+PEEK operation (O(1)):
+  → Just return array[0] — the root</code></pre></div>
+<h3>The Split Invariant Visualized</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>After adding [1, 5, 2, 8, 4, 7, 3, 6]:
+</span>
+Sorted: [1, 2, 3, 4 | 5, 6, 7, 8]
+                    ↑
+                 median split
+
+MAX-HEAP (left half):        MIN-HEAP (right half):
+       4                           5
+      / \                         / \
+     3   2                       6   7
+    /                           /
+   1                           8
+
+maxHeap.peek() = 4          minHeap.peek() = 5
+Median = (4 + 5) / 2.0 = 4.5
+
+CRITICAL PROPERTY:
+  → maxHeap.peek() = 4 ≤ 5 = minHeap.peek()
+  → EVERY element in maxHeap ≤ 4 ≤ 5 ≤ EVERY element in minHeap
+  → The heaps maintain a CLEAN SPLIT at the median
+
+AFTER adding 9:
+  maxHeap: [5, 3, 2, 1, 4] → peek=5 (size 5)
+  minHeap: [6, 8, 7, 9]    → peek=6 (size 4)
+  Median = 5.0 (odd → maxHeap.peek())
+
+  Wait — let me trace through the actual algorithm:
+
+  Step 1: maxHeap.add(9) → maxHeap=[9, 4, 3, 1, 2] (9 bubbles to top)
+  Step 2: minHeap.add(maxHeap.poll()=9) → maxHeap=[4, 2, 3, 1], minHeap=[5, 6, 7, 8, 9]
+  Step 3: minHeap.size()=5 &gt; maxHeap.size()=4 → rebalance
+          maxHeap.add(minHeap.poll()=5) → maxHeap=[5, 4, 3, 1, 2], minHeap=[6, 8, 7, 9]
+
+  Final: maxHeap.peek()=5, minHeap.peek()=6
+  Median = 5.0 ✓ (9 elements, 5th element when sorted)</code></pre></div>
+<h3>Complexity Analysis</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>addNum():
+</span>  → maxHeap.add(): O(log n)
+  → maxHeap.poll(): O(log n)
+  → minHeap.add(): O(log n)
+  → Possible minHeap.poll() + maxHeap.add(): O(log n) each
+  → TOTAL: O(log n) per call
+
+findMedian():
+  → maxHeap.peek(): O(1)
+  → minHeap.peek(): O(1)
+  → Arithmetic: O(1)
+  → TOTAL: O(1) per call
+
+Space: O(n)
+  → All n elements stored across two heaps
+
+COMPARISON:
+  ┌──────────────────────┬──────────────┬──────────────┬─────────────┐
+  │ Approach             │ addNum()     │ findMedian() │ Space       │
+  ├──────────────────────┼──────────────┼──────────────┼─────────────┤
+  │ Unsorted list + sort │ O(1)         │ O(n log n)   │ O(n)        │
+  │ Sorted list (insert) │ O(n)         │ O(1)         │ O(n)        │
+  │ Balanced BST         │ O(log n)     │ O(log n)     │ O(n)        │
+  │ TWO HEAPS            │ O(log n)     │ O(1)         │ O(n)        │
+  └──────────────────────┴──────────────┴──────────────┴─────────────┘
+
+  → Two heaps gives the BEST combination: O(log n) add + O(1) median</code></pre></div>
+<h3>The Alternative Add Strategy (Direct Placement)</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>STRATEGY B — Place directly in correct heap:
+</span>
+addNum(int num):
+  1. if maxHeap is empty OR num ≤ maxHeap.peek():
+        maxHeap.add(num)
+     else:
+        minHeap.add(num)
+  
+  2. Rebalance:
+     if maxHeap.size() &gt; minHeap.size() + 1:
+        minHeap.add(maxHeap.poll())
+     else if minHeap.size() &gt; maxHeap.size():
+        maxHeap.add(minHeap.poll())
+
+WHY BOTH STRATEGIES WORK:
+  Strategy A (add to max first, flow to min, rebalance):
+    → Simpler code — no conditional on which heap to add to
+    → Always 2-3 heap operations
+    → Invariant maintained by the "flow" pattern
+
+  Strategy B (direct placement + rebalance):
+    → More intuitive — place where it belongs
+    → Needs conditional for initial placement
+    → Then rebalance for size
+
+  Both produce IDENTICAL final states
+  Both are O(log n) per add
+  Strategy A is preferred for cleaner code</code></pre></div>
+<hr>
+<h2>⚠️ COMMON PITFALLS AND FAILURE MODES</h2>
+<h3>Pitfall 1: Integer Overflow in Average</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>WRONG:
+</span>  return (maxHeap.peek() + minHeap.peek()) / 2.0;
+
+  → If maxHeap.peek() = 2,000,000,000 and minHeap.peek() = 2,000,000,000
+  → Sum = 4,000,000,000 → OVERFLOWS int (max is ~2.1 billion)
+  → Result is WRONG negative number
+
+CORRECT (Option A — divide first):
+  return maxHeap.peek() / 2.0 + minHeap.peek() / 2.0;
+
+CORRECT (Option B — cast to long):
+  return ((long) maxHeap.peek() + (long) minHeap.peek()) / 2.0;
+
+→ Both avoid integer overflow
+→ Option A is cleaner
+→ Option B is more explicit</code></pre></div>
+<h3>Pitfall 2: Max-Heap Comparator Overflow</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>WRONG:
+</span>  PriorityQueue&lt;Integer&gt; maxHeap = new PriorityQueue&lt;&gt;((a, b) -&gt; b - a);
+
+  → If b = Integer.MIN_VALUE and a = 1
+  → b - a = -2147483648 - 1 = 2147483647 (overflow → positive!)
+  → Comparator returns positive → thinks b &gt; a → WRONG ordering
+
+CORRECT:
+  PriorityQueue&lt;Integer&gt; maxHeap = new PriorityQueue&lt;&gt;(Collections.reverseOrder());
+  
+  OR:
+  PriorityQueue&lt;Integer&gt; maxHeap = new PriorityQueue&lt;&gt;((a, b) -&gt; Integer.compare(b, a));
+
+  → Integer.compare handles overflow correctly
+  → Collections.reverseOrder() uses Integer.compare internally</code></pre></div>
+<h3>Pitfall 3: Empty Heap Peek</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>WRONG:
+</span>  public double findMedian() {
+      if (maxHeap.size() &gt; minHeap.size()) {
+          return maxHeap.peek();
+      }
+      return (maxHeap.peek() + minHeap.peek()) / 2.0;
+  }
+
+  → What if BOTH heaps are empty? → maxHeap.peek() → NullPointerException
+  → What if only maxHeap has elements? → minHeap.peek() → NPE
+
+CORRECT:
+  → Either guard with size checks
+  → Or document that findMedian() should only be called after addNum()
+  → In interviews: mention the edge case even if you don't fully handle it</code></pre></div>
+<h3>Pitfall 4: Wrong Size Convention</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ Convention A: maxHeap.size() ≥ minHeap.size()
+</span>     → Odd count: median = maxHeap.peek()
+     → Even count: average of both tops
+
+→ Convention B: minHeap.size() ≥ maxHeap.size()
+     → Odd count: median = minHeap.peek()
+     → Even count: average of both tops
+
+→ BOTH work — but you MUST be consistent
+→ If you mix conventions → findMedian returns wrong value
+→ Pick one and stick with it throughout
+→ Our code uses Convention A</code></pre></div>
+<h3>Pitfall 5: Forgetting Rebalance Step</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>WRONG:
+</span>  void addNum(int num) {
+      maxHeap.add(num);
+      minHeap.add(maxHeap.poll());
+      // Forgot to rebalance!
+  }
+
+→ After n additions:
+     → maxHeap: 0 elements (everything flows to minHeap)
+     → minHeap: n elements
+     → maxHeap.peek() → NPE in findMedian()
+
+→ The rebalance step is ESSENTIAL:
+  if (minHeap.size() &gt; maxHeap.size()) {
+      maxHeap.add(minHeap.poll());
+  }</code></pre></div>
+<h3>Pitfall 6: Using poll() When You Mean peek()</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>WRONG:
+</span>  public double findMedian() {
+      return maxHeap.poll();  // ← REMOVES the element!
+  }
+
+→ poll() removes the top → next findMedian() call returns different value
+→ The data structure is DESTROYED by querying it
+
+CORRECT:
+  return maxHeap.peek();  // ← Just looks, doesn't remove</code></pre></div>
+<hr>
+<h2>📈 SCALABILITY CONSIDERATIONS</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>Time Complexity:
+</span>  → n addNum calls: O(n log n) total
+  → n findMedian calls: O(n) total
+  → Combined: O(n log n)
+
+Space Complexity:
+  → O(n) — all elements stored in heaps
+
+Practical Performance:
+  → n = 10^5: 10^5 × log(10^5) ≈ 10^5 × 17 ≈ 1.7M operations → instant
+  → n = 10^6: 10^6 × 20 ≈ 20M operations → ~100ms
+  → n = 10^7: 10^7 × 23 ≈ 230M operations → ~1-2 seconds
+
+Memory Considerations:
+  → Java PriorityQueue stores Integer objects (boxed)
+  → Each Integer object: ~16 bytes overhead
+  → For n = 10^7: ~160MB → might be tight
+  → For extreme cases: consider int-based heap implementation
+
+Comparison with Sorted List:
+  → Sorted list: O(n) per add, O(1) per median → O(n²) for n adds
+  → Two heaps: O(log n) per add, O(1) per median → O(n log n) for n adds
+  → For n = 10^6: sorted list ≈ 10^12 ops → TIMEOUT
+  → For n = 10^6: two heaps ≈ 2 × 10^7 ops → fast</code></pre></div>
+<hr>
+<h2>🔍 INTERPRETABILITY CONSIDERATIONS</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ The "two halves" metaphor is very intuitive:
+</span>     → Imagine a sorted number line
+     → Draw a vertical line at the median
+     → Left half goes into max-heap (we care about the rightmost = maximum)
+     → Right half goes into min-heap (we care about the leftmost = minimum)
+     → The median is where the two halves meet
+
+→ The "seesaw" metaphor:
+     → Imagine a seesaw balanced at the median
+     → Left side (max-heap) holds smaller numbers
+     → Right side (min-heap) holds larger numbers
+     → Seesaw stays balanced when sizes differ by at most 1
+     → Tilts when a side gets too heavy → rebalance by moving one element
+
+→ Interview communication:
+     → "I split the data into two halves using two heaps"
+     → "Max-heap for the smaller half, min-heap for the larger half"
+     → "The median is always at the tops of the heaps"
+     → "I maintain size balance: heaps differ by at most 1"
+     → "Add is O(log n), median is O(1)"
+
+→ Common interviewer follow-ups:
+     → "What if you need to remove elements too?" → Project 41 (lazy deletion)
+     → "What about the Kth element instead of median?" → Project 38 (single heap)
+     → "Can you handle duplicates?" → Yes, heaps handle duplicates naturally</code></pre></div>
+<hr>
+<div class="github-btn-wrap"><a class="github-btn" href="https://github.com/Shakti4640/leetcode-patterns-guide-java/tree/main/project- (35)" target="_blank" rel="noopener"><svg viewBox="0 0 24 24"><path d="M12 .5C5.37.5 0 5.87 0 12.5c0 5.3 3.44 9.8 8.2 11.39.6.11.82-.26.82-.58v-2.03c-3.34.73-4.04-1.61-4.04-1.61-.55-1.39-1.34-1.76-1.34-1.76-1.09-.74.08-.73.08-.73 1.2.09 1.84 1.24 1.84 1.24 1.07 1.83 2.8 1.3 3.49 1 .1-.78.42-1.3.76-1.6-2.67-.3-5.47-1.33-5.47-5.93 0-1.31.47-2.38 1.24-3.22-.14-.3-.54-1.52.1-3.18 0 0 1.01-.32 3.3 1.23a11.5 11.5 0 0 1 3-.4c1.02 0 2.04.13 3 .4 2.28-1.55 3.29-1.23 3.29-1.23.64 1.66.24 2.88.12 3.18.77.84 1.23 1.91 1.23 3.22 0 4.61-2.81 5.63-5.48 5.92.43.37.81 1.1.81 2.22v3.29c0 .32.21.7.82.58C20.56 22.3 24 17.8 24 12.5 24 5.87 18.63.5 12 .5z"/></svg>💻 View Complete Java Code on GitHub</a></div>
+
+<hr>
+<h2>🔑 EXPECTED OUTPUT</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>╔══════════════════════════════════════════════════╗
+</span>║  PROJECT 35: Find Median from a Data Stream      ║
+║  Pattern: Two Heaps — Max-Heap + Min-Heap        ║
+╚══════════════════════════════════════════════════╝
+
+═══ TEST 1: Basic Example (Traced) ═══
+Stream: 
+  [5, 2, 8, 1, 4, 7]
+─────────────────────────────────────────────────
+addNum(5):
+  maxHeap=[5] (top=5)  minHeap=[] (top=empty)
+  Sorted view: [(5)]
+  Median = 5.0
+
+addNum(2):
+  maxHeap=[2] (top=2)  minHeap=[5] (top=5)
+  Sorted view: [2 | 5]
+  Median = 3.5
+
+addNum(8):
+  maxHeap=[2, 5] (top=5)  minHeap=[8] (top=8)
+  Sorted view: [2, (5), 8]
+  Median = 5.0
+
+addNum(1):
+  maxHeap=[1, 2] (top=2)  minHeap=[5, 8] (top=5)
+  Sorted view: [1, 2 | 5, 8]
+  Median = 3.5
+
+addNum(4):
+  maxHeap=[1, 2, 4] (top=4)  minHeap=[5, 8] (top=5)
+  Sorted view: [1, 2, (4), 5, 8]
+  Median = 4.0
+
+addNum(7):
+  maxHeap=[1, 2, 4] (top=4)  minHeap=[5, 7, 8] (top=5)
+  Sorted view: [1, 2, 4 | 5, 7, 8]
+  Median = 4.5
+
+═══ TEST 7: Correctness Verification ═══
+  Tested 1000 insertions
+  Strategy A (flow): ✓ ALL CORRECT
+  Strategy B (direct): ✓ ALL CORRECT
+
+═══ TEST 8: Performance Comparison ═══
+  Elements: 100,000
+  Two Heaps:    45 ms  (last median=499534.5)
+  Sorted List:  1,876 ms  (last median=499534.5)
+  Speedup: 41.7x
+  Results match: ✓
+
+═══ TEST 9: Integer Overflow Handling ═══
+  Added: 2147483647 twice
+  Median: 2.147483647E9
+  Expected: 2.147483647E9
+  Correct: ✓
+
+═══ TEST 10: Running Median of Last K Elements ═══
+  Array: [1, 3, 5, 2, 8, 6, 4, 7]  k=3
+  Window [1,3,5] → median=3.0
+  Window [3,5,2] → median=3.0
+  Window [5,2,8] → median=5.0
+  Window [2,8,6] → median=6.0
+  Window [8,6,4] → median=6.0
+  Window [6,4,7] → median=6.0
+
+═══ TEST 11: Heap Sizes Over Time ═══
+  ┌───────┬────────┬──────────┬──────────┬────────────┐
+  │ Added │ Total  │ MaxHeap  │ MinHeap  │   Median   │
+  ├───────┼────────┼──────────┼──────────┼────────────┤
+  │   10  │    1   │     1    │     0    │     10.0   │
+  │   20  │    2   │     1    │     1    │     15.0   │
+  │   30  │    3   │     2    │     1    │     20.0   │
+  │   40  │    4   │     2    │     2    │     25.0   │
+  │   50  │    5   │     3    │     2    │     30.0   │
+  │   60  │    6   │     3    │     3    │     35.0   │
+  │   70  │    7   │     4    │     3    │     40.0   │
+  │   80  │    8   │     4    │     4    │     45.0   │
+  │   90  │    9   │     5    │     4    │     50.0   │
+  │  100  │   10   │     5    │     5    │     55.0   │
+  └───────┴────────┴──────────┴──────────┴────────────┘</code></pre></div>
+<hr>
+<h2>🧠 KEY TAKEAWAY</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>WHAT WE LEARNED:
+</span>→ Two heaps split streaming data into two halves at the median
+→ Max-heap holds the smaller half → its top is the largest small number
+→ Min-heap holds the larger half → its top is the smallest large number
+→ The median lives at the TOPS of the two heaps → O(1) access
+→ Adding a number requires O(log n) heap operations + rebalancing
+→ The three-step flow (add → transfer → rebalance) maintains both invariants
+
+THE TWO INVARIANTS:
+  1. ORDER: maxHeap.peek() ≤ minHeap.peek() (all small ≤ all large)
+  2. SIZE: maxHeap.size() ≥ minHeap.size() ≥ maxHeap.size() - 1
+
+THE MEDIAN EXTRACTION:
+  → Odd count: maxHeap.peek() (the extra middle element)
+  → Even count: (maxHeap.peek() + minHeap.peek()) / 2.0
+
+WHY TWO HEAPS IS THE OPTIMAL PATTERN:
+  → Sorted list: O(n) add, O(1) median → O(n²) total
+  → Two heaps: O(log n) add, O(1) median → O(n log n) total
+  → For streaming data: heaps are unbeatable
+
+THE HEAP PATTERN BEGINS:
+  → This is the FIRST heap-based project
+  → It introduces PriorityQueue in Java
+  → It introduces the "maintain-a-property-dynamically" paradigm
+  → Future heap projects build directly on this foundation
+
+PATTERN SIGNATURE:
+  → "Streaming data" + "median" ✓
+  → "Dynamic dataset" + "middle element" ✓
+  → "Split into two halves" + "efficient access to split point" ✓
+  → = TWO HEAPS</code></pre></div>
+<hr>
+<h2>🌉 BRIDGE TO NEXT PROJECT</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>PROJECT 35 taught us:
+</span>→ PriorityQueue (heap) as a fundamental data structure
+→ Two heaps for median maintenance
+→ Rebalancing logic to maintain size invariant
+→ O(log n) add + O(1) query paradigm
+
+PROJECT 36 (Next Greater Element) shifts to a completely DIFFERENT pattern:
+→ MONOTONIC STACK
+→ The problem: for each element in an array, find the NEXT element that is GREATER
+→ This seems simple but brute force is O(n²)
+→ A monotonic stack solves it in O(n)
+
+→ What is a monotonic stack?
+     → A stack where elements are maintained in SORTED ORDER (increasing or decreasing)
+     → When a new element arrives that VIOLATES the order
+     → We POP elements until the order is restored
+     → Each popped element has FOUND its "next greater" (or "next smaller")
+     → The new element then pushes onto the stack
+
+→ Why it connects to what we've learned:
+     → Project 9 (Binary Search) introduced the idea of ELIMINATING candidates
+     → A monotonic stack eliminates candidates differently:
+          → Binary search eliminates HALF at each step → O(log n)
+          → Monotonic stack eliminates elements as they find their answer → amortized O(n)
+     → Project 35 (Two Heaps) introduced priority-based data structures
+          → Heaps maintain a PARTIAL ORDER (parent ≥ children)
+          → Monotonic stacks maintain a TOTAL ORDER (strictly increasing/decreasing)
+          → Both are structures that maintain ORDER INVARIANTS
+
+→ Why it matters for later projects:
+     → Project 44 (Largest Rectangle in Histogram):
+          → Uses monotonic stack to find LEFT and RIGHT boundaries
+          → Each element's "next smaller" on both sides defines the rectangle width
+     → Project 45 (Trapping Rain Water):
+          → Uses monotonic stack to find bounded containers
+          → Stack-based approach processes water layer by layer
+     → Understanding monotonic stack HERE unlocks BOTH of those hard problems
+
+→ The key mental shift:
+     → Heaps: "What is the current best element?" → QUERY-oriented
+     → Monotonic stacks: "When does each element find its match?" → EVENT-oriented
+     → In the stack: elements WAIT until their answer arrives
+     → When the answer arrives: they POP and record the result
+     → This "waiting + resolution" pattern is unique to monotonic stacks
+
+The progression into stack-based patterns:
+  Project 36: Monotonic stack → next greater element → basic pattern
+  Project 44: Monotonic stack → left/right boundaries → area maximization
+  Project 45: Monotonic stack → bounded containers → water trapping
+
+→ Project 36 is the GATEWAY to all monotonic stack problems
+→ Once you understand "elements wait on the stack for their answer"
+→ Every variant (next smaller, previous greater, bounded regions) follows naturally</code></pre></div>
+<hr>
+<p><strong>Ready for Project 36: Next Greater Element (Monotonic Stack → Decreasing Stack Invariant → Right-Side Lookup)?</strong></p>
+</div>
+</div>
+
+<!-- ========== data-index="19" ========== -->
+<div class="chat-message" data-index="19"></div>
+</div>
+<div class="bottom-nav">
+  <a href="project-34.html" class="nav-btn prev">← Prev</a>
+  <div class="nav-center">
+    <span class="nav-project-label">PROJECT 35 of 60</span>
+    <span class="nav-project-title">Find Median from a Data Stream</span>
+    <span class="kbd-hint">← → arrow keys to navigate</span>
+  </div>
+  <a href="project-36.html" class="nav-btn next">Next →</a>
+  <a href="index.html" class="nav-btn home">🏠 TOC</a>
+</div>
+<div id="progress-track"><div id="progress-fill"></div></div>
+<div id="progress-pct">0%</div>
+<script src="script.js"></script>
+<script>
+document.addEventListener('keydown', function(e) {
+  if (['INPUT','TEXTAREA'].includes(document.activeElement.tagName)) return;
+  if (e.key === 'ArrowRight' && "project-36.html" !== null) window.location = "project-36.html";
+  if (e.key === 'ArrowLeft' && "project-34.html" !== null) window.location = "project-34.html";
+});
+</script>
+</body>
+</html>

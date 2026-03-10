@@ -1,0 +1,624 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PROJECT 5: Maximum Sum Subarray of Size K</title>
+<link rel="icon" type="image/png" href="images/favicon.png">
+<link rel="stylesheet" href="styles.css">
+
+</head>
+<body>
+<div id="progress-bar-container"><div id="progress-bar" style="width:10%"></div></div>
+<div id="progress-label">10%</div>
+<div class="page-wrapper">
+<div class="chat-message"><div class="px-2"><h1>PROJECT 5: Maximum Sum Subarray of Size K</h1>
+<h2>🎯 Sliding Window → Fixed-Size Window → Running Sum Maintenance</h2>
+<hr>
+<h2>🧩 THE HYPOTHETICAL PROBLEM</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ You are given an array of integers (positive numbers)
+</span>→ You are given a window size K
+→ Find the MAXIMUM SUM of any contiguous subarray of size K
+→ Return that maximum sum
+
+Example 1:
+  Input:  arr = [2, 1, 5, 1, 3, 2], K = 3
+  Output: 9
+  Why:    Subarray [5, 1, 3] has sum = 9 → maximum among all size-3 subarrays
+
+  All windows of size 3:
+    [2, 1, 5] → sum = 8
+    [1, 5, 1] → sum = 7
+    [5, 1, 3] → sum = 9  ← maximum
+    [1, 3, 2] → sum = 6
+
+Example 2:
+  Input:  arr = [2, 3, 4, 1, 5], K = 2
+  Output: 7
+  Why:    Subarray [3, 4] has sum = 7
+
+Example 3:
+  Input:  arr = [1, 1, 1, 1, 1], K = 3
+  Output: 3
+  Why:    All windows have the same sum
+
+Example 4:
+  Input:  arr = [10], K = 1
+  Output: 10</code></pre></div>
+<hr>
+<h2>🔍 HOW TO APPROACH IT</h2>
+<h3>Step 1 — Understand What "Contiguous Subarray of Size K" Means</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ A CONTIGUOUS subarray is a slice of consecutive elements
+</span>→ Size K means exactly K elements in a row
+→ In an array of size N, there are exactly N - K + 1 such subarrays:
+     Starting at index 0: arr[0..K-1]
+     Starting at index 1: arr[1..K]
+     Starting at index 2: arr[2..K+1]
+     ...
+     Starting at index N-K: arr[N-K..N-1]
+
+→ We need to find which of these N-K+1 subarrays has the LARGEST sum</code></pre></div>
+<h3>Step 2 — Think About the Brute Force First</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ Naive approach: For each starting position, sum K elements
+</span>     for i = 0 to N-K:
+         sum = 0
+         for j = i to i+K-1:
+             sum += arr[j]
+         maxSum = max(maxSum, sum)
+     
+→ Outer loop: N-K+1 iterations
+→ Inner loop: K iterations each
+→ Total: O(N × K) time
+
+→ If N = 1,000,000 and K = 500,000
+→ Operations ≈ 5 × 10^11 → WAY too slow
+
+→ The problem: we're RECALCULATING the entire sum from scratch each time
+→ But adjacent windows share K-1 elements!
+→ Window [2, 1, 5] and window [1, 5, 1] share [1, 5]
+→ We only LOST 2 and GAINED 1
+→ Why recompute the shared part?</code></pre></div>
+<h3>Step 3 — The Key Insight: Incremental Update</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ When the window slides one position to the right:
+</span>     → One element LEAVES (the leftmost element of the old window)
+     → One element ENTERS (the rightmost element of the new window)
+     → The rest STAYS the same
+
+→ New sum = Old sum - element_that_left + element_that_entered
+
+→ This is an O(1) update instead of O(K) recalculation
+→ Total: O(N) time instead of O(N × K)
+
+Visual:
+  Array: [2, 1, 5, 1, 3, 2]   K = 3
+
+  Window 1: [2, 1, 5]       sum = 8
+                slide →
+  Window 2: [_, 1, 5, 1]    sum = 8 - 2 + 1 = 7
+                              (lost 2, gained 1)
+                slide →
+  Window 3: [_, _, 5, 1, 3]  sum = 7 - 1 + 3 = 9
+                              (lost 1, gained 3)
+                slide →
+  Window 4: [_, _, _, 1, 3, 2] sum = 9 - 5 + 2 = 6
+                              (lost 5, gained 2)
+
+→ Maximum = 9 ✓
+→ We computed each window's sum in O(1) after the first</code></pre></div>
+<h3>Step 4 — How This Connects to Previous Projects</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ Projects 1-4: Two pointers moved based on CONDITIONS (sum too big/small)
+</span>→ Project 5: Two pointers move in LOCKSTEP — the gap between them is FIXED at K
+→ This is NOT conditional movement — it's SYNCHRONIZED movement
+
+→ Think of it as a PHYSICAL WINDOW sliding across the array:
+     → The window has a fixed width (K)
+     → It moves one step at a time
+     → At each position, we measure something (sum)
+     → We track the best measurement seen
+
+→ The "two pointers" here are:
+     → LEFT edge of the window (the element being removed)
+     → RIGHT edge of the window (the element being added)
+     → They always stay exactly K positions apart</code></pre></div>
+<h3>Step 5 — Visualize the Sliding</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>Array: [2, 1, 5, 1, 3, 2]   K = 3
+</span>
+Phase 1: BUILD the first window (indices 0 to K-1)
+  Add arr[0]=2 → runningSum = 2
+  Add arr[1]=1 → runningSum = 3
+  Add arr[2]=5 → runningSum = 8
+  First window complete → maxSum = 8
+
+Phase 2: SLIDE the window (index K to N-1)
+  i=3: Add arr[3]=1, Remove arr[0]=2 → runningSum = 8-2+1 = 7 → max(8,7) = 8
+  i=4: Add arr[4]=3, Remove arr[1]=1 → runningSum = 7-1+3 = 9 → max(8,9) = 9
+  i=5: Add arr[5]=2, Remove arr[2]=5 → runningSum = 9-5+2 = 6 → max(9,6) = 9
+
+Result: 9 ✓</code></pre></div>
+<hr>
+<h2>🛠️ HOW CAN WE SOLVE IT</h2>
+<h3>The Algorithm — Line by Line Logic</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>1. Handle edge cases: if array is empty or K &gt; array length → return 0
+</span>2. PHASE 1 — Build the first window:
+     runningSum = 0
+     for i = 0 to K-1:
+         runningSum += arr[i]
+     maxSum = runningSum
+3. PHASE 2 — Slide the window:
+     for i = K to N-1:
+         runningSum += arr[i]          ← new element enters (right edge)
+         runningSum -= arr[i - K]      ← old element leaves (left edge)
+         maxSum = max(maxSum, runningSum)
+4. Return maxSum</code></pre></div>
+<h3>Why Two Phases?</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ Phase 1 builds the initial window — no element to remove yet
+</span>→ Phase 2 slides — each step adds one and removes one
+→ The first window is SPECIAL because it has no predecessor
+→ After that, every window is derived from the previous one
+
+→ Alternative: Single-loop approach (build and slide in one loop)
+     → Use a conditional: if (i &gt;= K) then remove arr[i-K]
+     → Slightly more compact but same logic
+     → Two-phase is CLEARER for understanding</code></pre></div>
+<hr>
+<h2>✅ WHAT SHOULD YOU DO</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ ALWAYS compute the first window separately (or use a conditional)
+</span>     → The first K elements form the baseline
+     → Every subsequent window is an incremental update
+
+→ ALWAYS track the running sum as a single variable
+     → Don't store all window sums — just the current one
+     → Update it by subtracting the leaving element and adding the entering element
+     → This is what makes it O(1) per step
+
+→ ALWAYS update maxSum at EVERY window position
+     → The maximum could be at any position
+     → Must compare after every slide
+
+→ ALWAYS verify K ≤ N
+     → If K &gt; N → no valid window exists
+     → Return 0 or -1 or throw exception based on problem requirements
+
+→ ALWAYS think about what "entering" and "leaving" mean:
+     → Entering element: arr[i] (current index in the slide loop)
+     → Leaving element: arr[i - K] (the element K positions behind)
+     → The gap is ALWAYS exactly K</code></pre></div>
+<hr>
+<h2>🚫 WHAT SHOULD YOU NOT DO</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ DO NOT recalculate the sum from scratch for each window
+</span>     BAD:
+       for (int i = 0; i &lt;= n - k; i++) {
+           int sum = 0;
+           for (int j = i; j &lt; i + k; j++) sum += arr[j];
+           maxSum = Math.max(maxSum, sum);
+       }
+     → O(N × K) — wastes the overlapping structure
+
+     GOOD:
+       Maintain running sum → update in O(1) per window
+     → O(N) — exploits the overlap
+
+→ DO NOT store all window sums in an array
+     → Wastes O(N) space
+     → You only need the CURRENT sum and the MAXIMUM so far
+     → Two variables are sufficient
+
+→ DO NOT confuse the entering/leaving indices
+     → Entering: index i (the new right edge)
+     → Leaving: index i - K (the old left edge)
+     → If you subtract the wrong element → sum becomes incorrect
+     → Draw it out if confused
+
+→ DO NOT forget to initialize maxSum from the first window
+     → If maxSum starts at 0 and all elements are negative → wrong answer
+     → If maxSum starts at Integer.MIN_VALUE → works but first window
+       initialization is cleaner and safer
+
+→ DO NOT apply this to VARIABLE-size window problems
+     → Fixed window: size K is given and constant
+     → Variable window: size changes based on a condition
+     → Variable window needs different logic (Project 6)
+     → Using fixed-window logic on variable-size problems → wrong answers</code></pre></div>
+<hr>
+<h2>🔀 WHEN TO USE THIS PATTERN</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>✓ The problem mentions "subarray of size K" or "window of size K"
+</span>✓ K is FIXED — given as input, doesn't change
+✓ You need to compute something (sum, average, max, min) for EVERY window
+✓ The metric can be updated INCREMENTALLY:
+     → Sum: new_sum = old_sum - leaving + entering
+     → Count: new_count = old_count - (leaving matches?) + (entering matches?)
+     → Max/Min: more complex — may need a deque (advanced topic)
+
+✓ Common variants:
+     → Maximum sum subarray of size K (this project)
+     → Average of all subarrays of size K
+     → Maximum element in each window of size K (needs deque)
+     → Count of distinct elements in each window of size K (needs HashMap)
+     → Any "sliding metric" over fixed-size contiguous segments</code></pre></div>
+<hr>
+<h2>🚫 WHEN NOT TO USE THIS PATTERN</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>✗ Window size is NOT fixed — it varies based on a condition
+</span>     → "Smallest subarray with sum ≥ target" → size varies
+     → Need VARIABLE-size sliding window (Project 6)
+
+✗ Elements are not contiguous
+     → "Maximum sum of K elements" (not necessarily consecutive)
+     → This is a selection problem, not a window problem
+     → May need sorting or heap (Projects 31-32)
+
+✗ The metric CANNOT be updated incrementally
+     → "Median of each window" → adding/removing doesn't give new median easily
+     → Needs special data structures (two heaps — Project 34)
+     → Basic sliding window isn't enough
+
+✗ The problem asks for non-overlapping windows
+     → "Split array into chunks of size K" → different structure
+     → No sliding — just partition and process each chunk
+
+✗ K equals N (window covers entire array)
+     → Only one window → just compute the metric once
+     → No sliding needed</code></pre></div>
+<hr>
+<h2>⚙️ HOW IT ONLY WORKS — Internal Mechanics</h2>
+<h3>The Overlap Principle</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>Two adjacent windows of size K share exactly K-1 elements:
+</span>
+Window at position i:   [arr[i], arr[i+1], ..., arr[i+K-1]]
+Window at position i+1: [arr[i+1], arr[i+2], ..., arr[i+K]]
+
+Shared elements: arr[i+1] through arr[i+K-1] → that's K-1 elements
+Removed element: arr[i]     → the old left edge
+Added element:   arr[i+K]   → the new right edge
+
+Sum update:
+  sum(window_i+1) = sum(window_i) - arr[i] + arr[i+K]
+
+→ This works because addition is COMMUTATIVE and ASSOCIATIVE:
+     sum(A, B, C, D) - A + E = sum(B, C, D, E)
+→ We don't need to know the ORDER of elements inside the window
+→ We only need to know what ENTERS and what LEAVES</code></pre></div>
+<h3>The Window as a State Machine</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>The sliding window can be modeled as a STATE MACHINE:
+</span>
+State: {runningSum, leftEdge, rightEdge}
+
+Transitions:
+  SLIDE_RIGHT: 
+    runningSum += arr[rightEdge + 1]    ← add new element
+    runningSum -= arr[leftEdge]         ← remove old element
+    leftEdge++                          ← advance left boundary
+    rightEdge++                         ← advance right boundary
+
+  OBSERVE:
+    maxSum = max(maxSum, runningSum)     ← record the metric
+
+→ Each transition is O(1)
+→ We make exactly N - K transitions
+→ Total: O(N) observations, O(1) per observation</code></pre></div>
+<h3>Why This is Different from Two Pointers</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>TWO POINTERS (Projects 1-4):
+</span>→ Pointers move INDEPENDENTLY
+→ Movement is CONDITIONAL (based on comparison with target)
+→ The gap between pointers CHANGES dynamically
+→ Purpose: SEARCH for something or TRANSFORM the array
+
+SLIDING WINDOW (Project 5):
+→ Pointers move in LOCKSTEP
+→ Movement is UNCONDITIONAL (slide every step)
+→ The gap between pointers is FIXED at K
+→ Purpose: MEASURE something across all windows
+
+→ Sliding Window is a SPECIALIZATION of Two Pointers
+→ It adds the constraint: window size is constant
+→ This constraint enables incremental computation
+→ The constraint SIMPLIFIES the movement logic
+→ But the underlying structure (two indices defining a range) is the same</code></pre></div>
+<h3>The Running Sum as an Accumulator</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ The running sum is NOT recalculated — it's MAINTAINED
+</span>→ Think of it like a bank balance:
+     → Starting balance: sum of first K elements
+     → Each "day" (slide): one deposit (entering element), one withdrawal (leaving element)
+     → Balance = previous balance + deposit - withdrawal
+     → We track the HIGHEST balance ever seen
+
+→ This "accumulator" pattern appears in many contexts:
+     → Running average: sum / K
+     → Running count: increment/decrement based on entering/leaving
+     → Running product: multiply by entering, divide by leaving (careful with zeros!)
+     → The STRUCTURE is always the same — only the UPDATE OPERATION changes</code></pre></div>
+<h3>Time Complexity Breakdown</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ Phase 1 (build first window): K additions → O(K)
+</span>→ Phase 2 (slide N-K times): each slide is O(1) → O(N-K)
+→ Total: O(K) + O(N-K) = O(N)
+
+→ Compare with brute force: O(N × K)
+→ Improvement factor: K
+→ If K = N/2 → brute force is O(N²) → sliding window is O(N)
+→ Quadratic to linear — massive improvement</code></pre></div>
+<h3>Space Complexity Breakdown</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ Two variables: runningSum, maxSum
+</span>→ No auxiliary arrays or data structures
+→ TOTAL: O(1) space
+
+→ This is optimal — can't do better than O(1) extra space
+→ The input array is read-only — not modified</code></pre></div>
+<hr>
+<h2>⚠️ COMMON PITFALLS AND FAILURE MODES</h2>
+<h3>Pitfall 1: Off-by-One on Window Boundaries</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ The first window covers indices [0, K-1]
+</span>→ The slide loop starts at index K (not K-1 or K+1)
+→ The leaving element is at index i - K (not i - K + 1)
+
+COMMON MISTAKE:
+  for (int i = K - 1; i &lt; n; i++) {    // WRONG start
+      runningSum += arr[i];
+      if (i &gt;= K) runningSum -= arr[i - K];  // conditional removal
+  }
+  → This WORKS but is error-prone — mixing build and slide
+
+CLEANER:
+  // Phase 1: Build
+  for (int i = 0; i &lt; K; i++) runningSum += arr[i];
+  maxSum = runningSum;
+  
+  // Phase 2: Slide
+  for (int i = K; i &lt; n; i++) {
+      runningSum += arr[i];        // always add
+      runningSum -= arr[i - K];    // always remove
+      maxSum = Math.max(maxSum, runningSum);
+  }
+  → Two separate phases — clear and bug-free</code></pre></div>
+<h3>Pitfall 2: Not Handling K &gt; N</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>Input: arr = [1, 2], K = 5
+</span>→ No window of size 5 exists in an array of size 2
+→ Must return 0 or handle gracefully
+
+→ ALWAYS check: if (arr.length &lt; K) → handle edge case
+→ Without this → Phase 1 loop reads beyond array bounds → crash</code></pre></div>
+<h3>Pitfall 3: Negative Numbers in the Array</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>Input: arr = [-1, -2, -3, -4], K = 2
+</span>→ All sums are negative
+→ Maximum sum = -3 (window [-1, -2])
+
+→ If maxSum is initialized to 0 → returns 0 → WRONG
+→ Must initialize maxSum from the FIRST WINDOW, not from 0
+→ maxSum = runningSum (after Phase 1) → handles negatives correctly</code></pre></div>
+<h3>Pitfall 4: Confusing Fixed vs Variable Window</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ Fixed window (this project): K is given → window size never changes
+</span>→ Variable window (Project 6): window size adapts to meet a condition
+
+→ If you use fixed-window logic on a variable-window problem:
+     → You'll check only windows of one size
+     → Miss smaller or larger windows that satisfy the condition
+     → Wrong answer
+
+→ IDENTIFY which type the problem is BEFORE coding:
+     → "Subarray of size K" → FIXED
+     → "Smallest subarray with sum ≥ X" → VARIABLE
+     → "Longest substring with at most K distinct" → VARIABLE</code></pre></div>
+<h3>Pitfall 5: Integer Overflow on Running Sum</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ If array has large values and K is large:
+</span>     → arr = [1000000000, 1000000000, ...] with K = 100
+     → sum = 10^11 → overflows int
+
+→ Use long for runningSum and maxSum when values can be large
+→ Or check constraints: if values ≤ 10^4 and K ≤ 10^5 → max sum ≤ 10^9 → int is safe</code></pre></div>
+<hr>
+<h2>📈 SCALABILITY CONSIDERATIONS</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ N = 1,000, K = 100:
+</span>     → Brute force: 1,000 × 100 = 100,000 ops → fast
+     → Sliding window: 1,000 ops → fast
+     → Both work fine at this scale
+
+→ N = 1,000,000, K = 500,000:
+     → Brute force: 10^6 × 5×10^5 = 5×10^11 ops → IMPOSSIBLY slow
+     → Sliding window: 10^6 ops → instant
+     → Sliding window is the ONLY viable approach
+
+→ N = 100,000,000, K = 50,000,000:
+     → Sliding window: 10^8 ops → ~1 second → manageable
+     → Brute force: 5×10^15 ops → would take YEARS
+
+→ The key scalability advantage:
+     → Brute force: O(N × K) → depends on BOTH N and K
+     → Sliding window: O(N) → depends ONLY on N, independent of K
+     → K could be 1 or K could be N/2 — same performance
+     → This K-independence is the power of incremental computation
+
+→ REAL-WORLD applications:
+     → Moving average in stock prices (window = 50 days, data = decades)
+     → Network traffic monitoring (window = 5 minutes, data = continuous)
+     → Sensor data smoothing (window = 100 samples, data = millions)
+     → Log analysis (window = 1 hour, events = billions)</code></pre></div>
+<hr>
+<h2>🔍 INTERPRETABILITY CONSIDERATIONS</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ The physical metaphor is perfect:
+</span>     → Imagine a MAGNIFYING GLASS of fixed width K
+     → Slide it across a row of numbers
+     → At each position, add up what you see through the glass
+     → Track the highest sum encountered
+
+→ The incremental update is intuitive:
+     → When the glass slides right by one:
+          → The leftmost number EXITS the view
+          → A new rightmost number ENTERS the view
+          → Everything in between STAYS
+     → New total = old total - exited + entered
+
+→ Easy to debug:
+     → Print the window contents, running sum, and max at each step
+     → Verify manually for small inputs
+     → Any sum discrepancy points to wrong entering/leaving index
+
+→ Interview explanation:
+     → "I maintain a running sum for a window of size K"
+     → "Each slide: subtract the element leaving, add the element entering"
+     → "Track the maximum sum across all windows"
+     → "O(N) time, O(1) space"
+     → Concise, clear, optimal</code></pre></div>
+<hr>
+<div class="github-btn-wrap"><a class="github-btn" href="https://github.com/Shakti4640/leetcode-patterns-guide-java/tree/main/project- (5)" target="_blank" rel="noopener"><svg viewBox="0 0 24 24"><path d="M12 .5C5.37.5 0 5.87 0 12.5c0 5.3 3.44 9.8 8.2 11.39.6.11.82-.26.82-.58v-2.03c-3.34.73-4.04-1.61-4.04-1.61-.55-1.39-1.34-1.76-1.34-1.76-1.09-.74.08-.73.08-.73 1.2.09 1.84 1.24 1.84 1.24 1.07 1.83 2.8 1.3 3.49 1 .1-.78.42-1.3.76-1.6-2.67-.3-5.47-1.33-5.47-5.93 0-1.31.47-2.38 1.24-3.22-.14-.3-.54-1.52.1-3.18 0 0 1.01-.32 3.3 1.23a11.5 11.5 0 0 1 3-.4c1.02 0 2.04.13 3 .4 2.28-1.55 3.29-1.23 3.29-1.23.64 1.66.24 2.88.12 3.18.77.84 1.23 1.91 1.23 3.22 0 4.61-2.81 5.63-5.48 5.92.43.37.81 1.1.81 2.22v3.29c0 .32.21.7.82.58C20.56 22.3 24 17.8 24 12.5 24 5.87 18.63.5 12 .5z"/></svg>💻 View Complete Java Code on GitHub</a></div>
+
+<hr>
+<h2>🔑 EXPECTED OUTPUT</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>╔══════════════════════════════════════════════════╗
+</span>║  PROJECT 5: Maximum Sum Subarray of Size K       ║
+║  Pattern: Sliding Window — Fixed Size            ║
+╚══════════════════════════════════════════════════╝
+
+═══ TEST 1: Basic Example ═══
+Input: [2, 1, 5, 1, 3, 2]  K = 3
+─────────────────────────────────────────
+Phase 1: Building first window [0..2]
+  Add arr[0]=2 → runningSum = 2
+  Add arr[1]=1 → runningSum = 3
+  Add arr[2]=5 → runningSum = 8
+  First window sum = 8 → maxSum = 8
+
+Phase 2: Sliding the window
+  Slide 1:
+    Window [1..3] → entering arr[3]=1, leaving arr[0]=2
+    runningSum = 7
+    → maxSum unchanged = 8
+  Slide 2:
+    Window [2..4] → entering arr[4]=3, leaving arr[1]=1
+    runningSum = 9
+    → NEW MAX! maxSum = 9
+  Slide 3:
+    Window [3..5] → entering arr[5]=2, leaving arr[2]=5
+    runningSum = 6
+    → maxSum unchanged = 9
+─────────────────────────────────────────
+Result: maxSum = 9 at window [2..4]
+Winning window: [5, 1, 3]
+
+═══ TEST 4: Decreasing Array ═══
+Input: [10, 8, 6, 4, 2]  K = 2
+─────────────────────────────────────────
+Phase 1: Building first window [0..1]
+  Add arr[0]=10 → runningSum = 10
+  Add arr[1]=8 → runningSum = 18
+  First window sum = 18 → maxSum = 18
+
+Phase 2: Sliding the window
+  Slide 1:
+    Window [1..2] → entering arr[2]=6, leaving arr[0]=10
+    runningSum = 14
+    → maxSum unchanged = 18
+  Slide 2:
+    Window [2..3] → entering arr[3]=4, leaving arr[1]=8
+    runningSum = 10
+    → maxSum unchanged = 18
+  Slide 3:
+    Window [3..4] → entering arr[4]=2, leaving arr[2]=6
+    runningSum = 6
+    → maxSum unchanged = 18
+─────────────────────────────────────────
+Result: maxSum = 18 at window [0..1]
+Winning window: [10, 8]
+
+═══ TEST 8: Average of All Subarrays (Variant 1) ═══
+Input: [1, 3, 2, 6, -1, 4, 1, 8, 2]  K = 5
+Averages: [2.20, 2.80, 2.20, 3.60, 2.80]
+
+═══ TEST 11: Correctness — All Approaches ═══
+  [2, 1, 5, 1, 3, 2] K=3 → 9 ✓
+  [10, 20, 30, 40, 50] K=2 → 90 ✓
+  [-1, -2, -3, -4, -5] K=2 → -3 ✓
+  [5, 1, 8, 2, 7, 3, 6] K=4 → 18 ✓
+  [100] K=1 → 100 ✓
+  Overall: ALL TESTS PASSED ✓</code></pre></div>
+<hr>
+<h2>🧠 KEY TAKEAWAY</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>WHAT WE LEARNED:
+</span>→ Sliding Window is a SPECIALIZATION of Two Pointers
+→ The window has FIXED size K — both edges move in lockstep
+→ The key optimization: INCREMENTAL UPDATE instead of full recalculation
+→ New sum = old sum - leaving element + entering element → O(1) per slide
+→ Total: O(N) time, O(1) space — independent of K
+
+THE SLIDING WINDOW TEMPLATE (Fixed Size):
+  // Phase 1: Build first window
+  for (int i = 0; i &lt; k; i++) {
+      accumulator += arr[i];  // or whatever metric
+  }
+  bestMetric = accumulator;
+
+  // Phase 2: Slide
+  for (int i = k; i &lt; n; i++) {
+      accumulator += arr[i];        // entering
+      accumulator -= arr[i - k];    // leaving
+      bestMetric = optimal(bestMetric, accumulator);
+  }
+
+→ Change the METRIC and you solve different problems:
+     → Sum → maximum/minimum sum subarray
+     → Count → windows with specific properties
+     → Average → moving average calculation
+     → The TEMPLATE stays the same
+
+PATTERN EVOLUTION:
+  Projects 1-4: Two Pointers → independent movement → search/transform
+  Project 5:    Sliding Window → synchronized movement → measure across windows
+
+NEW CONCEPT: INCREMENTAL COMPUTATION
+→ Don't recompute from scratch when data changes slightly
+→ Update the old result based on what changed
+→ This principle appears EVERYWHERE in computer science:
+     → Database incremental indexes
+     → Streaming analytics
+     → Game state updates
+     → Machine learning gradient updates</code></pre></div>
+<hr>
+<h2>🌉 BRIDGE TO NEXT PROJECT</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>PROJECT 5 taught us:
+</span>→ Fixed-size sliding window → window size K is GIVEN and CONSTANT
+→ The window always has exactly K elements
+→ Movement is unconditional — slide every step
+
+PROJECT 6 (Smallest Subarray with Sum ≥ Target) will introduce:
+→ VARIABLE-size sliding window → window size is NOT fixed
+→ The window GROWS when we need more elements (right pointer advances)
+→ The window SHRINKS when we can reduce it (left pointer advances)
+→ The key question changes:
+     Fixed (Project 5): "What is the best metric for windows of size K?"
+     Variable (Project 6): "What is the SMALLEST window that satisfies condition X?"
+
+The mental shift:
+  Project 5: Both edges move together (lockstep)
+  Project 6: Right edge EXPANDS to satisfy → left edge SHRINKS to minimize
+
+→ This introduces CONDITIONAL shrinking — a powerful new sub-pattern
+→ The right pointer is "eager" (always expanding)
+→ The left pointer is "greedy" (shrinks as much as possible)
+→ Together they find the optimal window size dynamically</code></pre></div>
+<hr>
+<p><strong>Ready for Project 6: Smallest Subarray with Sum ≥ Target (Sliding Window → Variable/Dynamic-Size Window → Shrink Logic)?</strong></p>
+</div>
+</div>
+
+<!-- ========== data-index="13" ========== -->
+<div class="chat-message" data-index="13"></div>
+</div>
+<div class="bottom-nav">
+  <a href="project-4.html" class="nav-btn prev">← Prev</a>
+  <div class="nav-center">
+    <span class="nav-project-label">PROJECT 5 of 60</span>
+    <span class="nav-project-title">Maximum Sum Subarray of Size K</span>
+    <span class="kbd-hint">← → arrow keys to navigate</span>
+  </div>
+  <a href="project-6.html" class="nav-btn next">Next →</a>
+  <a href="index.html" class="nav-btn home">🏠 TOC</a>
+</div>
+<div id="progress-track"><div id="progress-fill"></div></div>
+<div id="progress-pct">0%</div>
+<script src="script.js"></script>
+<script>
+document.addEventListener('keydown', function(e) {
+  if (['INPUT','TEXTAREA'].includes(document.activeElement.tagName)) return;
+  if (e.key === 'ArrowRight' && "project-6.html" !== null) window.location = "project-6.html";
+  if (e.key === 'ArrowLeft' && "project-4.html" !== null) window.location = "project-4.html";
+});
+</script>
+</body>
+</html>

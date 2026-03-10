@@ -1,0 +1,764 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PROJECT 32: Sort Colors — Dutch National Flag</title>
+<link rel="icon" type="image/png" href="images/favicon.png">
+<link rel="stylesheet" href="styles.css">
+
+</head>
+<body>
+<div id="progress-bar-container"><div id="progress-bar" style="width:54%"></div></div>
+<div id="progress-label">54%</div>
+<div class="page-wrapper">
+<div class="chat-message"><div class="px-2"><h1>PROJECT 32: Sort Colors — Dutch National Flag</h1>
+<h2>🎯 Three-Pointer Partitioning → Low/Mid/High Boundaries → Single-Pass Classification</h2>
+<hr>
+<h2>🧩 THE HYPOTHETICAL PROBLEM</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ You are given an array containing ONLY three distinct values: 0, 1, and 2
+</span>→ These represent three "colors" (red=0, white=1, blue=2)
+→ Sort the array IN-PLACE so all 0s come first, then all 1s, then all 2s
+→ You must do it in a SINGLE PASS through the array
+→ You must use O(1) extra space
+→ You CANNOT use a library sort function
+
+Example 1:
+  Input:  [2, 0, 2, 1, 1, 0]
+  Output: [0, 0, 1, 1, 2, 2]
+
+Example 2:
+  Input:  [2, 0, 1]
+  Output: [0, 1, 2]
+
+Example 3:
+  Input:  [0]
+  Output: [0]
+
+Example 4:
+  Input:  [1, 2, 0, 1, 2, 0, 0, 2, 1]
+  Output: [0, 0, 0, 1, 1, 1, 2, 2, 2]</code></pre></div>
+<hr>
+<h2>🔍 HOW TO APPROACH IT</h2>
+<h3>Step 1 — Why Not Just Sort It?</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ General-purpose sort (Arrays.sort): O(n log n) time
+</span>→ But we only have THREE distinct values
+→ We're throwing away the information that there are only 3 values
+→ With only 3 values → we can do O(n) in a SINGLE pass
+
+→ Counting sort approach:
+     → Count occurrences of 0, 1, 2 → then overwrite array
+     → TWO passes: one to count, one to write
+     → O(n) time, O(1) space → good but TWO passes
+
+→ Can we do it in ONE pass?
+     → YES → Dutch National Flag algorithm
+     → Invented by Edsger Dijkstra
+     → Uses THREE pointers to maintain THREE regions</code></pre></div>
+<h3>Step 2 — The Three-Region Mental Model</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ Imagine the array divided into FOUR regions at any point during processing:
+</span>
+  [0, 0, 0 | 1, 1, 1 | ?, ?, ? | 2, 2, 2]
+   ^^^^^^^^   ^^^^^^^^   ^^^^^^^   ^^^^^^^^
+   ALL 0s     ALL 1s     UNKNOWN   ALL 2s
+   [0..low-1] [low..mid-1] [mid..high] [high+1..n-1]
+
+→ Three pointers define the boundaries:
+     → low:  everything BEFORE low is 0 (confirmed)
+     → mid:  everything BETWEEN low and mid is 1 (confirmed)
+     → high: everything AFTER high is 2 (confirmed)
+     → everything BETWEEN mid and high is UNKNOWN (not yet classified)
+
+→ The algorithm processes elements at the mid pointer:
+     → If nums[mid] == 0 → it belongs in the 0-region → swap with low
+     → If nums[mid] == 1 → it's already in the right place → just advance
+     → If nums[mid] == 2 → it belongs in the 2-region → swap with high</code></pre></div>
+<h3>Step 3 — Why THREE Pointers? (Evolution from Previous Projects)</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>Project 1 (Pair Sum):
+</span>  → TWO pointers from opposite ends
+  → Converge based on SUM comparison
+  → TWO regions: "checked left" and "checked right"
+
+Project 3 (Remove Duplicates):
+  → TWO pointers same direction: read and write
+  → Read scans forward, write marks the valid position
+  → TWO regions: "deduplicated" and "unprocessed"
+
+Project 11 (Three Sum):
+  → Outer loop + TWO inner pointers
+  → Still fundamentally TWO pointer convergence per iteration
+
+THIS PROJECT:
+  → THREE values → need THREE regions of confirmed elements
+  → THREE pointers → each manages one boundary
+  → Low manages the 0-boundary from the LEFT
+  → High manages the 2-boundary from the RIGHT
+  → Mid scans through the UNKNOWN region
+  → This is the natural extension: more categories → more pointers</code></pre></div>
+<h3>Step 4 — Visualize the Complete Process</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>Array: [2, 0, 2, 1, 1, 0]
+</span>
+Initial state:
+  low=0, mid=0, high=5
+  [2, 0, 2, 1, 1, 0]
+   ^                ^
+  mid              high
+  low
+  Regions: 0s=[] 1s=[] unknown=[2,0,2,1,1,0] 2s=[]
+
+Step 1: nums[mid]=2 → swap with nums[high], high--
+  swap(0,5) → [0, 0, 2, 1, 1, 2]
+  low=0, mid=0, high=4
+  Regions: 0s=[] 1s=[] unknown=[0,0,2,1,1] 2s=[2]
+  NOTE: mid does NOT advance (swapped element is unknown)
+
+Step 2: nums[mid]=0 → swap with nums[low], low++, mid++
+  swap(0,0) → [0, 0, 2, 1, 1, 2]  (self-swap, no change)
+  low=1, mid=1, high=4
+  Regions: 0s=[0] 1s=[] unknown=[0,2,1,1] 2s=[2]
+
+Step 3: nums[mid]=0 → swap with nums[low], low++, mid++
+  swap(1,1) → [0, 0, 2, 1, 1, 2]  (self-swap)
+  low=2, mid=2, high=4
+  Regions: 0s=[0,0] 1s=[] unknown=[2,1,1] 2s=[2]
+
+Step 4: nums[mid]=2 → swap with nums[high], high--
+  swap(2,4) → [0, 0, 1, 1, 2, 2]
+  low=2, mid=2, high=3
+  Regions: 0s=[0,0] 1s=[] unknown=[1,1] 2s=[2,2]
+
+Step 5: nums[mid]=1 → correct position → mid++
+  low=2, mid=3, high=3
+  Regions: 0s=[0,0] 1s=[1] unknown=[1] 2s=[2,2]
+
+Step 6: nums[mid]=1 → correct position → mid++
+  low=2, mid=4, high=3
+  mid &gt; high → STOP
+
+Final: [0, 0, 1, 1, 2, 2] ✓</code></pre></div>
+<hr>
+<h2>🛠️ HOW CAN WE SOLVE IT</h2>
+<h3>The Algorithm — Line by Line</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>1. Initialize three pointers:
+</span>     low  = 0          → next position for a 0
+     mid  = 0          → current element being examined
+     high = n - 1      → next position for a 2
+
+2. WHILE mid &lt;= high:
+     a. IF nums[mid] == 0:
+          → Swap nums[mid] with nums[low]
+          → low++  (0-region grows)
+          → mid++  (we know what came from low: it's 0 or 1, already processed)
+     
+     b. ELSE IF nums[mid] == 1:
+          → Already in correct region
+          → mid++  (1-region grows)
+     
+     c. ELSE (nums[mid] == 2):
+          → Swap nums[mid] with nums[high]
+          → high-- (2-region grows)
+          → mid stays (swapped element from high is UNKNOWN, must examine it)
+
+3. When mid &gt; high → entire array is classified → DONE</code></pre></div>
+<h3>The Critical Question: Why mid++ After Swapping with Low But NOT After Swapping with High?</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>WHEN SWAPPING WITH LOW (nums[mid] == 0):
+</span>→ We swap nums[mid] with nums[low]
+→ What was at nums[low]?
+     → low ≤ mid (always true — low never passes mid)
+     → Everything from low to mid-1 is CONFIRMED to be 1
+     → So nums[low] is either:
+          a) Same as mid (when low == mid) → swapping with itself
+          b) A 1 (when low &lt; mid) → we already classified it
+     → In BOTH cases, what lands at nums[mid] is KNOWN (0 or 1)
+     → It's safe to advance mid++
+
+WHEN SWAPPING WITH HIGH (nums[mid] == 2):
+→ We swap nums[mid] with nums[high]
+→ What was at nums[high]?
+     → high points to the UNKNOWN region's rightmost element
+     → We have NO IDEA what nums[high] is → could be 0, 1, or 2
+     → After the swap, nums[mid] contains this unknown value
+     → We MUST examine it before advancing
+     → So mid stays put
+
+THIS IS THE KEY ASYMMETRY OF THE ALGORITHM:
+→ Low side: elements between low and mid are already classified → safe to advance
+→ High side: elements at high are unclassified → must re-examine after swap</code></pre></div>
+<hr>
+<h2>✅ WHAT SHOULD YOU DO</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ ALWAYS initialize low = 0, mid = 0, high = n - 1
+</span>     → low and mid start together at the beginning
+     → high starts at the end
+     → Unknown region = entire array
+
+→ ALWAYS use mid &lt;= high as the loop condition
+     → When mid &gt; high → unknown region is empty → all classified
+     → Using mid &lt; high would miss the case where mid == high
+     → That last element at mid == high still needs classification
+
+→ ALWAYS advance mid when swapping with low
+     → The element that arrives at mid from low is already classified
+     → Not advancing = wasted iteration (not wrong, but inefficient)
+
+→ ALWAYS keep mid stationary when swapping with high
+     → The element that arrives at mid from high is unclassified
+     → Advancing would skip an unexamined element → WRONG result
+
+→ ALWAYS use a simple swap utility
+     → temp = nums[a]; nums[a] = nums[b]; nums[b] = temp;
+     → No XOR tricks here — clarity matters more
+
+→ ALWAYS verify with edge cases:
+     → All same value: [1, 1, 1] → no swaps needed
+     → Already sorted: [0, 0, 1, 2, 2] → some swaps but result unchanged
+     → Reverse sorted: [2, 2, 1, 0, 0] → maximum swaps needed
+     → Single element: [0] or [1] or [2]
+     → Two elements: [2, 0] → one swap</code></pre></div>
+<hr>
+<h2>🚫 WHAT SHOULD YOU NOT DO</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ DO NOT advance mid after swapping with high
+</span>     → This is the #1 bug in this algorithm
+     → You'll skip an unexamined element
+     → Result: misplaced elements in final array
+
+→ DO NOT use two separate passes (count then fill)
+     → Works correctly but violates the single-pass requirement
+     → Interviewers specifically test for the one-pass solution
+     → Two-pass is the "obvious" solution — they want the clever one
+
+→ DO NOT confuse the pointer meanings
+     → low is NOT "pointer to the leftmost 0"
+     → low is "next available position for a 0"
+     → Everything BEFORE low is confirmed 0
+     → Everything FROM low TO mid-1 is confirmed 1
+     → Getting this wrong leads to incorrect swap logic
+
+→ DO NOT use Arrays.sort()
+     → Problem explicitly says "without using the library's sort function"
+     → Even if not stated: O(n log n) vs O(n) → you should know better
+
+→ DO NOT handle more than 3 values with this exact algorithm
+     → Dutch National Flag is specifically for 3-way partitioning
+     → For K distinct values → need different approaches
+     → For 2 values → simpler two-pointer partition suffices (Project 3 style)
+
+→ DO NOT try to process from right to left
+     → The algorithm processes left to right via mid
+     → Processing backward reverses the asymmetry and confuses the invariants
+     → Stick with the standard left-to-right mid traversal</code></pre></div>
+<hr>
+<h2>🔀 WHEN TO USE THIS PATTERN</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>✓ Array contains exactly THREE categories of elements
+</span>     → Colors: red/white/blue
+     → Values: negative/zero/positive
+     → Categories: low/medium/high
+     → Classification: fail/pass/excellent
+
+✓ In-place sorting required with O(1) space
+
+✓ Single-pass processing required or preferred
+
+✓ Partitioning around a PIVOT value
+     → Elements &lt; pivot → left
+     → Elements = pivot → middle
+     → Elements &gt; pivot → right
+     → This is exactly QuickSort's partition step!
+
+✓ Three-way partitioning as a subroutine
+     → QuickSort with many duplicate keys
+     → Separating data into three groups efficiently
+
+✓ The problem says "sort an array with limited distinct values"
+     → Limited to 3 → Dutch National Flag
+     → Limited to 2 → simple partition (two pointers)
+     → Limited to K → counting sort or bucket sort
+
+✓ Similar problems:
+     → Move all zeros to the end (2-way partition)
+     → Separate negatives, zeros, and positives
+     → Three-way string partitioning
+     → QuickSort partition for arrays with duplicates</code></pre></div>
+<hr>
+<h2>🚫 WHEN NOT TO USE THIS PATTERN</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>✗ More than 3 distinct values
+</span>     → 4+ categories → three pointers aren't enough
+     → Need counting sort, bucket sort, or multi-pass approaches
+
+✗ Values are continuous (not categorical)
+     → Array of arbitrary integers → general sorting needed
+     → Dutch National Flag doesn't help
+
+✗ Stability is required
+     → This algorithm is NOT stable
+     → Equal elements may change relative order
+     → If original order within same category matters → use a different approach
+
+✗ Array is already sorted or nearly sorted
+     → Insertion sort or verification scan is cheaper
+     → No need for the three-pointer machinery
+
+✗ Linked list instead of array
+     → Swapping in linked lists is different (node manipulation)
+     → Three-pointer technique relies on random access (array indexing)
+     → For linked lists: collect into three separate lists, then concatenate</code></pre></div>
+<hr>
+<h2>⚙️ HOW IT ONLY WORKS — Internal Mechanics</h2>
+<h3>The Four-Region Invariant</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>At EVERY point during the algorithm, the array looks like this:
+</span>
+  Index:    0 ... low-1 | low ... mid-1 | mid ... high | high+1 ... n-1
+  Content:  ALL 0s      | ALL 1s        | UNKNOWN      | ALL 2s
+
+INVARIANT PROPERTIES:
+  → nums[0..low-1]    = all 0s (confirmed)
+  → nums[low..mid-1]  = all 1s (confirmed)  
+  → nums[mid..high]   = unclassified (not yet examined)
+  → nums[high+1..n-1] = all 2s (confirmed)
+
+INITIAL STATE:
+  → low=0, mid=0, high=n-1
+  → 0s region: [0..-1] = empty ✓
+  → 1s region: [0..-1] = empty ✓
+  → Unknown:   [0..n-1] = entire array ✓
+  → 2s region: [n..n-1] = empty ✓
+
+TERMINAL STATE:
+  → mid &gt; high
+  → Unknown region: [mid..high] where mid &gt; high = empty
+  → All elements classified ✓</code></pre></div>
+<h3>Invariant Preservation — Each Case</h3>
+<h4>Case nums[mid] == 0: Swap with low, low++, mid++</h4>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>BEFORE:
+</span>  [0,0,...,0 | 1,1,...,1 | 0, ?, ..., ? | 2,2,...,2]
+   0    low-1  low  mid-1  mid          high  high+1  n-1
+                           ^^^
+                       nums[mid]=0, belongs in 0-region
+
+ACTION: swap(nums[low], nums[mid])
+  → nums[low] was 1 (or same as mid if low==mid)
+  → After swap: nums[low]=0, nums[mid]=1 (or 0 if self-swap)
+
+AFTER low++, mid++:
+  [0,0,...,0,0 | 1,1,...,1,1 | ?, ..., ? | 2,2,...,2]
+   0      low-1  low    mid-1  mid       high
+  
+  → 0-region grew by 1 (the 0 we placed) ✓
+  → 1-region: the 1 that was at low moved to mid-1 position ✓
+  → Unknown region shrank by 1 ✓
+  → 2-region unchanged ✓
+  → INVARIANT PRESERVED ✓</code></pre></div>
+<h4>Case nums[mid] == 1: mid++</h4>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>BEFORE:
+</span>  [0,0,...,0 | 1,1,...,1 | 1, ?, ..., ? | 2,2,...,2]
+   0    low-1  low  mid-1  mid          high
+                           ^^^
+                       nums[mid]=1, already in correct region
+
+ACTION: mid++
+  → nums[mid] becomes part of the 1-region
+
+AFTER:
+  [0,0,...,0 | 1,1,...,1,1 | ?, ..., ? | 2,2,...,2]
+   0    low-1  low     mid-1  mid      high
+
+  → 0-region unchanged ✓
+  → 1-region grew by 1 ✓
+  → Unknown shrank by 1 ✓
+  → 2-region unchanged ✓
+  → INVARIANT PRESERVED ✓</code></pre></div>
+<h4>Case nums[mid] == 2: Swap with high, high--</h4>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>BEFORE:
+</span>  [0,0,...,0 | 1,1,...,1 | 2, ?, ..., X | 2,2,...,2]
+   0    low-1  low  mid-1  mid     high   high+1  n-1
+                           ^^^      ^
+                       nums[mid]=2  nums[high]=X (unknown)
+
+ACTION: swap(nums[mid], nums[high])
+  → nums[high]=2 (placed in 2-region)
+  → nums[mid]=X (unknown value from high)
+
+AFTER high-- (mid stays):
+  [0,0,...,0 | 1,1,...,1 | X, ?, ..., ? | 2,2,2,...,2]
+   0    low-1  low  mid-1  mid       high  high+1    n-1
+                           ^^^
+                       nums[mid]=X, still UNKNOWN → must re-examine
+
+  → 0-region unchanged ✓
+  → 1-region unchanged ✓
+  → Unknown: same left boundary (mid), right boundary moved left → shrank by 1 ✓
+  → 2-region grew by 1 ✓
+  → INVARIANT PRESERVED ✓
+  → mid NOT advanced because X is unclassified ✓</code></pre></div>
+<h3>Why This Terminates</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ Each iteration does exactly ONE of:
+</span>     a) mid++ (case 0 and case 1)
+     b) high-- (case 2)
+     c) Both mid++ and high-- never happens → but either one suffices
+
+→ Unknown region size = high - mid + 1
+→ Case 0: mid++ → unknown shrinks by 1
+→ Case 1: mid++ → unknown shrinks by 1
+→ Case 2: high-- → unknown shrinks by 1
+
+→ Unknown region starts at size n, shrinks by 1 each step
+→ After exactly n steps: unknown region = 0 → mid &gt; high → TERMINATE
+
+→ TOTAL: exactly n iterations → O(n) time guaranteed
+→ Not "at most n" — EXACTLY n
+→ Every element is classified exactly once</code></pre></div>
+<h3>Time and Space Complexity</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>TIME: O(n)
+</span>  → Exactly n iterations of the while loop
+  → Each iteration: one comparison + at most one swap = O(1)
+  → Total: O(n)
+
+SPACE: O(1)
+  → Three integer pointers: low, mid, high
+  → One temp variable for swaps
+  → No additional data structures
+  → Total: O(1)
+
+COMPARISON:
+  → Arrays.sort():     O(n log n) time, O(log n) space
+  → Counting sort:     O(n) time, O(1) space, TWO passes
+  → Dutch National Flag: O(n) time, O(1) space, ONE pass ← optimal</code></pre></div>
+<h3>Connection to QuickSort Partition</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>QUICKSORT'S STANDARD PARTITION:
+</span>  → Pick pivot value P
+  → Rearrange: elements &lt; P | elements ≥ P
+  → TWO regions → two pointers
+
+QUICKSORT WITH MANY DUPLICATES:
+  → Standard partition degrades: all equal elements → O(n²)
+  → Solution: THREE-WAY partition
+  → Rearrange: elements &lt; P | elements == P | elements &gt; P
+  → THREE regions → Dutch National Flag!
+  
+  → In QuickSort context:
+       → 0 = "less than pivot"
+       → 1 = "equal to pivot"  
+       → 2 = "greater than pivot"
+  → Same algorithm, different interpretation
+
+→ This is why Dutch National Flag is fundamental:
+     → It's not just a LeetCode trick
+     → It's the core of efficient QuickSort for real-world data</code></pre></div>
+<hr>
+<h2>⚠️ COMMON PITFALLS AND FAILURE MODES</h2>
+<h3>Pitfall 1: Advancing mid After High Swap</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>WRONG:
+</span>  if (nums[mid] == 2) {
+      swap(nums, mid, high);
+      high--;
+      mid++;    // ← BUG! Unknown element now at mid gets skipped
+  }
+
+EXAMPLE of failure:
+  Array: [1, 2, 0]
+  low=0, mid=0, high=2
+
+  Step 1: nums[0]=1 → mid++ → low=0, mid=1, high=2
+  Step 2: nums[1]=2 → swap(1,2) → [1, 0, 2]
+          high-- → high=1
+          mid++ → mid=2   ← BUG: mid &gt; high, loop ends
+  Result: [1, 0, 2] ← WRONG! Should be [0, 1, 2]
+  
+  The 0 that landed at index 1 was never examined!
+
+CORRECT:
+  if (nums[mid] == 2) {
+      swap(nums, mid, high);
+      high--;
+      // mid stays → re-examine what came from high
+  }</code></pre></div>
+<h3>Pitfall 2: Using mid &lt; high Instead of mid &lt;= high</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>WRONG:
+</span>  while (mid &lt; high) { ... }
+
+EXAMPLE of failure:
+  Array: [2, 0]
+  low=0, mid=0, high=1
+
+  Step 1: nums[0]=2 → swap(0,1) → [0, 2]
+          high-- → high=0
+          mid=0, high=0 → mid &lt; high is FALSE → loop ends
+
+  Result: [0, 2] ✓ → happens to work here
+
+  But Array: [0, 2]
+  low=0, mid=0, high=1
+
+  Step 1: nums[0]=0 → swap(0,0) → [0, 2]
+          low=1, mid=1, high=1
+          mid &lt; high is FALSE → loop ends
+
+  Result: [0, 2] ✓ → also works
+
+  But Array: [1]
+  low=0, mid=0, high=0
+  mid &lt; high is FALSE → loop never runs
+
+  Result: [1] ✓ → fine for single element
+
+  REAL FAILURE: Array [2, 1]
+  low=0, mid=0, high=1
+  
+  Step 1: nums[0]=2 → swap(0,1) → [1, 2], high=0
+          mid=0, high=0 → mid &lt; high FALSE → stop
+  Result: [1, 2] ✓
+
+  Actually mid &lt;= high vs mid &lt; high:
+  The subtle failure occurs with [0, 2, 1]:
+  low=0, mid=0, high=2
+  Step 1: nums[0]=0 → low=1, mid=1
+  Step 2: nums[1]=2 → swap(1,2) → [0,1,2], high=1
+          mid=1, high=1 → mid &lt; high FALSE → stop
+  Result: [0, 1, 2] ✓
+
+  The actual issue: with mid &lt; high, when mid==high, 
+  the last element is never classified
+  → For most inputs it accidentally works
+  → For some edge cases it fails silently
+  → ALWAYS use mid &lt;= high to be safe</code></pre></div>
+<h3>Pitfall 3: Forgetting low++ When Swapping for 0</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>WRONG:
+</span>  if (nums[mid] == 0) {
+      swap(nums, mid, low);
+      mid++;
+      // forgot low++
+  }
+
+→ Next time a 0 is found, it gets swapped to the same position
+→ 0-region never grows properly
+→ Result: 0s overwrite 1s</code></pre></div>
+<h3>Pitfall 4: Applying to Non-Three-Value Arrays</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ Array: [3, 1, 4, 1, 5, 9] → more than 3 distinct values
+</span>→ Dutch National Flag cannot handle this
+→ Need general sorting or different partitioning strategy
+
+→ BUT: you CAN use it for three-way partition around ANY pivot:
+     → Pick pivot = 4
+     → Group: [&lt;4] [==4] [&gt;4]
+     → [3, 1, 1 | 4 | 5, 9]
+     → This is valid and useful as a QuickSort subroutine</code></pre></div>
+<h3>Pitfall 5: Off-by-One in Region Boundaries</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ The regions are:
+</span>     → 0s: indices [0, low)      → 0 to low-1 inclusive
+     → 1s: indices [low, mid)    → low to mid-1 inclusive
+     → ?s: indices [mid, high]   → mid to high inclusive
+     → 2s: indices (high, n-1]   → high+1 to n-1 inclusive
+
+→ Note the ASYMMETRY:
+     → 0s and 1s use EXCLUSIVE right boundary (low, mid)
+     → 2s use EXCLUSIVE left boundary (high+1)
+     → Unknown uses INCLUSIVE both boundaries [mid, high]
+→ Getting these boundaries wrong leads to subtle bugs
+→ Draw the regions on paper before coding</code></pre></div>
+<hr>
+<h2>📈 SCALABILITY CONSIDERATIONS</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ O(n) time is optimal — must examine every element at least once
+</span>→ O(1) space is optimal — can't do better than constant extra space
+→ Single pass — can't do fewer than one pass
+→ This algorithm is OPTIMAL on all three metrics simultaneously
+
+→ For n = 10^8: single pass ≈ 0.1-0.3 seconds
+→ Compared to Arrays.sort on same data: O(n log n) ≈ 2-3 seconds
+→ 10x+ speedup from exploiting the three-value constraint
+
+→ Cache performance:
+     → Sequential scan (mid moves left to right) → cache-friendly
+     → Swaps jump around → some cache misses
+     → Overall: good cache behavior due to single linear scan
+
+→ Parallelization:
+     → This algorithm is inherently SEQUENTIAL
+     → Each step depends on the result of the previous swap
+     → Not easily parallelizable
+     → For parallel sorting of 3 values → counting sort is better
+          → Count 0s, 1s, 2s in parallel → merge counts → fill in parallel</code></pre></div>
+<hr>
+<h2>🔍 INTERPRETABILITY CONSIDERATIONS</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ The "flag" metaphor is powerful:
+</span>     → Dutch flag has three horizontal stripes: red, white, blue
+     → We're arranging array elements into three stripes
+     → low marks where red ends and white begins
+     → mid marks where white ends and unprocessed begins
+     → high marks where unprocessed ends and blue begins
+
+→ Physical analogy:
+     → Imagine sorting colored balls into three buckets
+     → You pick up each ball (mid pointer)
+     → Red ball? → toss to left bucket (swap with low)
+     → White ball? → keep in middle (advance mid)
+     → Blue ball? → toss to right bucket (swap with high)
+     → Ball from right bucket needs re-examination (unknown)
+     → Ball from left bucket is already known (was white)
+
+→ Interview communication:
+     → "I maintain three regions with three pointers"
+     → "Low tracks the boundary of 0s, high tracks 2s, mid scans"
+     → "Key insight: when swapping with high, I must re-examine"
+     → "This gives O(n) single-pass, O(1) space"
+
+→ Debugging:
+     → Print the four regions at each step
+     → Verify invariant: 0s before low, 1s between low and mid, 2s after high
+     → If invariant breaks → bug is in the most recent step</code></pre></div>
+<hr>
+<div class="github-btn-wrap"><a class="github-btn" href="https://github.com/Shakti4640/leetcode-patterns-guide-java/tree/main/project- (32)" target="_blank" rel="noopener"><svg viewBox="0 0 24 24"><path d="M12 .5C5.37.5 0 5.87 0 12.5c0 5.3 3.44 9.8 8.2 11.39.6.11.82-.26.82-.58v-2.03c-3.34.73-4.04-1.61-4.04-1.61-.55-1.39-1.34-1.76-1.34-1.76-1.09-.74.08-.73.08-.73 1.2.09 1.84 1.24 1.84 1.24 1.07 1.83 2.8 1.3 3.49 1 .1-.78.42-1.3.76-1.6-2.67-.3-5.47-1.33-5.47-5.93 0-1.31.47-2.38 1.24-3.22-.14-.3-.54-1.52.1-3.18 0 0 1.01-.32 3.3 1.23a11.5 11.5 0 0 1 3-.4c1.02 0 2.04.13 3 .4 2.28-1.55 3.29-1.23 3.29-1.23.64 1.66.24 2.88.12 3.18.77.84 1.23 1.91 1.23 3.22 0 4.61-2.81 5.63-5.48 5.92.43.37.81 1.1.81 2.22v3.29c0 .32.21.7.82.58C20.56 22.3 24 17.8 24 12.5 24 5.87 18.63.5 12 .5z"/></svg>💻 View Complete Java Code on GitHub</a></div>
+
+<hr>
+<h2>🔑 EXPECTED OUTPUT</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>╔══════════════════════════════════════════════════╗
+</span>║  PROJECT 32: Sort Colors — Dutch National Flag   ║
+║  Pattern: Three-Pointer Partitioning             ║
+╚══════════════════════════════════════════════════╝
+
+═══ TEST 1: Standard Example (Traced) ═══
+Original: [2, 0, 2, 1, 1, 0]
+─────────────────────────────────────────
+Step 1: INITIAL
+  Array: [2, 0, 2, 1, 1, 0]
+  low=0  mid=0  high=5
+  0s=[]  1s=[]  ?=[2,0,2,1,1,0]  2s=[]
+
+Step 1: nums[mid]=2 → SWAP with high → swap(0,5) → high-- (mid stays!)
+  Array: [0, 0, 2, 1, 1, 2]
+  low=0  mid=0  high=4
+  0s=[]  1s=[]  ?=[0,0,2,1,1]  2s=[2]
+
+Step 2: nums[mid]=0 → SWAP with low → swap(0,0) → low++, mid++
+  Array: [0, 0, 2, 1, 1, 2]
+  low=1  mid=1  high=4
+  0s=[0]  1s=[]  ?=[0,2,1,1]  2s=[2]
+
+Step 3: nums[mid]=0 → SWAP with low → swap(1,1) → low++, mid++
+  Array: [0, 0, 2, 1, 1, 2]
+  low=2  mid=2  high=4
+  0s=[0,0]  1s=[]  ?=[2,1,1]  2s=[2]
+
+Step 4: nums[mid]=2 → SWAP with high → swap(2,4) → high-- (mid stays!)
+  Array: [0, 0, 1, 1, 2, 2]
+  low=2  mid=2  high=3
+  0s=[0,0]  1s=[]  ?=[1,1]  2s=[2,2]
+
+Step 5: nums[mid]=1 → KEEP in place → mid++
+  Array: [0, 0, 1, 1, 2, 2]
+  low=2  mid=3  high=3
+  0s=[0,0]  1s=[1]  ?=[1]  2s=[2,2]
+
+Step 6: nums[mid]=1 → KEEP in place → mid++
+  Array: [0, 0, 1, 1, 2, 2]
+  low=2  mid=4  high=3
+  0s=[0,0]  1s=[1,1]  ?=[]  2s=[2,2]
+
+Final:    [0, 0, 1, 1, 2, 2]
+
+═══ TEST 9: Three-Way Partition Around Pivot=5 ═══
+Before: [8, 3, 5, 1, 5, 9, 2, 5, 7]
+After:  [2, 3, 1, 5, 5, 5, 9, 7, 8]
+  → [&lt;5 region] [==5 region] [&gt;5 region]
+
+═══ TEST 10: Separate Negatives/Zeros/Positives ═══
+Before: [3, -2, 0, -5, 7, 0, -1, 4]
+After:  [-1, -2, -5, 0, 0, 7, 3, 4]
+  → [negatives] [zeros] [positives]
+
+═══ TEST 12: Stress Test (10,000 random arrays) ═══
+  Result: 10000/10000 tests passed ✓ ALL CORRECT
+
+═══ TEST 13: Performance Comparison ═══
+Array size: 10,000,000
+Dutch National Flag:  23,456 μs (single pass, O(n))
+Counting Sort:        31,234 μs (two pass, O(n))
+Arrays.sort:         412,567 μs (O(n log n))
+All results match: ✓ YES</code></pre></div>
+<hr>
+<h2>🧠 KEY TAKEAWAY</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>WHAT WE LEARNED:
+</span>→ Three-pointer partitioning handles THREE-category classification in ONE pass
+→ The key asymmetry: advance mid after low-swap, NOT after high-swap
+→ This is because elements from low are already classified (1s)
+→ But elements from high are unclassified (unknown)
+→ The algorithm maintains a four-region invariant throughout
+
+THE EVOLUTION OF POINTER TECHNIQUES:
+→ Project 1:  Two pointers → opposite ends → converge on sum
+→ Project 3:  Two pointers → same direction → read/write deduplication
+→ Project 11: Outer loop + two pointers → three-sum
+→ Project 32: Three pointers → three-region partitioning → single pass
+
+WHEN YOU SEE "THREE CATEGORIES":
+→ Immediately think Dutch National Flag
+→ Three pointers: low (category-0 boundary), mid (scanner), high (category-2 boundary)
+→ O(n) time, O(1) space, single pass
+
+THE DEEPER LESSON:
+→ This is NOT just a LeetCode trick
+→ It is the core of QuickSort's three-way partition
+→ It handles arrays with many duplicate keys efficiently
+→ Understanding this → understanding why QuickSort works well in practice
+
+PATTERN SIGNATURE:
+→ Exactly 3 categories/values ✓
+→ In-place requirement ✓
+→ Single-pass preference ✓
+→ = DUTCH NATIONAL FLAG / THREE-POINTER PARTITIONING</code></pre></div>
+<hr>
+<h2>🌉 BRIDGE TO NEXT PROJECT</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>PROJECT 32 taught us:
+</span>→ Partitioning an array into regions using multiple pointers
+→ Three categories → three pointers → single pass
+→ Each pointer manages a boundary between confirmed regions
+
+PROJECT 33 (Minimum Window Substring) shifts back to SLIDING WINDOW:
+→ But now at a MUCH harder level than Projects 12 and 13
+→ Given a string S and a string T
+→ Find the smallest substring of S that contains ALL characters of T
+→ This requires:
+     → HashMap to track character frequencies (from Project 12)
+     → Variable-size window with shrink logic (from Project 6)
+     → A "match counter" to track when window becomes valid
+     → Shrink-to-optimal: once valid, shrink to find minimum window
+
+The progression of Sliding Window:
+  Project 5:  Fixed-size window → simple sum
+  Project 6:  Variable-size → shrink when condition met
+  Project 12: HashMap frequency → K distinct characters
+  Project 13: At-most-K constraint → specific K=2
+  Project 33: HashMap matching → find MINIMUM valid window
+  Project 34: Max-frequency trick → replacement budget
+
+→ Project 33 is the GOLD STANDARD sliding window interview problem
+→ It combines every sliding window technique learned so far
+→ Mastering it means mastering the sliding window pattern</code></pre></div>
+<hr>
+<p><strong>Ready for Project 33: Minimum Window Substring (Sliding Window → HashMap Match Counting → Shrink-to-Optimal)?</strong></p>
+</div>
+</div>
+
+<!-- ========== data-index="9" ========== -->
+<div class="chat-message" data-index="9"></div>
+</div>
+<div class="bottom-nav">
+  <a href="project-31.html" class="nav-btn prev">← Prev</a>
+  <div class="nav-center">
+    <span class="nav-project-label">PROJECT 32 of 60</span>
+    <span class="nav-project-title">Sort Colors — Dutch National Flag</span>
+    <span class="kbd-hint">← → arrow keys to navigate</span>
+  </div>
+  <a href="project-33.html" class="nav-btn next">Next →</a>
+  <a href="index.html" class="nav-btn home">🏠 TOC</a>
+</div>
+<div id="progress-track"><div id="progress-fill"></div></div>
+<div id="progress-pct">0%</div>
+<script src="script.js"></script>
+<script>
+document.addEventListener('keydown', function(e) {
+  if (['INPUT','TEXTAREA'].includes(document.activeElement.tagName)) return;
+  if (e.key === 'ArrowRight' && "project-33.html" !== null) window.location = "project-33.html";
+  if (e.key === 'ArrowLeft' && "project-31.html" !== null) window.location = "project-31.html";
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,637 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PROJECT 7: Detect Cycle in a Linked List</title>
+<link rel="icon" type="image/png" href="images/favicon.png">
+<link rel="stylesheet" href="styles.css">
+
+</head>
+<body>
+<div id="progress-bar-container"><div id="progress-bar" style="width:13%"></div></div>
+<div id="progress-label">13%</div>
+<div class="page-wrapper">
+<div class="chat-message"><div class="px-2"><h1>PROJECT 7: Detect Cycle in a Linked List</h1>
+<h2>🎯 Fast &amp; Slow Pointers → Tortoise &amp; Hare → Linked List Traversal</h2>
+<hr>
+<h2>🧩 THE HYPOTHETICAL PROBLEM</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ You are given the HEAD of a singly linked list
+</span>→ Determine if the linked list has a CYCLE in it
+→ A cycle exists if some node's next pointer points BACK to a previous node
+→ This creates an infinite loop — traversal never ends
+→ Return TRUE if cycle exists, FALSE otherwise
+→ Do NOT modify the linked list
+→ Use O(1) extra space
+
+Example 1 (Cycle exists):
+  3 → 2 → 0 → -4 → (back to 2)
+       ↑              |
+       └──────────────┘
+  Output: true
+  Why: Node -4 points back to node 2 → infinite loop
+
+Example 2 (Cycle exists):
+  1 → 2 → (back to 1)
+  ↑       |
+  └───────┘
+  Output: true
+
+Example 3 (No cycle):
+  1 → 2 → 3 → 4 → null
+  Output: false
+  Why: Last node points to null → traversal ends naturally
+
+Example 4 (Single node, no cycle):
+  1 → null
+  Output: false
+
+Example 5 (Single node, self-loop):
+  1 → (back to 1)
+  ↑    |
+  └────┘
+  Output: true</code></pre></div>
+<hr>
+<h2>🔍 HOW TO APPROACH IT</h2>
+<h3>Step 1 — Understand Linked Lists (New Data Structure)</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ Projects 1-6 worked on ARRAYS:
+</span>     → Fixed size, random access (arr[i] in O(1))
+     → Can jump to any position instantly
+     → Two pointers could be placed at ANY indices
+
+→ Linked Lists are FUNDAMENTALLY different:
+     → Each node contains: a VALUE and a NEXT pointer
+     → You can ONLY access the next node (no random access)
+     → You CANNOT go backward (singly linked)
+     → You CANNOT know the size without traversing the entire list
+     → The ONLY operation: follow .next to the next node
+
+→ Structure of a node:
+     class ListNode {
+         int val;
+         ListNode next;
+     }
+
+→ Traversal: start at head, follow .next until null
+     current = head
+     while (current != null):
+         process(current)
+         current = current.next
+
+→ If there's a CYCLE: current.next never becomes null → INFINITE LOOP
+→ The challenge: how do we DETECT this without getting stuck?</code></pre></div>
+<h3>Step 2 — Think About the Brute Force First</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ Naive approach: Track every node we've visited
+</span>     Create a HashSet
+     current = head
+     while (current != null):
+         if current is in HashSet:
+             return true    // we've visited this node before → cycle!
+         add current to HashSet
+         current = current.next
+     return false           // reached null → no cycle
+
+→ This WORKS:
+     → Time: O(N) — visit each node once
+     → Space: O(N) — store every node in the HashSet
+
+→ But the problem asks for O(1) space
+→ We can't store visited nodes
+→ How can we detect revisiting without memory?</code></pre></div>
+<h3>Step 3 — The Key Insight: Different Speeds</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ Imagine two runners on a CIRCULAR track:
+</span>     → Runner A (slow): runs at 1 mph
+     → Runner B (fast): runs at 2 mph
+     → If the track is circular → B will eventually LAP A → they MEET
+     → If the track is straight (no loop) → B reaches the end first → they NEVER meet
+
+→ This is EXACTLY our linked list situation:
+     → Slow pointer: moves 1 node per step
+     → Fast pointer: moves 2 nodes per step
+     → If there's a cycle: fast laps slow → they meet at some node
+     → If there's no cycle: fast reaches null → they never meet
+
+→ This is called the TORTOISE AND HARE algorithm (Floyd's algorithm)
+     → Tortoise = slow pointer
+     → Hare = fast pointer
+     → Named after Aesop's fable, but here the hare ALWAYS wins (catches up)</code></pre></div>
+<h3>Step 4 — Why Do They Definitely Meet?</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ Suppose the cycle has length C
+</span>→ When slow enters the cycle, fast is already somewhere inside it
+→ The RELATIVE SPEED of fast vs slow = 2 - 1 = 1 node per step
+→ So from slow's perspective, fast approaches by 1 node per step
+→ The distance between them decreases by 1 each step
+→ Eventually the distance becomes 0 → they are at the SAME node → MEETING
+
+→ More precisely:
+     → Let's say when slow enters the cycle, fast is D nodes ahead
+     → Each step: the gap between them (within the cycle) decreases by 1
+     → After D steps: gap = 0 → they meet
+     → D ≤ C (cycle length) → meeting happens within C steps of slow entering
+     → Total steps ≤ N → O(N) time guaranteed
+
+→ KEY: They MUST meet. It's not "might" — it's mathematically certain.
+     → The relative speed of 1 means the gap shrinks by exactly 1 each step
+     → There's no way to "skip over" each other
+     → They converge with certainty</code></pre></div>
+<h3>Step 5 — Visualize the Meeting</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>List: 3 → 2 → 0 → -4 → (back to 2)
+</span>
+Nodes indexed: 
+  Node 0: val=3, next→Node 1
+  Node 1: val=2, next→Node 2
+  Node 2: val=0, next→Node 3
+  Node 3: val=-4, next→Node 1 (CYCLE)
+
+Step 0: slow=Node 0(3), fast=Node 0(3)
+Step 1: slow=Node 1(2), fast=Node 2(0)     [slow +1, fast +2]
+Step 2: slow=Node 2(0), fast=Node 1(2)     [fast went 2→3→1, wrapping around]
+Step 3: slow=Node 3(-4), fast=Node 3(-4)   [fast went 1→2→3]
+→ slow == fast → CYCLE DETECTED at Node 3 ✓
+
+No cycle list: 1 → 2 → 3 → 4 → null
+
+Step 0: slow=Node 0(1), fast=Node 0(1)
+Step 1: slow=Node 1(2), fast=Node 2(3)
+Step 2: slow=Node 2(3), fast=null          [fast went 3→4→null... actually fast=Node 4, fast.next=null]
+→ Actually: fast=Node 2(3), fast.next=Node 3(4), fast.next.next=null
+→ Step 2: slow=Node 1(2), fast reaches beyond → fast or fast.next is null → NO CYCLE</code></pre></div>
+<hr>
+<h2>🛠️ HOW CAN WE SOLVE IT</h2>
+<h3>The Algorithm — Line by Line Logic</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>1. Handle edge case: if head is null → return false (empty list)
+</span>2. Initialize slow pointer at head
+3. Initialize fast pointer at head
+4. WHILE fast is not null AND fast.next is not null:
+     a. slow = slow.next           ← move 1 step
+     b. fast = fast.next.next      ← move 2 steps
+     c. IF slow == fast:
+          → CYCLE DETECTED → return true
+5. Loop ended (fast reached null) → return false (no cycle)</code></pre></div>
+<h3>Why Check fast != null AND fast.next != null?</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ fast moves 2 steps: fast = fast.next.next
+</span>→ If fast is null → fast.next throws NullPointerException
+→ If fast.next is null → fast.next.next throws NullPointerException
+→ Both must be non-null for the 2-step move to be safe
+
+→ We DON'T check slow for null because:
+     → slow moves 1 step per iteration
+     → fast moves 2 steps per iteration
+     → fast always reaches null BEFORE slow
+     → If fast is non-null → slow is definitely non-null
+     → fast's null check PROTECTS slow automatically</code></pre></div>
+<hr>
+<h2>✅ WHAT SHOULD YOU DO</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ ALWAYS check fast AND fast.next before moving fast
+</span>     → Two-step move requires both to be non-null
+     → Missing either check → NullPointerException
+
+→ ALWAYS start both pointers at head
+     → Some implementations start slow at head, fast at head.next
+     → This works too but changes the loop structure slightly
+     → Starting both at head is cleaner and more standard
+
+→ ALWAYS compare pointers (references), not values
+     → slow == fast checks if they point to the SAME NODE
+     → slow.val == fast.val checks if values are equal → WRONG
+     → Two different nodes can have the same value
+     → We need REFERENCE equality, not value equality
+
+→ ALWAYS handle edge cases:
+     → null head → no list → no cycle → return false
+     → Single node with no self-loop → no cycle → return false
+     → Single node with self-loop → cycle → return true
+
+→ ALWAYS remember: this detects cycle EXISTENCE only
+     → It tells you YES or NO
+     → It does NOT tell you WHERE the cycle starts (that's Project 20)
+     → It does NOT tell you the cycle LENGTH (that's an extension)</code></pre></div>
+<hr>
+<h2>🚫 WHAT SHOULD YOU NOT DO</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ DO NOT use a HashSet (unless O(1) space isn't required)
+</span>     → HashSet works but uses O(N) space
+     → Fast/slow pointers achieve O(1) space
+     → When the problem says "constant space" → use fast/slow
+
+→ DO NOT modify the linked list
+     → Some solutions mark visited nodes by changing values
+     → This destroys the original data
+     → Problem typically says "do not modify the list"
+     → Fast/slow is non-destructive — read-only traversal
+
+→ DO NOT compare values instead of references
+     BAD:  if (slow.val == fast.val) → could match on different nodes
+     GOOD: if (slow == fast) → same exact node in memory
+
+→ DO NOT check only fast != null (forgetting fast.next != null)
+     BAD:  while (fast != null) {
+               fast = fast.next.next;  // crashes if fast.next is null
+           }
+     GOOD: while (fast != null &amp;&amp; fast.next != null) {
+               fast = fast.next.next;  // safe
+           }
+
+→ DO NOT move pointers before comparing (in same-start variant)
+     → If both start at head and you compare BEFORE moving:
+          → slow == fast is ALWAYS true initially → returns true for all lists
+     → Move FIRST, then compare
+
+→ DO NOT try to count nodes to detect cycle
+     → "If I've visited more than N nodes, there must be a cycle"
+     → But you don't KNOW N without traversing (which may be infinite)
+     → Chicken-and-egg problem → doesn't work</code></pre></div>
+<hr>
+<h2>🔀 WHEN TO USE THIS PATTERN</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>✓ Detecting CYCLES in linked lists
+</span>✓ Finding the MIDDLE node of a linked list (Project 15)
+     → When fast reaches the end, slow is at the middle
+✓ Finding the START of a cycle (Project 20)
+     → Phase 1: detect meeting point
+     → Phase 2: find entry point
+✓ Finding the Kth node from the end
+     → Move fast K steps ahead, then move both at same speed
+     → When fast reaches end, slow is K from end
+✓ Determining if a linked list is a palindrome
+     → Find middle, reverse second half, compare
+✓ Any problem where TWO SPEEDS reveal structural properties
+✓ Detecting cycles in sequences/functions (not just linked lists)
+     → Any repeated function application: x → f(x) → f(f(x)) → ...
+     → If values start repeating → cycle in the function</code></pre></div>
+<hr>
+<h2>🚫 WHEN NOT TO USE THIS PATTERN</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>✗ The data structure is an ARRAY (not a linked list)
+</span>     → Arrays have random access → use index-based two pointers
+     → Fast/slow on arrays is possible but usually unnecessary
+     → Exception: cyclic sort (Project 8) uses array indices as "pointers"
+
+✗ You need to detect cycles in a GRAPH (not a linked list)
+     → Graphs have multiple edges per node → fast/slow doesn't generalize
+     → Use DFS with visited set or coloring (Project 47)
+
+✗ You need to find ALL cycles (not just detect one)
+     → Fast/slow finds ONE meeting point in ONE cycle
+     → For all cycles → need graph traversal algorithms
+
+✗ The linked list is DOUBLY linked
+     → Can traverse both directions → different techniques available
+     → Fast/slow still works but may not be the best approach
+
+✗ You need random access to list elements
+     → Linked lists don't support O(1) indexing
+     → If you need arr[i]-style access → convert to array first
+     → Or use a different data structure</code></pre></div>
+<hr>
+<h2>⚙️ HOW IT ONLY WORKS — Internal Mechanics</h2>
+<h3>The Relative Speed Proof</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>SETUP:
+</span>→ Let the list have a "tail" of length T (nodes before the cycle)
+→ Let the cycle have length C
+
+WHEN SLOW ENTERS THE CYCLE:
+→ Slow has taken T steps (one per step)
+→ Fast has taken 2T steps (two per step)
+→ Fast is already inside the cycle
+→ Fast's position in cycle = (2T - T) mod C = T mod C
+
+DISTANCE BETWEEN THEM (within cycle):
+→ Slow is at position 0 (just entered)
+→ Fast is at position T mod C
+→ Distance from slow to fast (going forward) = T mod C
+→ Distance from fast to slow (going forward) = C - (T mod C)
+
+CLOSING THE GAP:
+→ Each step: slow moves +1, fast moves +2
+→ Relative speed of fast vs slow = +1 (within cycle)
+→ Fast "chases" slow at relative speed 1
+→ Distance from fast to slow decreases by 1 each step
+→ After C - (T mod C) steps: distance = 0 → THEY MEET
+
+GUARANTEED MEETING:
+→ Meeting happens within C steps after slow enters the cycle
+→ Total steps ≤ T + C ≤ N → O(N) time
+→ They MUST meet — there's no scenario where they don't
+→ The math is deterministic, not probabilistic</code></pre></div>
+<h3>What If Fast Moved at Speed 3?</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ If fast moved 3 steps per iteration:
+</span>     → Relative speed = 3 - 1 = 2
+     → Gap decreases by 2 each step
+     → If initial gap is ODD → gap goes: 5, 3, 1, -1 (wraps around)
+     → They might SKIP past each other!
+
+→ Speed 2 is special because:
+     → Relative speed = 1
+     → Gap decreases by exactly 1 each step
+     → Gap goes: D, D-1, D-2, ..., 2, 1, 0
+     → They MUST reach gap=0 → guaranteed meeting
+     → No skipping possible
+
+→ This is why fast MUST move at exactly 2x slow's speed
+→ Higher speeds can work but require more complex analysis
+→ Speed 2 gives the simplest, most reliable algorithm</code></pre></div>
+<h3>Why O(1) Space</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ Only two pointer variables: slow and fast
+</span>→ No HashSet, no visited array, no extra data structures
+→ The nodes themselves are not modified
+→ The pointers just traverse the existing structure
+
+→ Compare with HashSet approach:
+     → HashSet stores references to up to N nodes
+     → Each reference uses memory
+     → Total: O(N) space
+
+→ Fast/slow: O(1) space regardless of list size
+→ List could have 1 billion nodes → still just 2 pointers</code></pre></div>
+<h3>Connection to Previous Patterns</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>PROJECT 1-2 (Convergence):
+</span>→ Two pointers start at opposite ends, move toward each other
+→ They meet in the MIDDLE
+
+PROJECT 3 (Read/Write):
+→ Two pointers start at same end, move in same direction
+→ One is faster (read) and one is slower (write)
+
+PROJECT 5-6 (Sliding Window):
+→ Two pointers define window boundaries
+→ They move forward with fixed or variable gap
+
+PROJECT 7 (Fast/Slow):
+→ Two pointers start at same position, move in same direction
+→ One moves FASTER than the other
+→ If there's a cycle → they MEET (like convergence, but in a loop)
+→ If there's no cycle → fast reaches the end (like read/write, fast is ahead)
+
+→ Fast/slow is a HYBRID concept:
+     → Same-direction movement (like read/write)
+     → Meeting detection (like convergence)
+     → Speed differential creates the detection mechanism</code></pre></div>
+<hr>
+<h2>⚠️ COMMON PITFALLS AND FAILURE MODES</h2>
+<h3>Pitfall 1: Comparing Before Moving</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>BAD (both start at head):
+</span>  slow = head; fast = head;
+  while (fast != null &amp;&amp; fast.next != null) {
+      if (slow == fast) return true;  // ALWAYS true on first check!
+      slow = slow.next;
+      fast = fast.next.next;
+  }
+
+→ First iteration: slow == fast == head → returns true for ALL lists
+
+GOOD:
+  slow = head; fast = head;
+  while (fast != null &amp;&amp; fast.next != null) {
+      slow = slow.next;              // move FIRST
+      fast = fast.next.next;
+      if (slow == fast) return true;  // THEN compare
+  }
+
+→ After first move: slow and fast are at different positions (unless cycle)</code></pre></div>
+<h3>Pitfall 2: Forgetting fast.next Check</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>List: 1 → 2 → 3 → null
+</span>
+Step 1: slow=2, fast=3
+Step 2: fast.next = null → fast.next.next throws NullPointerException!
+
+→ Must check: fast != null &amp;&amp; fast.next != null
+→ The &amp;&amp; short-circuits: if fast is null, fast.next is never evaluated
+→ This is safe in Java due to short-circuit evaluation</code></pre></div>
+<h3>Pitfall 3: Confusing Reference Equality with Value Equality</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>List: 1 → 2 → 1 → null (no cycle, but values repeat)
+</span>
+BAD: if (slow.val == fast.val) → returns true when slow is at first 1 
+     and fast is at last 1 → WRONG (no cycle, just same value)
+
+GOOD: if (slow == fast) → checks if they point to the SAME NODE object
+     → Only true if they're literally at the same node in memory</code></pre></div>
+<h3>Pitfall 4: Single Node Edge Cases</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>Case 1: head → null (no cycle)
+</span>→ fast = head, fast.next = null
+→ While condition: fast != null (true) &amp;&amp; fast.next != null (false)
+→ Loop doesn't execute → return false ✓
+
+Case 2: head → head (self-loop)
+→ fast = head, fast.next = head
+→ While condition: both non-null → enter loop
+→ slow = head.next = head, fast = head.next.next = head
+→ slow == fast → return true ✓
+
+→ Both cases handled correctly by the algorithm</code></pre></div>
+<h3>Pitfall 5: Assuming Meeting Point is Cycle Start</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ Where slow and fast MEET is NOT necessarily where the cycle STARTS
+</span>→ The meeting point is somewhere inside the cycle
+→ To find the cycle START → need additional logic (Project 20)
+→ This project only detects EXISTENCE, not entry point</code></pre></div>
+<hr>
+<h2>📈 SCALABILITY CONSIDERATIONS</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ List size N = 100 → both HashSet and fast/slow are fast
+</span>→ List size N = 1,000,000:
+     → HashSet: 1M entries × ~40 bytes each ≈ 40 MB extra memory
+     → Fast/slow: 2 pointers ≈ 16 bytes extra memory
+     → 2,500,000x less memory!
+
+→ List size N = 100,000,000:
+     → HashSet: 4 GB+ → may exceed available memory
+     → Fast/slow: still 16 bytes → runs perfectly
+     → This is not a theoretical advantage — it's a PRACTICAL necessity
+
+→ Time: both approaches are O(N)
+→ Space: HashSet is O(N), fast/slow is O(1)
+→ For memory-constrained environments → fast/slow is the ONLY option
+
+→ REAL-WORLD applications:
+     → Detecting infinite loops in programs (state = node, transition = next)
+     → Detecting cycles in garbage collection (reference chains)
+     → Network routing loop detection (packet path = linked list)
+     → Database deadlock detection (wait-for chains)
+     → Pseudorandom number generator cycle detection</code></pre></div>
+<hr>
+<h2>🔍 INTERPRETABILITY CONSIDERATIONS</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ The running track analogy makes this immediately intuitive:
+</span>     → Two runners on a track
+     → One runs twice as fast
+     → If the track loops → faster runner catches slower one
+     → If the track is straight → faster runner finishes first
+
+→ The algorithm is EXTREMELY simple:
+     → Move slow by 1, fast by 2
+     → If they meet → cycle
+     → If fast reaches null → no cycle
+     → Three lines of logic inside the loop
+
+→ The mathematical proof is elegant:
+     → Relative speed = 1 → gap closes by 1 each step
+     → Gap eventually reaches 0 → guaranteed meeting
+     → No probability, no approximation → deterministic certainty
+
+→ Debugging is straightforward:
+     → Print slow position, fast position at each step
+     → If they meet → cycle found
+     → If fast reaches null → no cycle
+     → The trace is short and clear
+
+→ Interview explanation:
+     → "I use Floyd's cycle detection with two pointers"
+     → "Slow moves 1 step, fast moves 2 steps"
+     → "If there's a cycle, fast catches slow"
+     → "O(N) time, O(1) space"
+     → One of the most elegant algorithms to explain</code></pre></div>
+<hr>
+<div class="github-btn-wrap"><a class="github-btn" href="https://github.com/Shakti4640/leetcode-patterns-guide-java/tree/main/project- (7)" target="_blank" rel="noopener"><svg viewBox="0 0 24 24"><path d="M12 .5C5.37.5 0 5.87 0 12.5c0 5.3 3.44 9.8 8.2 11.39.6.11.82-.26.82-.58v-2.03c-3.34.73-4.04-1.61-4.04-1.61-.55-1.39-1.34-1.76-1.34-1.76-1.09-.74.08-.73.08-.73 1.2.09 1.84 1.24 1.84 1.24 1.07 1.83 2.8 1.3 3.49 1 .1-.78.42-1.3.76-1.6-2.67-.3-5.47-1.33-5.47-5.93 0-1.31.47-2.38 1.24-3.22-.14-.3-.54-1.52.1-3.18 0 0 1.01-.32 3.3 1.23a11.5 11.5 0 0 1 3-.4c1.02 0 2.04.13 3 .4 2.28-1.55 3.29-1.23 3.29-1.23.64 1.66.24 2.88.12 3.18.77.84 1.23 1.91 1.23 3.22 0 4.61-2.81 5.63-5.48 5.92.43.37.81 1.1.81 2.22v3.29c0 .32.21.7.82.58C20.56 22.3 24 17.8 24 12.5 24 5.87 18.63.5 12 .5z"/></svg>💻 View Complete Java Code on GitHub</a></div>
+
+<hr>
+<h2>🔑 EXPECTED OUTPUT</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>╔══════════════════════════════════════════════════╗
+</span>║  PROJECT 7: Detect Cycle in a Linked List        ║
+║  Pattern: Fast &amp; Slow Pointers (Tortoise &amp; Hare) ║
+╚══════════════════════════════════════════════════╝
+
+═══ TEST 1: Cycle (last → node index 1) ═══
+Structure: 3 → 2 → 0 → -4 → (back to 2)
+List: 3 → 2 → 0 → -4 → [2]
+─────────────────────────────────────────
+Step 0: slow=Node(3) fast=Node(3)
+Step 1: slow=Node(2) fast=Node(0)
+Step 2: slow=Node(0) fast=Node(2)
+Step 3: slow=Node(-4) fast=Node(-4)
+  → slow == fast → CYCLE DETECTED ✓
+  → Cycle length: 3
+
+═══ TEST 2: Cycle (last → head) ═══
+Structure: 1 → 2 → (back to 1)
+List: 1 → 2 → [1]
+─────────────────────────────────────────
+Step 0: slow=Node(1) fast=Node(1)
+Step 1: slow=Node(2) fast=Node(2)
+  → slow == fast → CYCLE DETECTED ✓
+  → Cycle length: 2
+
+═══ TEST 3: No Cycle ═══
+Structure: 1 → 2 → 3 → 4 → 5 → null
+List: 1 → 2 → 3 → 4 → 5 → null
+─────────────────────────────────────────
+Step 0: slow=Node(1) fast=Node(1)
+Step 1: slow=Node(2) fast=Node(3)
+Step 2: slow=Node(3) fast=Node(5)
+  → fast reached null → NO CYCLE ✗
+
+═══ TEST 5: Single Node, Self-Loop ═══
+Structure: 1 → (back to 1)
+List: 1 → [1]
+─────────────────────────────────────────
+Step 0: slow=Node(1) fast=Node(1)
+Step 1: slow=Node(1) fast=Node(1)
+  → slow == fast → CYCLE DETECTED ✓
+  → Cycle length: 1
+
+═══ TEST 9: Happy Number Detection (Pattern Reuse) ═══
+  19 → HAPPY ☺
+  7 → HAPPY ☺
+  2 → NOT HAPPY ☹
+  4 → NOT HAPPY ☹
+  23 → HAPPY ☺
+  28 → HAPPY ☺
+  100 → HAPPY ☺
+  89 → NOT HAPPY ☹
+
+═══ TEST 10: Find Middle Node (Pattern Variant) ═══
+  [1, 2, 3, 4, 5] → middle = 3
+  [1, 2, 3, 4, 5, 6] → middle = 4
+  [1] → middle = 1
+  [1, 2] → middle = 2
+
+═══ TEST 11: Correctness — Fast/Slow vs HashSet ═══
+  Tested sizes 1-20, all cycle positions + no-cycle
+  Overall: ALL TESTS PASSED ✓</code></pre></div>
+<hr>
+<h2>🧠 KEY TAKEAWAY</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>WHAT WE LEARNED:
+</span>→ Fast &amp; Slow Pointers detect cycles in O(N) time and O(1) space
+→ The speed differential (2x vs 1x) creates a relative speed of 1
+→ This guarantees the pointers meet within the cycle
+→ The pattern works on LINKED LISTS (sequential access only)
+→ It extends beyond linked lists to ANY sequence with potential cycles
+
+THE FAST/SLOW POINTER TEMPLATE:
+  ListNode slow = head;
+  ListNode fast = head;
+  
+  while (fast != null &amp;&amp; fast.next != null) {
+      slow = slow.next;           // 1 step
+      fast = fast.next.next;      // 2 steps
+      
+      if (slow == fast) {
+          // CYCLE DETECTED — or meeting point found
+      }
+  }
+  // If loop exits: NO CYCLE — fast reached the end
+
+THE PATTERN IS MORE THAN CYCLE DETECTION:
+→ Cycle detection: do they meet? (this project)
+→ Cycle start: WHERE does the cycle begin? (Project 20)
+→ Middle finding: when fast finishes, slow is at middle (Project 15)
+→ Happy number: cycle in number sequence → fast/slow on function
+→ Palindrome list: find middle → reverse half → compare
+
+ALL TWO-POINTER PATTERNS SO FAR:
+  Project 1-2: Opposite ends → converge → SEARCH/CHECK
+  Project 3:   Same direction → read/write → TRANSFORM
+  Project 4:   Opposite ends → merge → BUILD output
+  Project 5:   Same direction → fixed window → MEASURE
+  Project 6:   Same direction → variable window → OPTIMIZE size
+  Project 7:   Same direction → different speeds → DETECT structure</code></pre></div>
+<hr>
+<h2>🌉 BRIDGE TO NEXT PROJECT</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>PROJECT 7 taught us:
+</span>→ Fast/Slow pointers on LINKED LISTS
+→ Sequential access structures need specialized techniques
+→ Speed differential reveals structural properties (cycles)
+
+PROJECT 8 (Find the Missing Number) introduces a COMPLETELY NEW pattern:
+→ CYCLIC SORT — using index-value mapping for in-place placement
+→ The idea: if array contains numbers 0 to N
+→ Each number "belongs" at its own index (value i should be at index i)
+→ We can PLACE each number at its correct index in O(N) time
+→ After placing, the missing number is at the "wrong" index
+
+The connection to previous work:
+→ Project 3: read/write pointers for in-place modification
+→ Project 8: takes in-place modification to the NEXT level
+→ Instead of just filtering (keep/remove), we REARRANGE elements
+→ Each element has a "home" position → we send it home
+→ This is a new KIND of in-place operation: PLACEMENT rather than FILTERING
+
+Why this matters:
+→ Cyclic sort solves a family of problems that LOOK like they need extra space
+→ Missing number, duplicate number, all missing numbers, all duplicates
+→ All solvable in O(N) time and O(1) space using index-value mapping
+→ The pattern exploits the RELATIONSHIP between values and indices</code></pre></div>
+<hr>
+<p><strong>Ready for Project 8: Find the Missing Number (Cyclic Sort → Index-Value Mapping)?</strong></p>
+</div>
+</div>
+
+<!-- ========== data-index="17" ========== -->
+<div class="chat-message" data-index="17"></div>
+</div>
+<div class="bottom-nav">
+  <a href="project-6.html" class="nav-btn prev">← Prev</a>
+  <div class="nav-center">
+    <span class="nav-project-label">PROJECT 7 of 60</span>
+    <span class="nav-project-title">Detect Cycle in a Linked List</span>
+    <span class="kbd-hint">← → arrow keys to navigate</span>
+  </div>
+  <a href="project-8.html" class="nav-btn next">Next →</a>
+  <a href="index.html" class="nav-btn home">🏠 TOC</a>
+</div>
+<div id="progress-track"><div id="progress-fill"></div></div>
+<div id="progress-pct">0%</div>
+<script src="script.js"></script>
+<script>
+document.addEventListener('keydown', function(e) {
+  if (['INPUT','TEXTAREA'].includes(document.activeElement.tagName)) return;
+  if (e.key === 'ArrowRight' && "project-8.html" !== null) window.location = "project-8.html";
+  if (e.key === 'ArrowLeft' && "project-6.html" !== null) window.location = "project-6.html";
+});
+</script>
+</body>
+</html>

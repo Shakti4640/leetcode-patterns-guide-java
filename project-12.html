@@ -1,0 +1,709 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PROJECT 12: Longest Substring with K Distinct Characters</title>
+<link rel="icon" type="image/png" href="images/favicon.png">
+<link rel="stylesheet" href="styles.css">
+
+</head>
+<body>
+<div id="progress-bar-container"><div id="progress-bar" style="width:21%"></div></div>
+<div id="progress-label">21%</div>
+<div class="page-wrapper">
+<div class="chat-message"><div class="px-2"><h1>PROJECT 12: Longest Substring with K Distinct Characters</h1>
+<h2>🎯 Sliding Window → HashMap Frequency Tracking → Window Validity Condition</h2>
+<hr>
+<h2>🔗 DEPENDENCY CHAIN</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>Project 1  → Two Pointers → left/right convergence on sorted data
+</span>Project 5  → Sliding Window → fixed-size window → running sum maintenance
+Project 6  → Sliding Window → variable-size window → shrink when condition violated
+Project 11 → Three Sum → multi-pointer coordination → sorting + dedup
+Project 12 → Sliding Window + HashMap → character frequency tracking
+             → variable window with RICH STATE instead of simple sum
+             → the window's validity is defined by a MAP condition
+             → this unlocks the entire family of substring problems</code></pre></div>
+<hr>
+<h2>🧩 THE HYPOTHETICAL PROBLEM</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ You are given a STRING of characters
+</span>→ You are given an integer K
+→ Find the LENGTH of the LONGEST SUBSTRING that contains AT MOST K distinct characters
+→ Return the length (not the substring itself)
+
+Example 1:
+  Input:  s = "araaci", k = 2
+  Output: 4
+  → "araa" has 2 distinct characters (a, r) → length 4
+  → "raac" has 3 distinct characters (r, a, c) → INVALID (exceeds k=2)
+  → "aaci" has 3 distinct characters (a, c, i) → INVALID
+  → Longest valid: "araa" → 4
+
+Example 2:
+  Input:  s = "araaci", k = 1
+  Output: 2
+  → "aaa" doesn't exist contiguously
+  → "aa" (positions 2,3) → 1 distinct character → length 2
+  → Longest valid: "aa" → 2
+
+Example 3:
+  Input:  s = "cbbebi", k = 3
+  Output: 5
+  → "cbbeb" has 3 distinct characters (c, b, e) → length 5
+  → "bbebi" has 3 distinct characters (b, e, i) → length 5
+  → Longest valid: 5
+
+Example 4:
+  Input:  s = "aaaa", k = 2
+  Output: 4
+  → Entire string has 1 distinct character → 1 ≤ 2 → valid → length 4</code></pre></div>
+<hr>
+<h2>🔍 HOW TO APPROACH IT</h2>
+<h3>Step 1 — Why This Differs from Projects 5 and 6</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>PROJECT 5 (Fixed Window):
+</span>  → Window size was FIXED at K
+  → Slide right by 1, slide left by 1
+  → Track a simple SUM (one integer)
+  → No decisions about when to shrink
+
+PROJECT 6 (Variable Window — Sum ≥ Target):
+  → Window size was VARIABLE
+  → Expand right until condition met (sum ≥ target)
+  → Shrink left to find minimum window
+  → Track a simple SUM (one integer)
+  → Shrink condition: sum ≥ target → simple numeric comparison
+
+PROJECT 12 (Variable Window — K Distinct):
+  → Window size is VARIABLE
+  → Expand right continuously
+  → Shrink left when condition VIOLATED (distinct &gt; K)
+  → Track CHARACTER FREQUENCIES (a HashMap, not a single number)
+  → Shrink condition: map.size() &gt; K → requires maintaining a MAP
+  → This is the LEAP: from simple state to RICH state</code></pre></div>
+<h3>Step 2 — Think About What "State" the Window Needs</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>The window needs to answer ONE question at all times:
+</span>  "How many DISTINCT characters are currently inside the window?"
+
+To answer this, we need to know:
+  → WHICH characters are in the window
+  → HOW MANY of each character are in the window
+
+WHY "how many"?
+  → When we shrink the window (remove leftmost character):
+    → If that character's count drops to 0 → it LEAVES the window
+    → If that character's count is still &gt; 0 → it STAYS in the window
+    → We need the COUNT to know whether removing a character changes distinctness
+
+DATA STRUCTURE:
+  → HashMap&lt;Character, Integer&gt;
+  → Key: the character
+  → Value: its frequency (count) within the current window
+  → map.size() = number of distinct characters in the window</code></pre></div>
+<h3>Step 3 — The Sliding Window Mechanics</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>Two pointers: windowStart (left) and windowEnd (right)
+</span>Both start at 0 and move FORWARD (same direction)
+
+EXPAND phase (always happens):
+  → Move windowEnd to the right by 1
+  → Add the new character to the frequency map
+  → map.put(c, map.getOrDefault(c, 0) + 1)
+
+CHECK phase (after every expansion):
+  → Is map.size() &gt; K?
+  → If YES → window is INVALID → must SHRINK
+
+SHRINK phase (only when invalid):
+  → Remove the character at windowStart from the map
+  → Decrease its count: map.put(leftChar, map.get(leftChar) - 1)
+  → If count becomes 0 → remove the key entirely: map.remove(leftChar)
+  → Move windowStart forward by 1
+  → REPEAT shrinking until map.size() ≤ K
+
+UPDATE phase (after window is valid):
+  → maxLength = Math.max(maxLength, windowEnd - windowStart + 1)
+
+VISUAL:
+  s = "araaci", k = 2
+
+  Step 1: windowEnd=0 → 'a' → map={a:1} → size=1 ≤ 2 ✓ → maxLen=1
+           [a]raaci
+
+  Step 2: windowEnd=1 → 'r' → map={a:1,r:1} → size=2 ≤ 2 ✓ → maxLen=2
+           [ar]aaci
+
+  Step 3: windowEnd=2 → 'a' → map={a:2,r:1} → size=2 ≤ 2 ✓ → maxLen=3
+           [ara]aci
+
+  Step 4: windowEnd=3 → 'a' → map={a:3,r:1} → size=2 ≤ 2 ✓ → maxLen=4
+           [araa]ci
+
+  Step 5: windowEnd=4 → 'c' → map={a:3,r:1,c:1} → size=3 &gt; 2 ✗ → SHRINK!
+           [araac]i
+           
+           Shrink: remove 'a' at windowStart=0 → map={a:2,r:1,c:1} → size=3 &gt; 2 → continue
+           [raac]i  windowStart=1
+           
+           Shrink: remove 'r' at windowStart=1 → map={a:2,c:1} → size=2 ≤ 2 ✓ → stop
+           [aac]i  windowStart=2
+           
+           maxLen = max(4, 4-2+1) = max(4, 3) = 4
+
+  Step 6: windowEnd=5 → 'i' → map={a:2,c:1,i:1} → size=3 &gt; 2 ✗ → SHRINK!
+           [aaci]
+           
+           Shrink: remove 'a' at windowStart=2 → map={a:1,c:1,i:1} → size=3 &gt; 2 → continue
+           [aci]  windowStart=3
+           
+           Shrink: remove 'a' at windowStart=3 → map={c:1,i:1} → size=2 ≤ 2 ✓ → stop
+           [ci]  windowStart=4
+           
+           maxLen = max(4, 5-4+1) = max(4, 2) = 4
+
+  FINAL: maxLen = 4 ✓</code></pre></div>
+<h3>Step 4 — Why the Shrink Must Remove Until Valid</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>When map.size() &gt; K:
+</span>  → The window has too many distinct characters
+  → We MUST remove characters from the LEFT until distinct count drops to K
+  → Removing one character from the left might not be enough
+  → That character might appear multiple times → count decreases but doesn't reach 0
+  → So distinct count doesn't change → must keep shrinking
+
+Example:
+  Window: "araac" → map={a:3, r:1, c:1} → 3 distinct &gt; k=2
+  
+  Remove 'a' (windowStart=0):
+    → map={a:2, r:1, c:1} → still 3 distinct → keep shrinking
+  
+  Remove 'r' (windowStart=1):
+    → map={a:2, c:1} → count of 'r' became 0 → removed from map
+    → now 2 distinct → VALID → stop shrinking
+
+→ The shrink is a WHILE loop, not an IF statement
+→ It runs until the window becomes valid again</code></pre></div>
+<h3>Step 5 — Why windowEnd - windowStart + 1</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>Window covers indices: [windowStart, windowEnd] inclusive
+</span>
+Length = windowEnd - windowStart + 1
+
+Example:
+  windowStart = 2, windowEnd = 5
+  Indices in window: 2, 3, 4, 5 → 4 elements
+  Length: 5 - 2 + 1 = 4 ✓
+
+The +1 accounts for both endpoints being INCLUSIVE
+This is a universal formula for any contiguous range</code></pre></div>
+<hr>
+<h2>🛠️ HOW CAN WE SOLVE IT</h2>
+<h3>The Algorithm — Complete Logic</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>1. Initialize:
+</span>     → HashMap&lt;Character, Integer&gt; charFrequency = new HashMap&lt;&gt;()
+     → int windowStart = 0
+     → int maxLength = 0
+
+2. FOR windowEnd = 0 to s.length() - 1:
+
+     a. EXPAND: Add character at windowEnd to the map
+        → char rightChar = s.charAt(windowEnd)
+        → charFrequency.put(rightChar, charFrequency.getOrDefault(rightChar, 0) + 1)
+
+     b. SHRINK: While map has more than K distinct characters
+        → char leftChar = s.charAt(windowStart)
+        → charFrequency.put(leftChar, charFrequency.get(leftChar) - 1)
+        → if charFrequency.get(leftChar) == 0 → charFrequency.remove(leftChar)
+        → windowStart++
+
+     c. UPDATE: Record maximum valid window length
+        → maxLength = Math.max(maxLength, windowEnd - windowStart + 1)
+
+3. RETURN maxLength</code></pre></div>
+<hr>
+<h2>✅ WHAT SHOULD YOU DO</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ ALWAYS remove map entries when their count reaches 0
+</span>     → map.size() represents DISTINCT characters in the window
+     → If a character's count is 0 but key still exists → map.size() is WRONG
+     → map.remove(key) when count hits 0 → keeps size accurate
+
+→ ALWAYS use getOrDefault for safe frequency increments
+     → charFrequency.getOrDefault(c, 0) + 1
+     → Handles first occurrence (key doesn't exist yet) gracefully
+     → Avoids NullPointerException
+
+→ ALWAYS update maxLength AFTER the shrink loop
+     → The window might have just been shrunk → need current valid size
+     → Updating before shrink would record invalid window sizes
+
+→ ALWAYS think of the window as [windowStart, windowEnd] inclusive
+     → Both pointers point AT characters that are IN the window
+     → Length = windowEnd - windowStart + 1
+
+→ ALWAYS verify edge cases: k=0, empty string, k ≥ distinct chars in string
+     → k=0: no characters allowed → return 0
+     → Empty string: no characters → return 0
+     → k ≥ total distinct: entire string is valid → return s.length()</code></pre></div>
+<hr>
+<h2>🚫 WHAT SHOULD YOU NOT DO</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ DO NOT use a HashSet instead of HashMap
+</span>     → HashSet tracks WHICH characters exist → gives distinct count
+     → But when you remove a character from the window:
+       → You can't know if other copies still exist
+       → "Remove 'a' from set" → but 'a' appears 3 more times in window
+       → Set incorrectly removes 'a' → distinct count drops incorrectly
+     → HashMap tracks COUNT per character → knows when count truly reaches 0
+     → HashSet = existence only → HashMap = existence + quantity
+
+→ DO NOT forget to remove zero-count entries from the map
+     → map = {a:2, r:0, c:1} → map.size() = 3
+     → But 'r' is NOT in the window (count=0)
+     → True distinct count is 2, not 3
+     → The shrink logic checks map.size() &gt; K
+     → Wrong size → wrong shrink decisions → wrong answer
+
+→ DO NOT shrink with IF instead of WHILE
+     WRONG:
+       if (map.size() &gt; k) { shrink once }
+     
+     → Removing one character might not reduce distinct count
+     → Window stays invalid → maxLength records invalid size → WRONG
+
+     CORRECT:
+       while (map.size() &gt; k) { shrink }
+     
+     → Keeps shrinking until valid → guarantees correctness
+
+→ DO NOT reset windowStart to 0 or to windowEnd
+     → windowStart only moves FORWARD → never backward
+     → Resetting destroys the sliding window invariant
+     → Each character is added at most once and removed at most once
+     → This is what gives O(n) time complexity
+
+→ DO NOT use substring extraction for comparison
+     → s.substring(windowStart, windowEnd+1) creates a new String
+     → Doing this every iteration → O(n) per call → O(n²) total
+     → Use the HashMap to track state → O(1) per operation
+
+→ DO NOT confuse this with fixed-size window (Project 5)
+     → Project 5: window size was always K → slide by 1
+     → Here: window size VARIES → expand freely, shrink as needed
+     → The window can grow to cover the entire string if all valid
+     → Or shrink to size 1 if every character is unique and K=1</code></pre></div>
+<hr>
+<h2>🔀 WHEN TO USE THIS PATTERN</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>✓ Problem asks for "longest/shortest substring with condition on character diversity"
+</span>     → "at most K distinct" → this exact problem
+     → "exactly K distinct" → variation (covered below)
+     → "at most 2 types of fruits" → K=2 (Project 13 connection)
+
+✓ Problem involves a CONTIGUOUS segment of a string or array
+     → Sliding window = contiguous subarray/substring
+     → If elements don't need to be contiguous → different technique (backtracking)
+
+✓ The validity condition can be checked incrementally
+     → Adding one element: update map → O(1)
+     → Removing one element: update map → O(1)
+     → Checking validity: map.size() → O(1)
+     → All incremental → sliding window works
+
+✓ You need the OPTIMAL (longest/shortest) valid window
+     → For longest: expand greedily, shrink only when forced
+     → For shortest: expand until valid, then shrink aggressively
+     → Both follow the same expand/shrink skeleton
+
+✓ O(n) time is required
+     → Brute force checks all O(n²) substrings → too slow
+     → Sliding window visits each character twice (once expand, once shrink) → O(n)</code></pre></div>
+<hr>
+<h2>🚫 WHEN NOT TO USE THIS PATTERN</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>✗ Elements don't need to be contiguous
+</span>     → "Find K characters with maximum frequency" (no contiguity needed)
+     → Use sorting or heap-based selection → not sliding window
+
+✗ Validity condition is not incrementally maintainable
+     → If adding/removing one element requires O(n) recomputation
+     → Sliding window loses its O(n) advantage
+     → Example: "substring where all characters appear in sorted order"
+       → Adding a character might invalidate the ordering → need full re-check
+
+✗ Problem asks for count of all valid substrings, not the optimal one
+     → Sliding window finds the longest/shortest
+     → Counting ALL valid substrings needs different math
+     → Though sometimes sliding window CAN count (with clever tricks)
+
+✗ The condition depends on elements OUTSIDE the window
+     → Sliding window only sees what's INSIDE [windowStart, windowEnd]
+     → If validity depends on global array properties → different approach
+
+✗ Window needs to skip elements (non-contiguous selection)
+     → Sliding window = contiguous range
+     → Skipping breaks contiguity → need two pointers or backtracking instead</code></pre></div>
+<hr>
+<h2>⚙️ HOW IT ONLY WORKS — Internal Mechanics</h2>
+<h3>Mechanic 1: The Amortized O(n) Guarantee</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>CLAIM: The algorithm runs in O(n) time despite having a while loop inside a for loop.
+</span>
+PROOF:
+  → windowEnd moves from 0 to n-1 → exactly n steps forward
+  → windowStart moves from 0 to at most n-1 → at most n steps forward
+  → windowStart NEVER moves backward
+  
+  TOTAL pointer movements: at most 2n
+  Each movement does O(1) work (one map operation)
+  TOTAL: O(2n) = O(n)
+
+  This is AMORTIZED analysis:
+  → Some iterations have no shrinking (windowStart stays)
+  → Some iterations have heavy shrinking (windowStart jumps forward)
+  → But across ALL iterations, windowStart moves at most n times total
+  → So the AVERAGE cost per iteration is O(1)
+
+ANALOGY:
+  → Imagine paying rent monthly
+  → Some months you pay $100, some months $500
+  → But total yearly rent is capped at $2400
+  → Average monthly cost is $200
+  → The expensive months are "amortized" by the cheap months</code></pre></div>
+<h3>Mechanic 2: Why HashMap Size Equals Distinct Count</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>INVARIANT: map.size() == number of distinct characters in window [windowStart, windowEnd]
+</span>
+MAINTAINED BY:
+  → EXPAND: adding character c
+    → If c is NEW: map didn't have c → put(c, 1) → size increases by 1 ✓
+    → If c EXISTS: map had c → put(c, count+1) → size unchanged ✓
+
+  → SHRINK: removing character c
+    → If count &gt; 1: put(c, count-1) → size unchanged ✓ (c still in window)
+    → If count == 1: put(c, 0) then remove(c) → size decreases by 1 ✓
+      (c no longer in window)
+
+→ The remove-when-zero step is CRITICAL
+→ Without it: size counts "ghost" characters that aren't in the window
+→ The invariant breaks → algorithm produces wrong answers</code></pre></div>
+<h3>Mechanic 3: Why We Maximize After Shrinking</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>EXPAND:
+</span>  → windowEnd++ → window grows → MIGHT become invalid
+  
+SHRINK:
+  → while invalid: windowStart++ → window shrinks → becomes valid again
+  
+UPDATE:
+  → maxLength = max(maxLength, currentWindowSize)
+  → At this point, window is GUARANTEED valid
+  → We record the size of the LARGEST valid window seen so far
+
+IF WE UPDATED BEFORE SHRINKING:
+  → Window might be invalid (too many distinct characters)
+  → We'd record an invalid window size → WRONG answer
+
+IF WE UPDATED DURING SHRINKING:
+  → Window is getting SMALLER → never the maximum → wasted comparisons
+  → Not wrong, but unnecessary
+
+AFTER SHRINKING is the perfect time:
+  → Window just became valid
+  → Window is as LARGE as possible (we only shrunk the minimum needed)
+  → This is potentially the new maximum</code></pre></div>
+<h3>Mechanic 4: The Expand-Shrink Dance Visualized</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>s = "eceba", k = 2
+</span>
+State progression:
+  ┌─────────────────────────────────────────────────┐
+  │ Step │ Window    │ Map           │ Valid │ MaxLen│
+  ├─────────────────────────────────────────────────┤
+  │  1   │ [e]       │ {e:1}         │ ✓     │  1   │
+  │  2   │ [ec]      │ {e:1,c:1}     │ ✓     │  2   │
+  │  3   │ [ece]     │ {e:2,c:1}     │ ✓     │  3   │
+  │  4   │ [eceb]    │ {e:2,c:1,b:1} │ ✗     │      │
+  │      │  ↓ shrink                                │
+  │      │ [ceb]     │ {e:1,c:1,b:1} │ ✗     │      │
+  │      │  ↓ shrink                                │
+  │      │ [eb]      │ {e:1,b:1}     │ ✓     │  3   │
+  │  5   │ [eba]     │ {e:1,b:1,a:1} │ ✗     │      │
+  │      │  ↓ shrink                                │
+  │      │ [ba]      │ {b:1,a:1}     │ ✓     │  3   │
+  └─────────────────────────────────────────────────┘
+  
+  Final: maxLen = 3 ("ece")</code></pre></div>
+<h3>Time and Space Complexity</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>TIME: O(n)
+</span>  → Each character is added to the window exactly ONCE (windowEnd passes it)
+  → Each character is removed from the window at most ONCE (windowStart passes it)
+  → HashMap operations: O(1) average per put/get/remove
+  → Total: O(n) + O(n) = O(n)
+
+SPACE: O(K)
+  → HashMap stores at most K+1 entries (K valid + 1 that triggered shrink)
+  → After shrinking: at most K entries
+  → If K is bounded by alphabet size (26 for lowercase) → O(1)
+  → In general: O(min(K, alphabet_size))</code></pre></div>
+<hr>
+<h2>⚠️ COMMON PITFALLS AND FAILURE MODES</h2>
+<h3>Pitfall 1: Forgetting to Remove Zero-Count Entries</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>WRONG CODE:
+</span>  charFrequency.put(leftChar, charFrequency.get(leftChar) - 1);
+  windowStart++;
+  // MISSING: if count == 0, remove key
+
+  Window: "ab" → map = {a:1, b:1} → size = 2
+  Shrink: remove 'a' → map = {a:0, b:1} → size = 2
+  
+  → map.size() still says 2 → algorithm thinks 'a' is still in window
+  → Won't stop shrinking when it should → OR won't shrink when it should
+  → WRONG answers
+
+CORRECT CODE:
+  charFrequency.put(leftChar, charFrequency.get(leftChar) - 1);
+  if (charFrequency.get(leftChar) == 0) {
+      charFrequency.remove(leftChar);
+  }
+  windowStart++;
+  
+  → map = {b:1} → size = 1 → correct distinct count</code></pre></div>
+<h3>Pitfall 2: Off-by-One in Window Length</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>WRONG: maxLength = Math.max(maxLength, windowEnd - windowStart)
+</span>  → Window [2, 5] → 5-2 = 3 → but actual length is 4 (indices 2,3,4,5)
+  → Missing +1 → all lengths underreported by 1
+
+CORRECT: maxLength = Math.max(maxLength, windowEnd - windowStart + 1)
+  → Window [2, 5] → 5-2+1 = 4 ✓</code></pre></div>
+<h3>Pitfall 3: K = 0 Edge Case</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ K = 0 means NO characters allowed in the window
+</span>→ Every single character makes the window invalid
+→ Window shrinks to size 0 immediately
+→ maxLength stays 0
+
+BUT: some implementations crash:
+  → map.size() &gt; 0 → always true → infinite shrink loop if windowStart &gt; windowEnd
+
+SAFE GUARD:
+  if (k == 0) return 0;
+  → Handle at the start → avoid edge case bugs</code></pre></div>
+<h3>Pitfall 4: Assuming Characters Are Only Lowercase Letters</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ Problem might have uppercase, digits, special characters, Unicode
+</span>→ HashMap handles ALL characters naturally (Character is the key)
+→ But if you try to use int[26] array instead of HashMap:
+  → Only works for lowercase a-z
+  → Crashes or gives wrong answers for other characters
+
+→ Use HashMap for generality
+→ Use int[26] or int[128] ONLY when the character set is explicitly constrained</code></pre></div>
+<h3>Pitfall 5: Confusing "At Most K" with "Exactly K"</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>"AT MOST K distinct": map.size() ≤ K → the problem we solved
+</span>"EXACTLY K distinct": map.size() == K → different problem
+
+For "exactly K":
+  → Cannot directly use the same algorithm
+  → TRICK: longestWithExactlyK = longestWithAtMostK(K) - longestWithAtMostK(K-1)
+  → This reuses our algorithm twice → elegant reduction
+
+→ Don't mix these up → read the problem statement carefully</code></pre></div>
+<hr>
+<h2>📈 SCALABILITY CONSIDERATIONS</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>STRING LENGTH SCALING:
+</span>→ n = 100        → ~200 operations → instant
+→ n = 10,000     → ~20,000 operations → instant
+→ n = 1,000,000  → ~2,000,000 operations → ~5ms
+→ n = 100,000,000 → ~200,000,000 operations → ~500ms
+
+COMPARISON WITH BRUTE FORCE:
+  Brute force: check all O(n²) substrings, each taking O(n) to compute distinct count
+  → O(n³) total
+  → n = 10,000 → 10^12 operations → HOURS
+
+  Sliding window: O(n) total
+  → n = 10,000 → 20,000 operations → MICROSECONDS
+  → The difference is astronomical
+
+K VALUE IMPACT:
+  → Small K (K=1, K=2): frequent shrinking → many short windows
+  → Large K (K=26 for full alphabet): rare shrinking → mostly expanding
+  → K ≥ distinct characters in string: NO shrinking → single pass → O(n) trivially
+  → The algorithm adapts naturally to any K value
+
+MEMORY IMPACT:
+  → HashMap overhead: ~32-48 bytes per entry (Java)
+  → For K=26: ~1KB → negligible
+  → For K=10,000 (Unicode): ~500KB → still small
+  → Memory is never the bottleneck for this problem</code></pre></div>
+<hr>
+<h2>🔍 INTERPRETABILITY CONSIDERATIONS</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>MENTAL MODEL:
+</span>  → Imagine a camera viewing a section of text through a window
+  → The window can grow (zoom out) or shrink (zoom in)
+  → Rule: the window can show at most K different letters
+  → Goal: find the widest view that follows the rule
+  → Camera always moves RIGHT → never goes back
+
+DEBUGGING:
+  → Print: windowStart, windowEnd, current character, map state, map size
+  → You can see exactly when the window becomes invalid
+  → You can trace the shrink steps
+  → The map shows the EXACT composition of the current window
+
+INTERVIEW COMMUNICATION:
+  → "I maintain a sliding window with two pointers moving right"
+  → "I use a HashMap to track character frequencies in the window"
+  → "When distinct characters exceed K, I shrink from the left"
+  → "I remove map entries when their count reaches zero"
+  → "This gives O(n) time and O(K) space"
+
+VISUAL AID IN INTERVIEWS:
+  → Draw the string with brackets showing the window
+  → Show the map state below
+  → Step through 3-4 iterations
+  → The interviewer sees you understand the mechanics</code></pre></div>
+<hr>
+<div class="github-btn-wrap"><a class="github-btn" href="https://github.com/Shakti4640/leetcode-patterns-guide-java/tree/main/project- (12)" target="_blank" rel="noopener"><svg viewBox="0 0 24 24"><path d="M12 .5C5.37.5 0 5.87 0 12.5c0 5.3 3.44 9.8 8.2 11.39.6.11.82-.26.82-.58v-2.03c-3.34.73-4.04-1.61-4.04-1.61-.55-1.39-1.34-1.76-1.34-1.76-1.09-.74.08-.73.08-.73 1.2.09 1.84 1.24 1.84 1.24 1.07 1.83 2.8 1.3 3.49 1 .1-.78.42-1.3.76-1.6-2.67-.3-5.47-1.33-5.47-5.93 0-1.31.47-2.38 1.24-3.22-.14-.3-.54-1.52.1-3.18 0 0 1.01-.32 3.3 1.23a11.5 11.5 0 0 1 3-.4c1.02 0 2.04.13 3 .4 2.28-1.55 3.29-1.23 3.29-1.23.64 1.66.24 2.88.12 3.18.77.84 1.23 1.91 1.23 3.22 0 4.61-2.81 5.63-5.48 5.92.43.37.81 1.1.81 2.22v3.29c0 .32.21.7.82.58C20.56 22.3 24 17.8 24 12.5 24 5.87 18.63.5 12 .5z"/></svg>💻 View Complete Java Code on GitHub</a></div>
+
+<hr>
+<h2>🔑 EXPECTED OUTPUT</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>╔══════════════════════════════════════════════════════╗
+</span>║  PROJECT 12: Longest Substring K Distinct Characters ║
+║  Pattern: Sliding Window + HashMap Frequency Tracking║
+╚══════════════════════════════════════════════════════╝
+
+═══ TEST 1: Classic Example (Traced) ═══
+  String: "araaci", K = 2
+  ─────────────────────────────────────────
+  EXPAND → windowEnd=0 char='a' window="a" map={a=1} distinct=1
+  → valid window size=1 maxLength=1
+
+  EXPAND → windowEnd=1 char='r' window="ar" map={a=1, r=1} distinct=2
+  → valid window size=2 maxLength=2
+
+  EXPAND → windowEnd=2 char='a' window="ara" map={a=2, r=1} distinct=2
+  → valid window size=3 maxLength=3
+
+  EXPAND → windowEnd=3 char='a' window="araa" map={a=3, r=1} distinct=2
+  → valid window size=4 maxLength=4
+
+  EXPAND → windowEnd=4 char='c' window="araac" map={a=3, r=1, c=1} distinct=3
+  SHRINK → removed 'a' windowStart=1 window="raac" map={a=2, r=1, c=1} distinct=3
+  SHRINK → removed 'r' windowStart=2 window="aac" map={a=2, c=1} distinct=2
+  → valid window size=3 maxLength=4
+
+  EXPAND → windowEnd=5 char='i' window="aaci" map={a=2, c=1, i=1} distinct=3
+  SHRINK → removed 'a' windowStart=3 window="aci" map={a=1, c=1, i=1} distinct=3
+  SHRINK → removed 'a' windowStart=4 window="ci" map={c=1, i=1} distinct=2
+  → valid window size=2 maxLength=4
+
+  ★ RESULT: 4
+
+═══ TEST 5: Edge Cases ═══
+  Empty string, k=2: 0
+  "abc", k=0: 0
+  "a", k=1: 1
+  "a", k=5: 1
+  "abcdef", k=6: 6
+  "abcdef", k=10: 6
+
+═══ TEST 6: Return Actual Substring ═══
+  "araaci" k=2 → "araa" (length=4)
+  "cbbebi" k=3 → "cbbeb" (length=5)
+  "eceba" k=2 → "ece" (length=3)
+  "aabbcc" k=2 → "aabb" (length=4)
+
+═══ TEST 9: Correctness Verification ═══
+  "araaci" k=2 → Optimal=4 Brute=4 ✓
+  "cbbebi" k=3 → Optimal=5 Brute=5 ✓
+  "eceba" k=2 → Optimal=3 Brute=3 ✓
+  "aaaa" k=2 → Optimal=4 Brute=4 ✓
+  "abcdef" k=3 → Optimal=3 Brute=3 ✓
+  "aabbccdd" k=2 → Optimal=4 Brute=4 ✓
+  "abaccc" k=2 → Optimal=4 Brute=4 ✓
+  "a" k=1 → Optimal=1 Brute=1 ✓
+  "ab" k=1 → Optimal=1 Brute=1 ✓
+  "aaabbb" k=1 → Optimal=3 Brute=3 ✓
+  All passed: true
+
+═══ TEST 10: Performance Benchmark ═══
+  String length: 1000000
+  K = 5
+  HashMap approach: result=... time=~45ms
+  Array approach:   result=... time=~12ms
+  Results match: true
+  Array speedup: ~3x</code></pre></div>
+<hr>
+<h2>🧠 KEY TAKEAWAY</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>WHAT WE LEARNED:
+</span>→ Sliding Window + HashMap = the POWER COMBO for substring problems
+→ The HashMap tracks RICH STATE (character frequencies) inside the window
+→ map.size() gives distinct count → the window's validity metric
+→ Remove zero-count entries → keeps size accurate → algorithm correct
+→ Amortized O(n): each character added once, removed at most once
+
+EVOLUTION OF SLIDING WINDOW:
+  Project 5:  Fixed-size window → track SUM (single integer)
+  Project 6:  Variable-size window → track SUM → shrink when sum ≥ target
+  Project 12: Variable-size window → track FREQUENCIES (HashMap)
+              → shrink when distinct &gt; K → RICH state management
+
+THE LEAP:
+  → From tracking ONE number (sum) to tracking a MAP of frequencies
+  → The expand/shrink skeleton is IDENTICAL to Project 6
+  → Only the STATE and VALIDITY CONDITION changed
+  → This is the power of patterns: same structure, different content
+
+GENERAL SLIDING WINDOW TEMPLATE:
+  1. Initialize state (sum, map, count, etc.)
+  2. FOR each windowEnd:
+     a. Update state with new element (expand)
+     b. WHILE window is invalid: update state removing element (shrink)
+     c. Record optimal window size (update answer)
+  → This template solves DOZENS of problems
+  → Only steps a, b, and the validity check change per problem
+
+VARIANTS SHOWN:
+  → At most K distinct → direct algorithm
+  → Exactly K distinct → atMost(K) - atMost(K-1) trick
+  → Return actual substring → track maxStart alongside maxLength
+  → Array-based optimization → int[128] when character set is bounded</code></pre></div>
+<hr>
+<h2>🌉 BRIDGE TO NEXT PROJECT</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>PROJECT 12 solved:
+</span>→ Longest substring with at most K distinct characters
+→ Used HashMap to track character frequencies
+→ Window validity: map.size() ≤ K
+
+PROJECT 13 (Fruits into Baskets) will ask:
+→ "You have a row of fruit trees, each tree has one type of fruit"
+→ "You have 2 baskets, each can hold one type of fruit"
+→ "Find the maximum number of fruits you can collect in a contiguous stretch"
+→ This is EXACTLY "longest subarray with at most 2 distinct elements"
+→ K is fixed at 2 → same algorithm, concrete scenario
+→ Teaches: recognizing disguised problems → pattern matching skill
+
+THE RECOGNITION SKILL:
+  → "Two baskets" = "two types" = "K=2 distinct"
+  → "Contiguous stretch" = "subarray" = sliding window
+  → "Maximum fruits" = "longest valid window"
+  → The problem is DRESSED differently but STRUCTURALLY identical
+  → Mastering recognition is as important as mastering the algorithm</code></pre></div>
+<hr>
+<p><strong>Ready for Project 13: Fruits into Baskets (Sliding Window → At-Most-K-Distinct Constraint with K=2)?</strong></p>
+</div>
+</div>
+
+<!-- ========== data-index="11" ========== -->
+<div class="chat-message" data-index="11"></div>
+</div>
+<div class="bottom-nav">
+  <a href="project-11.html" class="nav-btn prev">← Prev</a>
+  <div class="nav-center">
+    <span class="nav-project-label">PROJECT 12 of 60</span>
+    <span class="nav-project-title">Longest Substring with K Distinct Characters</span>
+    <span class="kbd-hint">← → arrow keys to navigate</span>
+  </div>
+  <a href="project-13.html" class="nav-btn next">Next →</a>
+  <a href="index.html" class="nav-btn home">🏠 TOC</a>
+</div>
+<div id="progress-track"><div id="progress-fill"></div></div>
+<div id="progress-pct">0%</div>
+<script src="script.js"></script>
+<script>
+document.addEventListener('keydown', function(e) {
+  if (['INPUT','TEXTAREA'].includes(document.activeElement.tagName)) return;
+  if (e.key === 'ArrowRight' && "project-13.html" !== null) window.location = "project-13.html";
+  if (e.key === 'ArrowLeft' && "project-11.html" !== null) window.location = "project-11.html";
+});
+</script>
+</body>
+</html>

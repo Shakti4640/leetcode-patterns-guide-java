@@ -1,0 +1,795 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PROJECT 42: Combination Sum</title>
+<link rel="icon" type="image/png" href="images/favicon.png">
+<link rel="stylesheet" href="styles.css">
+
+</head>
+<body>
+<div id="progress-bar-container"><div id="progress-bar" style="width:70%"></div></div>
+<div id="progress-label">70%</div>
+<div class="page-wrapper">
+<div class="chat-message"><div class="px-2"><h1>PROJECT 42: Combination Sum</h1>
+<h2>🎯 Backtracking → Pruning Branches → Target Reduction Recursion</h2>
+<hr>
+<h2>🧩 THE HYPOTHETICAL PROBLEM</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ You are given an array of DISTINCT positive integers (candidates)
+</span>→ You are given a TARGET sum
+→ Find ALL unique combinations of candidates that sum to the target
+→ The SAME number may be used UNLIMITED times
+→ Return all combinations (order within a combination doesn't matter)
+→ The solution set must NOT contain duplicate combinations
+
+Example 1:
+  Input:  candidates = [2, 3, 6, 7], target = 7
+  Output: [[2, 2, 3], [7]]
+  
+  Explanation:
+    2 + 2 + 3 = 7 ✓
+    7 = 7 ✓
+    No other combinations work.
+
+Example 2:
+  Input:  candidates = [2, 3, 5], target = 8
+  Output: [[2, 2, 2, 2], [2, 3, 3], [3, 5]]
+  
+  Explanation:
+    2 + 2 + 2 + 2 = 8 ✓
+    2 + 3 + 3 = 8 ✓
+    3 + 5 = 8 ✓
+
+Example 3:
+  Input:  candidates = [2], target = 1
+  Output: []   (no combination possible)
+
+Example 4:
+  Input:  candidates = [1], target = 3
+  Output: [[1, 1, 1]]  (use 1 three times)</code></pre></div>
+<hr>
+<h2>🔍 HOW TO APPROACH IT</h2>
+<h3>Step 1 — Connect to Previous Backtracking Projects</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>PROJECT 28 (Subsets):
+</span>  → Generate ALL subsets of a set
+  → At each element: INCLUDE or EXCLUDE
+  → No constraint on which subsets to keep
+  → Every branch of the decision tree produces a valid subset
+
+PROJECT 29 (Permutations):
+  → Generate ALL orderings of elements
+  → At each position: which element goes here?
+  → Every complete branch produces a valid permutation
+
+PROJECT 42 (Combination Sum):
+  → Generate combinations that SUM TO A TARGET
+  → At each step: which candidate to add next?
+  → NOT every branch is valid — most branches are DEAD ENDS
+  → We need to PRUNE branches that can't possibly reach the target
+  → THIS IS THE NEW CONCEPT: constraint-driven exploration
+
+THE EVOLUTION:
+  Project 28: Explore everything → collect everything
+  Project 29: Explore everything → collect everything (different structure)
+  Project 42: Explore selectively → collect only valid combinations
+              → PRUNING = the key that makes this efficient</code></pre></div>
+<h3>Step 2 — Think About the Decision Tree</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>candidates = [2, 3, 5], target = 8
+</span>
+At each step, we CHOOSE which candidate to add next.
+To avoid duplicate combinations like [2,3,3] and [3,2,3]:
+  → We only consider candidates at index ≥ current index
+  → This ensures combinations are generated in NON-DECREASING order
+
+Decision tree (partial):
+
+                            target=8
+                    /          |          \
+               use 2         use 3       use 5
+              target=6      target=5    target=3
+            /    |    \     /    \         |
+          use2  use3  use5 use3  use5    use5
+          t=4   t=3   t=1 t=2   t=0✓    t=-2✗
+         / | \   |         |
+       u2 u3 u5 u3       u3
+       t=2 t=1 t=-1✗    t=-1✗
+       |    
+      u2    
+      t=0✓  
+
+VALID PATHS:
+  2 → 2 → 2 → 2 → target=0 ✓ → [2,2,2,2]
+  2 → 3 → 3 → target=0 ✓     → [2,3,3]
+  3 → 5 → target=0 ✓          → [3,5]
+
+PRUNED PATHS (target goes negative):
+  2 → 2 → 5 → target=-1 → PRUNE (stop exploring)
+  2 → 3 → 5 → target=-2 → PRUNE
+  ... many more
+
+PRUNING eliminates VAST portions of the tree:
+  → Without pruning: tree could be infinite (unlimited reuse)
+  → With pruning: tree is finite and manageable</code></pre></div>
+<h3>Step 3 — The Target Reduction Technique</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>Instead of tracking "current sum" and comparing to target:
+</span>  → We REDUCE the target at each step
+  → Start with target = 8
+  → Choose candidate 2 → new target = 8 - 2 = 6
+  → Choose candidate 3 → new target = 6 - 3 = 3
+  → Choose candidate 3 → new target = 3 - 3 = 0 → FOUND!
+
+WHY REDUCTION IS BETTER THAN ACCUMULATION:
+  → Accumulation: track sum, compare (sum == target) at each step
+  → Reduction: track remaining, compare (remaining == 0) at each step
+  → Reduction makes the PRUNING condition simpler:
+       → if remaining &lt; 0 → IMPOSSIBLE → prune
+       → if remaining == 0 → FOUND → record combination
+       → if remaining &gt; 0 → CONTINUE exploring
+  → Also: remaining &lt; candidate[i] → prune (can't use this or any larger)
+       → THIS is where SORTING enables powerful pruning</code></pre></div>
+<h3>Step 4 — Why Sorting Supercharges Pruning</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>candidates = [2, 3, 5], target = 4
+</span>
+UNSORTED exploration at some branch with remaining = 1:
+  → Try 2: 1 - 2 = -1 → prune
+  → Try 3: 1 - 3 = -2 → prune
+  → Try 5: 1 - 5 = -4 → prune
+  → Tried ALL candidates before pruning all
+
+SORTED exploration at same branch with remaining = 1:
+  → Try 2: 1 - 2 = -1 → prune → AND STOP
+  → Don't even try 3 or 5 — they're all BIGGER than 2
+  → If 2 already exceeds remaining → 3 and 5 definitely exceed it
+
+THIS IS CALLED "EARLY TERMINATION":
+  → Sort candidates ascending
+  → When candidate[i] &gt; remaining → break the loop
+  → All candidates from index i onward are ≥ candidate[i]
+  → So they ALL exceed remaining → no need to check
+  → This can eliminate 90%+ of the search space
+
+WITHOUT SORTING: Must try every candidate at every branch
+WITH SORTING: Can skip entire right portions of each branch</code></pre></div>
+<h3>Step 5 — Avoiding Duplicate Combinations</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>candidates = [2, 3, 5], target = 8
+</span>
+Without careful ordering, we might generate:
+  [2, 3, 3] and [3, 2, 3] and [3, 3, 2]
+  → All represent the SAME combination → duplicates!
+
+THE FIX: "Start Index" parameter
+  → At each recursion level, only consider candidates from index startIndex onward
+  → This ensures elements in the combination are in NON-DECREASING order
+  → [2, 3, 3] is generated (start from index 0, then 1, then 1)
+  → [3, 2, 3] is NOT generated (would need going back to index 0 after 1)
+  → [3, 3, 2] is NOT generated (same reason)
+
+KEY INSIGHT:
+  → Since same candidate can be reused → startIndex stays the SAME
+       (not startIndex + 1 like in subsets)
+  → At each step: try candidate[startIndex], candidate[startIndex+1], ...
+  → For candidate[i], recurse with startIndex = i (NOT i+1)
+  → This allows reuse of candidate[i] but prevents going backward</code></pre></div>
+<hr>
+<h2>🛠️ HOW CAN WE SOLVE IT</h2>
+<h3>The Algorithm</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>1. Sort candidates array (enables early termination pruning)
+</span>2. Initialize result list and current combination list
+3. Call recursive backtrack function:
+     backtrack(candidates, target, startIndex, currentCombination, result)
+4. Inside backtrack:
+     a. BASE CASE: target == 0 → found valid combination → add copy to result
+     b. LOOP from i = startIndex to candidates.length - 1:
+          → If candidates[i] &gt; target → BREAK (early termination)
+          → Add candidates[i] to currentCombination
+          → RECURSE: backtrack(candidates, target - candidates[i], i, ...)
+               (note: startIndex = i, NOT i+1 → allows reuse)
+          → Remove candidates[i] from currentCombination (BACKTRACK)
+5. Return result</code></pre></div>
+<h3>The Backtracking Template</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>This is the UNIVERSAL backtracking template:
+</span>
+void backtrack(state, choices, result) {
+    if (state is a solution) {
+        result.add(copy of current path);
+        return;
+    }
+    
+    for (choice in available choices) {
+        if (choice is invalid) skip or break;  ← PRUNING
+        
+        make the choice;                        ← CHOOSE
+        backtrack(updated state, ...);           ← EXPLORE
+        undo the choice;                        ← UN-CHOOSE (backtrack)
+    }
+}
+
+PROJECT 28 (Subsets): No pruning → explore everything
+PROJECT 29 (Permutations): Prune only "already used" elements
+PROJECT 42 (Combination Sum): Prune by TARGET constraint + sorted early break</code></pre></div>
+<hr>
+<h2>✅ WHAT SHOULD YOU DO</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ ALWAYS sort candidates first
+</span>     → Enables early termination: if candidates[i] &gt; remaining → break
+     → Without sorting → must try every candidate → much slower
+
+→ ALWAYS use target REDUCTION (not sum accumulation)
+     → Cleaner base case: remaining == 0
+     → Cleaner pruning: remaining &lt; 0 or candidates[i] &gt; remaining
+     → Less state to track
+
+→ ALWAYS pass startIndex to prevent duplicate combinations
+     → startIndex = i (same index) → allows reuse of same candidate
+     → Only consider candidates[i..n-1] → non-decreasing order guaranteed
+
+→ ALWAYS add a COPY of currentCombination to result
+     → currentCombination is mutated during backtracking
+     → If you add the reference → all entries in result point to same list
+     → result.add(new ArrayList&lt;&gt;(currentCombination)) → safe copy
+
+→ ALWAYS remove the last element after recursion (backtrack step)
+     → currentCombination.add(x) → recurse → currentCombination.remove(last)
+     → This restores state for the next iteration of the loop
+     → Forgetting this → combination grows indefinitely → wrong results
+
+→ ALWAYS use break (not continue) when candidates[i] &gt; remaining
+     → Since array is sorted → all subsequent candidates are also too large
+     → break exits the loop entirely → skip ALL remaining candidates
+     → continue would only skip ONE → wasteful</code></pre></div>
+<hr>
+<h2>🚫 WHAT SHOULD YOU NOT DO</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ DO NOT use startIndex = i + 1 for this problem
+</span>     → i + 1 means "move to next candidate" → each candidate used AT MOST ONCE
+     → This problem allows UNLIMITED reuse → startIndex stays at i
+     → i + 1 is correct for "Combination Sum II" (each candidate used once)
+     → CRITICAL distinction between the two variants
+
+→ DO NOT forget to sort candidates
+     → Algorithm still works without sorting (correct results)
+     → But MUCH slower — cannot do early termination
+     → Sorting: O(c log c) one-time cost → massive pruning benefit
+
+→ DO NOT use a HashSet to deduplicate combinations
+     → Expensive: O(K) per combination for hashing
+     → Unnecessary: startIndex parameter prevents duplicates structurally
+     → HashSet is a band-aid for poorly structured recursion
+
+→ DO NOT add currentCombination reference directly to result
+     → WRONG: result.add(currentCombination)
+     → After backtracking → currentCombination changes → result corrupted
+     → CORRECT: result.add(new ArrayList&lt;&gt;(currentCombination))
+
+→ DO NOT use global mutable state without cleanup
+     → currentCombination is modified in-place
+     → MUST undo each modification after recursion returns
+     → If using immutable approach (creating new lists) → no undo needed
+     → But immutable approach creates O(N) new lists per recursion → slower
+
+→ DO NOT recurse when candidates[i] &gt; remaining
+     → Check BEFORE recursing → avoid unnecessary function call overhead
+     → Even better: use break to skip all subsequent candidates too</code></pre></div>
+<hr>
+<h2>🔀 WHEN TO USE THIS PATTERN</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>✓ "Find ALL combinations / subsets / arrangements satisfying a constraint"
+</span>✓ Problem has a CONSTRAINT that eliminates many possibilities
+✓ Solution space is a TREE of decisions
+✓ Each decision leads to a sub-problem of the same type (recursive)
+✓ Need EXHAUSTIVE search but with intelligent pruning
+
+SIGNATURE PHRASES:
+  → "Find all combinations that sum to target"
+  → "Find all ways to partition/split into valid groups"
+  → "Find all paths that satisfy condition X"
+  → "Generate all valid configurations"
+  → "Count the number of ways to achieve X" (if count only → might use DP instead)
+
+BACKTRACKING vs DYNAMIC PROGRAMMING:
+  → Need ALL solutions enumerated → BACKTRACKING
+  → Need only the COUNT or OPTIMAL value → DYNAMIC PROGRAMMING (Projects 43-44)
+  → Sometimes BOTH work → DP is usually faster for count/optimal
+  → Backtracking is necessary when you need the ACTUAL combinations</code></pre></div>
+<hr>
+<h2>🚫 WHEN NOT TO USE THIS PATTERN</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>✗ You only need the COUNT of combinations (not the actual combinations)
+</span>     → DP is O(target * n) → much faster
+     → Backtracking enumerates all → exponential in worst case
+
+✗ You only need ONE valid combination (not all)
+     → Backtracking finds one and can return early
+     → But greedy or DP might find it faster
+
+✗ No constraint to prune on
+     → Without pruning → backtracking = brute force enumeration
+     → Might as well use iterative generation (like Project 28)
+
+✗ Solution space is too large even with pruning
+     → If target is huge and candidates are small
+     → Number of valid combinations is exponential
+     → No algorithm can enumerate exponential results fast
+     → Consider approximate or sampling approaches
+
+✗ Problem has optimal substructure + overlapping subproblems
+     → Classic DP signals → use DP instead
+     → Backtracking re-explores overlapping subproblems
+     → DP caches them → exponentially faster</code></pre></div>
+<hr>
+<h2>⚙️ HOW IT ONLY WORKS — Internal Mechanics</h2>
+<h3>The Recursion Tree — Complete Visualization</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>candidates = [2, 3, 6, 7], target = 7
+</span>
+SORTED: [2, 3, 6, 7]
+
+Level 0: target=7, path=[]
+├── choose 2: target=5, path=[2]
+│   ├── choose 2: target=3, path=[2,2]
+│   │   ├── choose 2: target=1, path=[2,2,2]
+│   │   │   ├── choose 2: 2&gt;1 → BREAK ✂️
+│   │   │   (all candidates ≥ 2 &gt; 1 → entire branch pruned)
+│   │   ├── choose 3: target=0, path=[2,2,3] → ✅ FOUND!
+│   │   (3 used → remaining=0 → record [2,2,3])
+│   │   (6&gt;3 → BREAK for rest)
+│   ├── choose 3: target=2, path=[2,3]
+│   │   ├── choose 3: 3&gt;2 → BREAK ✂️
+│   ├── choose 6: target=-1? NO → 6&gt;5 → BREAK ✂️
+├── choose 3: target=4, path=[3]
+│   ├── choose 3: target=1, path=[3,3]
+│   │   ├── choose 3: 3&gt;1 → BREAK ✂️
+│   ├── choose 6: 6&gt;4 → BREAK ✂️
+├── choose 6: target=1, path=[6]
+│   ├── choose 6: 6&gt;1 → BREAK ✂️
+├── choose 7: target=0, path=[7] → ✅ FOUND!
+
+RESULT: [[2,2,3], [7]]
+
+PRUNING STATISTICS:
+  → Total possible branches without pruning: hundreds
+  → Branches actually explored: ~15
+  → Branches pruned by early termination: ~85%
+  → THIS is the power of sort + break</code></pre></div>
+<h3>Why startIndex = i (Not i+1) Allows Reuse</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>When we choose candidates[i] and recurse with startIndex = i:
+</span>  → The recursive call CAN choose candidates[i] AGAIN
+  → This allows: [2, 2, 2, 2] (candidate 2 used 4 times)
+
+If we used startIndex = i + 1:
+  → After choosing candidates[i], recursion starts from i+1
+  → candidates[i] can NEVER be chosen again in this branch
+  → This gives "each candidate used at most once" behavior
+  → [2, 2, 2, 2] would be IMPOSSIBLE
+
+COMPARISON:
+  Combination Sum I  (unlimited reuse): startIndex = i
+  Combination Sum II (use once each):   startIndex = i + 1
+  Subsets (Project 28):                 startIndex = i + 1
+  
+  THE ONLY DIFFERENCE IS ONE CHARACTER: i vs i+1
+  But the behavioral difference is ENORMOUS</code></pre></div>
+<h3>The Backtracking Mechanism — Add/Remove Dance</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>The currentCombination list is a SHARED MUTABLE STATE.
+</span>It represents the current path from root to current node in the tree.
+
+HOW IT WORKS:
+  → Before entering a branch: ADD the chosen element
+  → Explore all sub-branches recursively
+  → After returning from all sub-branches: REMOVE the element
+
+EXAMPLE TRACE for [2, 3, 6, 7], target=7:
+
+  path = []
+  ADD 2 → path = [2]
+    ADD 2 → path = [2, 2]
+      ADD 2 → path = [2, 2, 2]
+        (pruned — all candidates &gt; remaining=1)
+      REMOVE 2 → path = [2, 2]
+      ADD 3 → path = [2, 2, 3]
+        (remaining=0 → FOUND → copy [2,2,3] to result)
+      REMOVE 3 → path = [2, 2]
+    REMOVE 2 → path = [2]
+    ADD 3 → path = [2, 3]
+      ADD 3 → path = [2, 3, 3]  ← wait, 3&gt;2 remaining → break
+      Actually: remaining = 7-2-3 = 2, and 3&gt;2 → BREAK
+    REMOVE 3 → path = [2]
+    (6 &gt; 5 remaining → BREAK)
+  REMOVE 2 → path = []
+  ADD 3 → path = [3]
+    ... (similar exploration)
+  REMOVE 3 → path = []
+  ADD 6 → path = [6]
+    (remaining=1, 6&gt;1 → BREAK)
+  REMOVE 6 → path = []
+  ADD 7 → path = [7]
+    (remaining=0 → FOUND → copy [7] to result)
+  REMOVE 7 → path = []
+
+DONE. Result = [[2,2,3], [7]]
+
+NOTICE: path always returns to [] at the end
+  → Every ADD has a matching REMOVE
+  → This is the INVARIANT of backtracking
+  → The shared state is always RESTORED after exploration</code></pre></div>
+<h3>Time Complexity Analysis</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>TIME COMPLEXITY: Hard to express precisely — depends on:
+</span>  → Number of valid combinations
+  → Depth of recursion tree (target / min_candidate)
+  → Breadth at each level (number of candidates)
+
+UPPER BOUND:
+  → Let T = target, M = min candidate, C = number of candidates
+  → Max depth = T / M (using smallest candidate repeatedly)
+  → At each level: up to C choices
+  → Without pruning: O(C^(T/M)) — exponential
+  → With pruning: much less, but still potentially exponential
+
+PRACTICAL IMPACT OF PRUNING:
+  → Sorting + early break eliminates vast majority of branches
+  → Real-world performance is MUCH better than worst case
+  → For typical LeetCode constraints (target ≤ 200, candidates ≤ 30):
+       → Runs in milliseconds even without optimization
+
+SPACE COMPLEXITY:
+  → Recursion depth: O(T / M)
+  → currentCombination: O(T / M) at most
+  → Result: O(number_of_combinations * average_length)
+  → Total: O(T/M) for recursion + output space</code></pre></div>
+<h3>Why This is Backtracking and Not Just Recursion</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>PLAIN RECURSION:
+</span>  → Call function → it does work → returns result
+  → No state mutation → no cleanup needed
+  → Example: fibonacci(n) = fibonacci(n-1) + fibonacci(n-2)
+
+BACKTRACKING:
+  → Modify shared state (add to path)
+  → Recurse (explore with modified state)
+  → UNDO the modification (remove from path)
+  → This "undo" step = the "backtrack"
+  → It's what allows exploring MULTIPLE branches with ONE list
+
+THE NAME "BACKTRACKING":
+  → You walk forward (add element, recurse deeper)
+  → You hit a dead end (pruned or found solution)
+  → You walk BACKWARD (remove element) — "backtrack"
+  → Then try a different path forward
+  → Like navigating a maze: forward, dead end, back, try another way</code></pre></div>
+<hr>
+<h2>⚠️ COMMON PITFALLS AND FAILURE MODES</h2>
+<h3>Pitfall 1: Forgetting to Copy the Combination</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>WRONG:
+</span>  if (remaining == 0) {
+      result.add(currentCombination);  // adds REFERENCE
+      return;
+  }
+  
+  Later: currentCombination is modified by backtracking
+  → The "saved" result now contains the MODIFIED list
+  → All entries in result end up being empty lists or wrong
+
+CORRECT:
+  if (remaining == 0) {
+      result.add(new ArrayList&lt;&gt;(currentCombination));  // adds COPY
+      return;
+  }</code></pre></div>
+<h3>Pitfall 2: Using continue Instead of break</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>WRONG:
+</span>  for (int i = startIndex; i &lt; candidates.length; i++) {
+      if (candidates[i] &gt; remaining) continue;  // skips ONE
+      // ... rest of logic
+  }
+  
+  → candidates = [2, 3, 6, 7], remaining = 4
+  → i=2: candidates[2]=6 &gt; 4 → continue → skip 6
+  → i=3: candidates[3]=7 &gt; 4 → continue → skip 7
+  → Loop ends → correct result BUT wasted 2 iterations
+
+CORRECT:
+  for (int i = startIndex; i &lt; candidates.length; i++) {
+      if (candidates[i] &gt; remaining) break;  // skips ALL remaining
+      // ... rest of logic
+  }
+  
+  → i=2: candidates[2]=6 &gt; 4 → break → done immediately
+  → Saved 1 iteration → for larger arrays, saves thousands</code></pre></div>
+<h3>Pitfall 3: Confusing Combination Sum I vs II</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>COMBINATION SUM I (this project):
+</span>  → Candidates are DISTINCT
+  → Each candidate can be used UNLIMITED times
+  → recurse with startIndex = i
+
+COMBINATION SUM II (different problem):
+  → Candidates may have DUPLICATES
+  → Each candidate can be used AT MOST ONCE
+  → recurse with startIndex = i + 1
+  → PLUS: skip duplicates at same level:
+       if (i &gt; startIndex &amp;&amp; candidates[i] == candidates[i-1]) continue;
+
+MIXING THESE UP is the #1 interview mistake for combination problems.
+→ Read the problem CAREFULLY: "unlimited reuse" vs "use once"</code></pre></div>
+<h3>Pitfall 4: Not Handling Edge Cases</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>EDGE CASE 1: target = 0
+</span>  → Empty combination [] sums to 0
+  → Should return [[]] (one empty combination)
+  → Base case handles this: remaining == 0 → add current path (which is [])
+
+EDGE CASE 2: All candidates &gt; target
+  → candidates = [5, 10], target = 3
+  → First candidate 5 &gt; 3 → break immediately
+  → No combinations found → return []
+
+EDGE CASE 3: Single candidate
+  → candidates = [3], target = 9
+  → Only combination: [3, 3, 3]
+  → candidates = [3], target = 7
+  → 3 + 3 = 6, then 3 &gt; 1 → no combination → return []
+
+EDGE CASE 4: candidate = 1
+  → candidates = [1, 2], target = 4
+  → Many combinations: [1,1,1,1], [1,1,2], [2,2]
+  → Works correctly but generates more branches
+  → Pruning still helps: when remaining &lt; 1 → break (never happens for 1)</code></pre></div>
+<h3>Pitfall 5: Stack Overflow for Large Target / Small Candidates</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>candidates = [1], target = 1000
+</span>→ Recursion depth = 1000 (use 1 a thousand times)
+→ Java default stack size ≈ 512 frames
+→ STACK OVERFLOW!
+
+MITIGATION:
+  → Most LeetCode problems have target ≤ 200 → safe
+  → For larger targets: use iterative approach or increase stack size
+  → Or: use DP if only count is needed (avoids deep recursion)
+  → -Xss flag in Java to increase stack size for testing</code></pre></div>
+<hr>
+<h2>📈 SCALABILITY CONSIDERATIONS</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>SCENARIO 1: Small candidates, large target
+</span>  → candidates = [1, 2, 3], target = 100
+  → MANY valid combinations → exponential output
+  → No algorithm can enumerate faster than the output size
+  → Backtracking with pruning is optimal for enumeration
+
+SCENARIO 2: Large candidates, small target
+  → candidates = [50, 60, 70, 80, 90], target = 10
+  → ALL candidates &gt; target → immediate break
+  → Runs in O(1) after sorting
+
+SCENARIO 3: Many candidates, moderate target
+  → candidates = [1, 2, 3, ..., 50], target = 30
+  → Sorting helps enormously → early termination kicks in fast
+  → Still many combinations but pruning keeps it manageable
+
+SCENARIO 4: Need COUNT only, not actual combinations
+  → Switch to Dynamic Programming (Project 43-44 territory)
+  → DP: O(target * candidates.length) → polynomial
+  → Backtracking: potentially exponential → much slower for count-only
+
+WHEN BACKTRACKING IS THE ONLY OPTION:
+  → When you need to LIST all actual combinations
+  → No shortcut exists → must enumerate
+  → Pruning minimizes wasted exploration
+  → But output size is the fundamental bottleneck</code></pre></div>
+<hr>
+<h2>🔍 INTERPRETABILITY CONSIDERATIONS</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>MENTAL MODEL — "Shopping with a Budget"
+</span>
+→ You have a BUDGET (target)
+→ You're at a store with ITEMS at fixed prices (candidates)
+→ You can buy UNLIMITED quantities of each item
+→ You want to find ALL ways to spend EXACTLY the budget
+
+PROCESS:
+  → Start with full budget
+  → Pick an item → deduct its price from budget
+  → Pick another item (same or different) → deduct again
+  → If budget = 0 → found a valid shopping list!
+  → If budget &lt; 0 → overspent → backtrack (put item back)
+  → If budget &gt; 0 but cheapest item costs more → can't spend exactly → backtrack
+
+PRUNING = "Don't bother looking at expensive items when budget is low"
+  → If remaining budget = $1 and cheapest item = $2
+  → Don't even walk to that aisle → nothing affordable
+  → Sorting items by price → check cheapest first → break when too expensive
+
+BACKTRACKING = "Put the item back on the shelf and try a different one"
+  → You picked item X but it didn't lead to exact spending
+  → Put X back → try item Y instead
+  → This "putting back" = removing from currentCombination
+
+DEBUGGING:
+  → Print the decision tree with indentation per depth
+  → Print "choosing X, remaining = Y" at each step
+  → Print "FOUND!" or "PRUNED" at leaves
+  → Verify: every ADD has a matching REMOVE</code></pre></div>
+<hr>
+<div class="github-btn-wrap"><a class="github-btn" href="https://github.com/Shakti4640/leetcode-patterns-guide-java/tree/main/project- (42)" target="_blank" rel="noopener"><svg viewBox="0 0 24 24"><path d="M12 .5C5.37.5 0 5.87 0 12.5c0 5.3 3.44 9.8 8.2 11.39.6.11.82-.26.82-.58v-2.03c-3.34.73-4.04-1.61-4.04-1.61-.55-1.39-1.34-1.76-1.34-1.76-1.09-.74.08-.73.08-.73 1.2.09 1.84 1.24 1.84 1.24 1.07 1.83 2.8 1.3 3.49 1 .1-.78.42-1.3.76-1.6-2.67-.3-5.47-1.33-5.47-5.93 0-1.31.47-2.38 1.24-3.22-.14-.3-.54-1.52.1-3.18 0 0 1.01-.32 3.3 1.23a11.5 11.5 0 0 1 3-.4c1.02 0 2.04.13 3 .4 2.28-1.55 3.29-1.23 3.29-1.23.64 1.66.24 2.88.12 3.18.77.84 1.23 1.91 1.23 3.22 0 4.61-2.81 5.63-5.48 5.92.43.37.81 1.1.81 2.22v3.29c0 .32.21.7.82.58C20.56 22.3 24 17.8 24 12.5 24 5.87 18.63.5 12 .5z"/></svg>💻 View Complete Java Code on GitHub</a></div>
+
+<hr>
+<h2>🔑 EXPECTED OUTPUT</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>╔═══════════════════════════════════════════════════════╗
+</span>║  PROJECT 42: Combination Sum                          ║
+║  Pattern: Backtracking → Pruning → Target Reduction   ║
+╚═══════════════════════════════════════════════════════╝
+
+═══ TEST 1: Classic Example with Full Trace ═══
+Candidates: [2, 3, 6, 7]
+Target: 7
+═══════════════════════════════════════════
+→ Choose 2 | path=[]+2 | remaining=5
+  → Choose 2 | path=[2]+2 | remaining=3
+    → Choose 2 | path=[2, 2]+2 | remaining=1
+      ✂️ PRUNE: 2 &gt; remaining(1) → break (skip 4 candidates)
+    ← Backtrack (removed 2)
+    → Choose 3 | path=[2, 2]+3 | remaining=0
+      ✅ FOUND: [2, 2, 3] (sum=7)
+    ← Backtrack (removed 3)
+    ✂️ PRUNE: 6 &gt; remaining(3) → break (skip 2 candidates)
+  ← Backtrack (removed 2)
+  → Choose 3 | path=[2]+3 | remaining=2
+    ✂️ PRUNE: 3 &gt; remaining(2) → break (skip 3 candidates)
+  ← Backtrack (removed 3)
+  ✂️ PRUNE: 6 &gt; remaining(5) → break (skip 2 candidates)
+← Backtrack (removed 2)
+→ Choose 3 | path=[]+3 | remaining=4
+  → Choose 3 | path=[3]+3 | remaining=1
+    ✂️ PRUNE: 3 &gt; remaining(1) → break (skip 4 candidates)
+  ← Backtrack (removed 3)
+  ✂️ PRUNE: 6 &gt; remaining(4) → break (skip 2 candidates)
+← Backtrack (removed 3)
+→ Choose 6 | path=[]+6 | remaining=1
+  ✂️ PRUNE: 6 &gt; remaining(1) → break (skip 2 candidates)
+← Backtrack (removed 6)
+→ Choose 7 | path=[]+7 | remaining=0
+  ✅ FOUND: [7] (sum=7)
+← Backtrack (removed 7)
+═══════════════════════════════════════════
+TOTAL COMBINATIONS FOUND: 2
+  [2, 2, 3]
+  [7]
+Nodes explored: 12
+
+═══ TEST 6: Combination Sum II (Use Once, Duplicates) ═══
+candidates=[10, 1, 2, 7, 6, 1, 5], target=8
+Combinations (each used at most once):
+  [1, 1, 6]
+  [1, 2, 5]
+  [1, 7]
+  [2, 6]
+
+═══ TEST 7: Combination Sum III (K Numbers, 1-9) ═══
+k=3, target=7 → [[1, 2, 4]]
+k=3, target=9 → [[1, 2, 6], [1, 3, 5], [2, 3, 4]]
+k=4, target=15 → [[1, 2, 3, 9], [1, 2, 4, 8], [1, 2, 5, 7], 
+                   [1, 3, 4, 7], [1, 3, 5, 6], [2, 3, 4, 6]]
+
+═══ TEST 8: Backtracking vs DP for Count Only ═══
+candidates=[1,2,3,4,5]
+┌─────────┬────────────────┬───────────┬──────────────┬───────────┐
+│ Target  │ Backtrack Count │ BT Time   │ DP Count     │ DP Time   │
+├─────────┼────────────────┼───────────┼──────────────┼───────────┤
+│      10 │             30 │     120 μs │           30 │       5 μs │
+│      15 │            120 │     380 μs │          120 │       3 μs │
+│      20 │            389 │    1200 μs │          389 │       3 μs │
+│      25 │           1100 │    4500 μs │         1100 │       4 μs │
+│      30 │           2790 │   15000 μs │         2790 │       4 μs │
+└─────────┴────────────────┴───────────┴──────────────┴───────────┘
+Note: DP is MUCH faster for counting — doesn't enumerate combinations</code></pre></div>
+<hr>
+<h2>📊 THE BACKTRACKING FAMILY — Projects 28, 29, 42</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>┌─────────┬─────────────────┬─────────────┬───────────────┬──────────────┐
+</span>│ Project │ Problem         │ startIndex  │ Pruning       │ Key Feature  │
+├─────────┼─────────────────┼─────────────┼───────────────┼──────────────┤
+│ 28      │ All Subsets     │ i + 1       │ None          │ Include /    │
+│         │                 │             │               │ exclude each │
+├─────────┼─────────────────┼─────────────┼───────────────┼──────────────┤
+│ 29      │ All Perms       │ N/A (swap)  │ "Used" check  │ Positional   │
+│         │                 │             │               │ placement    │
+├─────────┼─────────────────┼─────────────┼───────────────┼──────────────┤
+│ 42      │ Combo Sum I     │ i (reuse)   │ Sort + break  │ Target       │
+│         │ (unlimited)     │             │ on overshoot  │ reduction    │
+├─────────┼─────────────────┼─────────────┼───────────────┼──────────────┤
+│ 42 var  │ Combo Sum II    │ i + 1       │ Sort + break  │ Duplicate    │
+│         │ (use once)      │ (no reuse)  │ + dup skip    │ skipping     │
+├─────────┼─────────────────┼─────────────┼───────────────┼──────────────┤
+│ 42 var  │ Combo Sum III   │ i + 1       │ Sort + break  │ Fixed K      │
+│         │ (K from 1-9)    │ (no reuse)  │ + size limit  │ elements     │
+└─────────┴─────────────────┴─────────────┴───────────────┴──────────────┘
+
+THE UNIVERSAL BACKTRACKING TEMPLATE:
+  void backtrack(state, startIndex, current, result) {
+      if (valid solution) { result.add(copy of current); return; }
+      for (i = startIndex; i &lt; choices.length; i++) {
+          if (prune condition) break or continue;
+          current.add(choices[i]);
+          backtrack(new state, next startIndex, current, result);
+          current.remove(last);
+      }
+  }
+
+WHAT CHANGES BETWEEN VARIANTS:
+  1. startIndex logic (i vs i+1 vs swap-based)
+  2. Pruning conditions (none vs target vs duplicates vs size)
+  3. Base case (always valid vs conditional)</code></pre></div>
+<hr>
+<h2>🧠 KEY TAKEAWAY</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>WHAT WE LEARNED:
+</span>→ Backtracking = systematic exploration of decision trees
+→ PRUNING = the key optimization that makes backtracking practical
+→ Sort + break = most powerful pruning for numeric constraints
+→ Target REDUCTION is cleaner than sum ACCUMULATION
+→ startIndex = i allows reuse; startIndex = i+1 prevents it
+→ ALWAYS copy the combination before adding to result
+
+THE PRUNING HIERARCHY:
+  Level 0: No pruning → brute force enumeration → exponential always
+  Level 1: Invalid state pruning → stop when remaining &lt; 0
+  Level 2: Sort + early break → stop when candidate &gt; remaining
+  Level 3: Duplicate skipping → stop when same value at same level
+  
+  Each level DRAMATICALLY reduces the search space.
+  Level 2 alone can cut 90%+ of branches.
+
+BACKTRACKING vs DYNAMIC PROGRAMMING:
+  → Need ALL actual combinations → BACKTRACKING (no alternative)
+  → Need only COUNT or OPTIMAL → DP (exponentially faster)
+  → This is the bridge to Projects 43-44
+
+PATTERN SIGNATURE:
+  → "Find all combinations/subsets satisfying constraint" ✓
+  → Elements can be reused or not (affects startIndex) ✓
+  → Constraint enables pruning ✓
+  → Solution requires actual enumeration (not just count) ✓
+  → = BACKTRACKING WITH PRUNING</code></pre></div>
+<hr>
+<h2>🌉 BRIDGE TO NEXT PROJECT</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>PROJECT 42 taught us:
+</span>→ Backtracking explores ALL valid combinations
+→ Pruning eliminates dead-end branches early
+→ For enumeration (listing all solutions) → backtracking is necessary
+
+PROJECT 43 (Climbing Stairs / Fibonacci) will ask:
+→ What if we only need the COUNT of ways, not the actual ways?
+→ What if the same sub-problem appears MANY times in the recursion tree?
+→ Backtracking would re-compute overlapping sub-problems → wasteful
+
+THIS INTRODUCES DYNAMIC PROGRAMMING:
+→ Overlapping subproblems: same state reached via different paths
+→ Optimal substructure: solution to big problem uses solutions to sub-problems
+→ Memoization: cache results of sub-problems → avoid re-computation
+→ Tabulation: build solution bottom-up → iterative, no recursion
+
+THE KEY SHIFT:
+  Backtracking: "Explore all paths, prune dead ends"
+  DP:           "How many paths exist? Compute without exploring each one"
+
+  Project 42: combinationSum([2,3,5], 8) → lists all 3 combinations
+  Project 43: climbStairs(8) → returns count 34 (without listing all 34 ways)
+
+→ From ENUMERATION to OPTIMIZATION
+→ From exploring the tree to COLLAPSING the tree into a table</code></pre></div>
+<hr>
+<p><strong>Ready for Project 43: Climbing Stairs / Fibonacci (Dynamic Programming → Overlapping Subproblems → Memoization vs Tabulation)?</strong></p>
+</div>
+</div>
+
+<!-- ========== data-index="15" ========== -->
+<div class="chat-message" data-index="15"></div>
+</div>
+<div class="bottom-nav">
+  <a href="project-41.html" class="nav-btn prev">← Prev</a>
+  <div class="nav-center">
+    <span class="nav-project-label">PROJECT 42 of 60</span>
+    <span class="nav-project-title">Combination Sum</span>
+    <span class="kbd-hint">← → arrow keys to navigate</span>
+  </div>
+  <a href="project-43.html" class="nav-btn next">Next →</a>
+  <a href="index.html" class="nav-btn home">🏠 TOC</a>
+</div>
+<div id="progress-track"><div id="progress-fill"></div></div>
+<div id="progress-pct">0%</div>
+<script src="script.js"></script>
+<script>
+document.addEventListener('keydown', function(e) {
+  if (['INPUT','TEXTAREA'].includes(document.activeElement.tagName)) return;
+  if (e.key === 'ArrowRight' && "project-43.html" !== null) window.location = "project-43.html";
+  if (e.key === 'ArrowLeft' && "project-41.html" !== null) window.location = "project-41.html";
+});
+</script>
+</body>
+</html>

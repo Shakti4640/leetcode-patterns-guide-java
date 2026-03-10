@@ -1,0 +1,641 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PROJECT 18: Root-to-Leaf Path Sum</title>
+<link rel="icon" type="image/png" href="images/favicon.png">
+<link rel="stylesheet" href="styles.css">
+
+</head>
+<body>
+<div id="progress-bar-container"><div id="progress-bar" style="width:31%"></div></div>
+<div id="progress-label">31%</div>
+<div class="page-wrapper">
+<div class="chat-message"><div class="px-2"><h1>PROJECT 18: Root-to-Leaf Path Sum</h1>
+<h2>🎯 Tree DFS → Recursive Subtraction → Base Case at Leaf</h2>
+<hr>
+<h2>🧩 THE HYPOTHETICAL PROBLEM</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ You are given a BINARY TREE and a TARGET SUM
+</span>→ Determine if the tree has a ROOT-TO-LEAF path
+→ Such that adding up all node values along the path equals the target
+→ A LEAF is a node with NO children (both left and right are null)
+
+Example 1:
+              5
+             / \
+            4   8
+           /   / \
+          11  13   4
+         / \        \
+        7   2        1
+
+  Target = 22
+  Path: 5 → 4 → 11 → 2 = 22 ✓
+  Output: true
+
+Example 2:
+              1
+             / \
+            2   3
+
+  Target = 5
+  Path 1→2 = 3 ✗
+  Path 1→3 = 4 ✗
+  Output: false
+
+Example 3:
+              1
+             / \
+            2   3
+
+  Target = 4
+  Path 1→3 = 4 ✓
+  Output: true</code></pre></div>
+<hr>
+<h2>🔍 HOW TO APPROACH IT</h2>
+<h3>Step 1 — Contrast with What We Know (Project 17 — BFS)</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ Project 17 taught us Tree BFS → go WIDE → level by level
+</span>→ BFS uses a QUEUE → processes all nodes at depth d before depth d+1
+→ BFS is perfect for LEVEL-AWARE problems
+
+→ But this problem asks about ROOT-TO-LEAF PATHS
+→ A path goes DEEP → from top to bottom
+→ We need to follow ONE branch all the way down before trying another
+→ This is DEPTH-FIRST SEARCH (DFS)
+
+BFS = breadth-first = go wide = queue
+DFS = depth-first = go deep = recursion (or explicit stack)</code></pre></div>
+<h3>Step 2 — Understand What "Root-to-Leaf" Means</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ We START at the root → no choice here
+</span>→ We END at a LEAF → a node where left == null AND right == null
+→ We CANNOT stop at an internal node → even if sum matches midway
+→ We CANNOT stop at null → null is not a node
+
+This is critical:
+              5
+             /
+            5
+
+  Target = 5
+  → Can we stop at root (5)? NO → root has a left child → NOT a leaf
+  → Path must be 5→5 = 10
+  → Output: false
+
+  Target = 10
+  → Path 5→5 = 10 → node "5" (bottom) has no children → IS a leaf
+  → Output: true</code></pre></div>
+<h3>Step 3 — The Subtraction Insight</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ Naive thinking: accumulate sum as we go down, check at leaf
+</span>→ Better thinking: SUBTRACT current node's value from target as we go down
+
+WHY subtraction is better:
+→ Start with target = 22
+→ Visit node 5 → remaining = 22 - 5 = 17
+→ Visit node 4 → remaining = 17 - 4 = 13
+→ Visit node 11 → remaining = 13 - 11 = 2
+→ Visit node 2 → remaining = 2 - 2 = 0 → LEAF → remaining == 0 → FOUND
+
+→ At each leaf, we just check: is remaining == 0?
+→ No need to carry a running sum variable separately
+→ The target itself BECOMES the state → elegant and clean</code></pre></div>
+<h3>Step 4 — Visualize the Recursive Tree</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>              5                    hasPathSum(5, 22)
+</span>             / \                   /                \
+            4   8          hasPathSum(4,17)    hasPathSum(8,14)
+           /   / \              /              /              \
+          11  13   4    hasPathSum(11,13) hasPathSum(13,6) hasPathSum(4,10)
+         / \        \      /        \                           \
+        7   2        1  hPS(7,2)  hPS(2,2)                   hPS(1,9)
+                        ↓           ↓                           ↓
+                     7≠2 LEAF    2-2=0 LEAF ✓                 1≠9 LEAF
+                     false       TRUE                         false
+
+→ The TRUE propagates up: 
+  hPS(2,2)=true → hPS(11,13)=true → hPS(4,17)=true → hPS(5,22)=true</code></pre></div>
+<h3>Step 5 — The Recursive Structure</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ At each node, we ask TWO questions:
+</span>  1. Does my LEFT subtree have a path summing to (target - myValue)?
+  2. Does my RIGHT subtree have a path summing to (target - myValue)?
+
+→ If EITHER answers YES → we answer YES
+→ This is an OR relationship → one valid path is enough
+
+→ BASE CASE: We are at a LEAF
+  → Check if remaining target equals this leaf's value
+  → If yes → this path works → return true
+  → If no → this path fails → return false
+
+→ NULL CASE: We hit null (went past a leaf)
+  → Return false → null is not a valid endpoint</code></pre></div>
+<hr>
+<h2>🛠️ HOW CAN WE SOLVE IT</h2>
+<h3>The Algorithm — Precise Steps</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>hasPathSum(node, targetSum):
+</span>
+  1. IF node is null → return false
+     → We've gone past a leaf or tree is empty
+     
+  2. IF node is a LEAF (left == null AND right == null):
+     → return (node.val == targetSum)
+     → This is the ONLY place we check for success
+     
+  3. RECURSE on both children with REDUCED target:
+     → leftResult  = hasPathSum(node.left,  targetSum - node.val)
+     → rightResult = hasPathSum(node.right, targetSum - node.val)
+     
+  4. RETURN leftResult OR rightResult
+     → If either subtree has a valid path → whole thing is true</code></pre></div>
+<h3>Dry Run — Full Trace</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>Tree:
+</span>        5
+       / \
+      4   8
+     /   / \
+    11  13   4
+   / \        \
+  7   2        1
+
+Target = 22
+
+Call: hasPathSum(5, 22)
+  → 5 is not null, not leaf
+  → Recurse left:  hasPathSum(4, 22-5=17)
+  → Recurse right: hasPathSum(8, 22-5=17)
+  
+  Call: hasPathSum(4, 17)
+    → 4 is not null, not leaf (has left child 11)
+    → Recurse left:  hasPathSum(11, 17-4=13)
+    → Recurse right: hasPathSum(null, 13) → returns false
+    
+    Call: hasPathSum(11, 13)
+      → 11 is not null, not leaf (has children 7 and 2)
+      → Recurse left:  hasPathSum(7, 13-11=2)
+      → Recurse right: hasPathSum(2, 13-11=2)
+      
+      Call: hasPathSum(7, 2)
+        → 7 is not null
+        → 7 IS a leaf (no children)
+        → 7 == 2? NO → return false
+      
+      Call: hasPathSum(2, 2)
+        → 2 is not null
+        → 2 IS a leaf (no children)
+        → 2 == 2? YES → return TRUE ✓
+      
+      → hasPathSum(11, 13) = false OR true = TRUE
+    
+    → hasPathSum(4, 17) = true OR false = TRUE
+  
+  → hasPathSum(5, 22) = true OR (don't even need to check right) = TRUE
+
+Final answer: TRUE
+Path found: 5 → 4 → 11 → 2 = 22</code></pre></div>
+<hr>
+<h2>✅ WHAT SHOULD YOU DO</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ ALWAYS check for null FIRST in recursion
+</span>     → Prevents NullPointerException
+     → Handles empty tree case automatically
+     
+→ ALWAYS define leaf as: node.left == null AND node.right == null
+     → A node with ONE child is NOT a leaf
+     → This is the most common mistake in this problem
+     
+→ ALWAYS subtract at each level, check equality at leaf
+     → Cleaner than accumulating sum
+     → The remaining target carries all the information
+     
+→ ALWAYS use OR logic to combine left and right results
+     → One valid path anywhere in the tree = success
+     
+→ ALWAYS trust the recursion
+     → Don't try to track the path manually in this basic version
+     → The call stack IS your path tracker
+     → Path tracking comes in Project 26
+
+→ ALWAYS consider the single-node tree
+     → Tree with just root → root is a leaf
+     → Check if root.val == target</code></pre></div>
+<hr>
+<h2>🚫 WHAT SHOULD YOU NOT DO</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ DO NOT check sum at internal nodes
+</span>     → Problem specifically says ROOT-TO-LEAF
+     → Stopping at an internal node is WRONG even if sum matches
+     
+     WRONG:
+       if (currentSum == target) return true;  // at any node
+     
+     RIGHT:
+       if (node.left == null &amp;&amp; node.right == null) 
+           return node.val == targetSum;  // only at leaf
+
+→ DO NOT forget the null check before accessing node.val
+     → node.val on null → NullPointerException
+     → Always: if (node == null) return false; FIRST
+     
+→ DO NOT use BFS for this problem
+     → BFS processes level by level
+     → Path sum needs root-to-leaf depth tracking
+     → BFS CAN solve it but requires carrying sum state per node in the queue
+     → DFS is naturally aligned with path problems
+     
+→ DO NOT treat a node with ONE null child as a leaf
+     WRONG scenario:
+              1
+               \
+                2
+     Target = 1
+     → Node 1 has right child → NOT a leaf
+     → Path must go to 2 → sum = 1+2 = 3
+     → If you wrongly treat 1's null left as a path → you'd return true for target=1
+     → WRONG
+
+→ DO NOT accumulate sum in a global variable
+     → Recursion handles state through parameters
+     → Global/instance variables cause bugs with backtracking
+     → Pass remaining target as parameter → clean and stateless</code></pre></div>
+<hr>
+<h2>🔀 WHEN TO USE THIS PATTERN (Tree DFS)</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>✓ Problem involves ROOT-TO-LEAF paths
+</span>✓ Problem requires exploring ALL possible paths to depth
+✓ Problem has a CUMULATIVE property along a path (sum, product, string)
+✓ Problem needs BACKTRACKING → try one path, undo, try another
+✓ Problem says "does ANY path satisfy..." → OR across recursive calls
+✓ Problem says "do ALL paths satisfy..." → AND across recursive calls
+✓ Tree structure where depth matters more than breadth
+✓ Natural recursive decomposition: solve for subtrees, combine results</code></pre></div>
+<hr>
+<h2>🚫 WHEN NOT TO USE THIS PATTERN</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>✗ Problem asks about LEVELS or LAYERS → use BFS (Project 17)
+</span>✗ Problem asks for SHORTEST path in unweighted tree → BFS is better
+✗ Problem asks for LEVEL-ORDER output → BFS is the natural fit
+✗ Problem asks about SIBLINGS or NEIGHBORS at same depth → BFS
+✗ Tree is extremely deep (100,000+ levels) → DFS recursion may stack overflow
+     → Use iterative DFS with explicit stack instead
+✗ Problem requires processing nodes in breadth-first order</code></pre></div>
+<hr>
+<h2>⚙️ HOW IT ONLY WORKS — Internal Mechanics</h2>
+<h3>The Call Stack IS the Path</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ When we call hasPathSum(node, remaining):
+</span>     → Java pushes a STACK FRAME onto the call stack
+     → That frame holds: node reference, remaining value
+     → When we recurse deeper → new frame pushed on top
+     → When we return → frame popped off
+
+→ The call stack at any point represents the CURRENT PATH from root to current node
+
+Call stack when at node 2 (leaf):
+  ┌─────────────────────────────┐
+  │ hasPathSum(2, 2)    ← TOP   │  ← current node (leaf)
+  │ hasPathSum(11, 13)          │  ← parent
+  │ hasPathSum(4, 17)           │  ← grandparent
+  │ hasPathSum(5, 22)   ← BASE │  ← root
+  └─────────────────────────────┘
+
+→ Reading bottom to top: 5 → 4 → 11 → 2 → that IS the path
+→ Remaining values: 22 → 17 → 13 → 2
+→ At leaf: 2 == 2 → path sum matches → true</code></pre></div>
+<h3>How Backtracking Happens Automatically</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ When hasPathSum(7, 2) returns false:
+</span>     → Java pops that stack frame
+     → We're back in hasPathSum(11, 13)
+     → We already tried left child (7) → failed
+     → Now we try right child (2)
+     → This IS backtracking → we "went back" from 7 to 11
+
+→ In recursion, backtracking is FREE
+→ The call stack handles it automatically
+→ No manual "undo" needed
+→ This is why DFS + recursion is so powerful for path problems</code></pre></div>
+<h3>The Subtraction Mechanics</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ Target starts at 22 at root
+</span>→ Each recursive call subtracts current node's value
+→ By the time we reach a leaf:
+     → remaining = original_target - sum_of_all_nodes_above_leaf - leaf_value
+     → Wait — we subtract leaf_value too? NO.
+     → We CHECK if leaf.val == remaining
+     → remaining at leaf level = target - (sum of all ancestors)
+     → If leaf.val == remaining → leaf.val + sum of ancestors == target ✓
+
+Actually let me be precise:
+
+  hasPathSum(5, 22):    remaining = 22
+    hasPathSum(4, 17):  remaining = 22 - 5 = 17
+      hasPathSum(11, 13): remaining = 17 - 4 = 13
+        hasPathSum(2, 2):  remaining = 13 - 11 = 2
+          → leaf check: node.val(2) == remaining(2) → TRUE
+          
+So: 5 + 4 + 11 + 2 = 22 = target ✓
+
+The subtraction at each level "remembers" how much budget is left.
+At the leaf, we just check: does this leaf's value use up exactly the remaining budget?</code></pre></div>
+<h3>OR Propagation — How True Travels Up</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ Only ONE leaf needs to match for the whole tree to return true
+</span>→ The OR logic at each internal node ensures this:
+
+  hasPathSum(11, 13):
+    left  = hasPathSum(7, 2)  = false   (7 ≠ 2)
+    right = hasPathSum(2, 2)  = true    (2 == 2)
+    return false OR true = TRUE
+
+  hasPathSum(4, 17):
+    left  = hasPathSum(11, 13) = true   (propagated from above)
+    right = hasPathSum(null, 13) = false
+    return true OR false = TRUE
+
+  hasPathSum(5, 22):
+    left  = hasPathSum(4, 17) = true    (propagated from above)
+    right = hasPathSum(8, 17) = ...     (Java may short-circuit OR)
+    return true OR ... = TRUE
+
+→ In Java: || is short-circuit
+→ If left subtree returns true → right subtree is NEVER evaluated
+→ This is a performance optimization built into the language</code></pre></div>
+<h3>Time and Space Complexity</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>TIME: O(n)
+</span>→ In the WORST case, we visit every node
+→ No valid path exists → must check all leaves
+→ Each node visited exactly once → O(n)
+
+SPACE: O(h) where h = height of tree
+→ The recursion depth equals the tree height
+→ Balanced tree: h = log(n) → O(log n) space
+→ Skewed tree (like a linked list): h = n → O(n) space
+→ This space is used by the CALL STACK
+
+→ Compare with BFS (Project 17): O(w) space where w = max width
+→ Balanced tree: width = n/2 → O(n) space for BFS
+→ Skewed tree: width = 1 → O(1) space for BFS
+→ DFS wins on space for wide trees, BFS wins for deep trees</code></pre></div>
+<hr>
+<h2>⚠️ COMMON PITFALLS AND FAILURE MODES</h2>
+<h3>Pitfall 1: The One-Child Node Trap</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>This is the #1 mistake on this problem.
+</span>
+Tree:
+        1
+         \
+          2
+
+Target = 1
+
+WRONG approach:
+  hasPathSum(1, 1):
+    → 1 is not null
+    → Is 1 a leaf? Check: left == null? YES. right == null? NO.
+    → NOT a leaf → recurse
+    → left:  hasPathSum(null, 0) → returns false
+    → right: hasPathSum(2, 0) → 2 is leaf → 2 == 0? NO → false
+    → return false OR false = false ✓ CORRECT
+
+WRONG approach (buggy base case):
+  if (node.val == targetSum) return true;  // without leaf check
+  → At node 1: 1 == 1 → returns true → WRONG
+  → There is NO root-to-leaf path summing to 1
+  → The only path is 1→2 = 3
+
+The leaf check (left == null AND right == null) is NON-NEGOTIABLE.</code></pre></div>
+<h3>Pitfall 2: Empty Tree</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ root is null → tree is empty
+</span>→ No paths exist → return false
+→ Even if target is 0 → no path → false
+
+This is handled by: if (node == null) return false;
+→ Make sure this is the FIRST check</code></pre></div>
+<h3>Pitfall 3: Negative Values</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>Tree:
+</span>        10
+       / \
+      -5   3
+     /
+    8
+
+Target = 13
+Path: 10 → -5 → 8 = 13 ✓
+
+→ Subtraction still works:
+  hasPathSum(10, 13) → remaining = 13
+  hasPathSum(-5, 3)  → remaining = 13 - 10 = 3
+  hasPathSum(8, 8)   → remaining = 3 - (-5) = 3 + 5 = 8
+  → leaf: 8 == 8 → TRUE ✓
+
+→ Negative values cause NO issues
+→ The subtraction handles them naturally
+→ But they can make manual tracing confusing</code></pre></div>
+<h3>Pitfall 4: Target is 0 With All-Zero Tree</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>Tree:
+</span>        0
+       / \
+      0   0
+
+Target = 0
+Path: 0→0 = 0 ✓ (left) and 0→0 = 0 ✓ (right)
+Output: true
+
+→ Zero is a valid node value and a valid target
+→ The algorithm handles it identically</code></pre></div>
+<h3>Pitfall 5: Large Negative Target</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ Target could be negative
+</span>→ Node values could be negative
+→ Subtraction of negative = addition → values can grow
+→ Watch for integer overflow in extreme cases
+→ Practically rare in LeetCode but worth knowing</code></pre></div>
+<hr>
+<h2>📈 SCALABILITY CONSIDERATIONS</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ n = 100 nodes → trivial for both BFS and DFS
+</span>→ n = 10,000 nodes → still trivial
+→ n = 100,000 nodes → DFS may hit stack overflow if tree is SKEWED
+     → Java default stack size ≈ 512KB to 1MB
+     → Each stack frame ≈ 50-100 bytes
+     → 100,000 deep recursion → may overflow
+
+→ SOLUTION for very deep trees:
+     → Use iterative DFS with explicit stack
+     → Or increase Java stack size: -Xss4m
+     → Or convert to BFS carrying (node, remainingSum) pairs in queue
+
+→ For balanced trees:
+     → Height = log₂(100,000) ≈ 17
+     → 17 stack frames → absolutely no problem
+     → DFS is ideal
+
+→ PRACTICAL RULE:
+     → Recursion depth &lt; 10,000 → safe in Java
+     → Recursion depth &gt; 10,000 → consider iterative approach</code></pre></div>
+<hr>
+<h2>🔍 INTERPRETABILITY CONSIDERATIONS</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ DFS recursion maps DIRECTLY to how humans think about paths:
+</span>     → "Start at root"
+     → "Go left, keep going until you hit a dead end"
+     → "Come back, try right"
+     → This IS depth-first search
+
+→ The subtraction model is intuitive:
+     → "I need to collect 22 points total"
+     → "This node gives me 5 → I still need 17"
+     → "This node gives me 4 → I still need 13"
+     → "At the end, do I need exactly 0 more? Yes → success"
+
+→ Easy to debug:
+     → Add a print statement at each recursive call
+     → Shows the path being explored and remaining target
+     → Clear visualization of backtracking
+
+→ Maps to real-world analogies:
+     → Budget allocation: start with total, subtract at each department
+     → Navigation: total distance, subtract each road segment
+     → Countdown: remaining work decreases as tasks complete</code></pre></div>
+<hr>
+<div class="github-btn-wrap"><a class="github-btn" href="https://github.com/Shakti4640/leetcode-patterns-guide-java/tree/main/project- (18)" target="_blank" rel="noopener"><svg viewBox="0 0 24 24"><path d="M12 .5C5.37.5 0 5.87 0 12.5c0 5.3 3.44 9.8 8.2 11.39.6.11.82-.26.82-.58v-2.03c-3.34.73-4.04-1.61-4.04-1.61-.55-1.39-1.34-1.76-1.34-1.76-1.09-.74.08-.73.08-.73 1.2.09 1.84 1.24 1.84 1.24 1.07 1.83 2.8 1.3 3.49 1 .1-.78.42-1.3.76-1.6-2.67-.3-5.47-1.33-5.47-5.93 0-1.31.47-2.38 1.24-3.22-.14-.3-.54-1.52.1-3.18 0 0 1.01-.32 3.3 1.23a11.5 11.5 0 0 1 3-.4c1.02 0 2.04.13 3 .4 2.28-1.55 3.29-1.23 3.29-1.23.64 1.66.24 2.88.12 3.18.77.84 1.23 1.91 1.23 3.22 0 4.61-2.81 5.63-5.48 5.92.43.37.81 1.1.81 2.22v3.29c0 .32.21.7.82.58C20.56 22.3 24 17.8 24 12.5 24 5.87 18.63.5 12 .5z"/></svg>💻 View Complete Java Code on GitHub</a></div>
+
+<hr>
+<h2>🔑 EXPECTED OUTPUT (Key Sections)</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>═══ TEST 1: Classic Tree — Target 22 ═══
+</span>  Level 0: 5
+  Level 1: 4  8
+  Level 2: 11  ·  13  4
+  Level 3: 7  2  ·  ·  ·  ·  ·  1
+
+Target = 22
+────────────────────────────────────
+Visit node 5 | remaining = 22 | path so far: [5]
+  Subtract 5 → new remaining = 17
+  ┌─ Go LEFT:
+  Visit node 4 | remaining = 17 | path so far: [5 → 4]
+    Subtract 4 → new remaining = 13
+    ┌─ Go LEFT:
+    Visit node 11 | remaining = 13 | path so far: [5 → 4 → 11]
+      Subtract 11 → new remaining = 2
+      ┌─ Go LEFT:
+      Visit node 7 | remaining = 2 | path so far: [5 → 4 → 11 → 7]
+        ✗ LEAF: 7 ≠ 2 → false
+      └─ Go RIGHT:
+      Visit node 2 | remaining = 2 | path so far: [5 → 4 → 11 → 2]
+        ★ LEAF: 2 == 2 → TRUE → PATH FOUND: [5 → 4 → 11 → 2]
+      Right returned TRUE → propagate up
+    Left returned TRUE → propagate up
+  Left returned TRUE → propagate up
+
+Final answer: true
+
+═══ TEST 4: One-Child Trap — Target 1 ═══
+  Level 0: 1
+  Level 1: ·  2
+
+Target = 1 (root is NOT a leaf — has right child)
+────────────────────────────────────
+Visit node 1 | remaining = 1 | path so far: [1]
+  Subtract 1 → new remaining = 0
+  ┌─ Go LEFT:
+  → null → return false
+  └─ Go RIGHT:
+  Visit node 2 | remaining = 0 | path so far: [1 → 2]
+    ✗ LEAF: 2 ≠ 0 → false
+  Both children false → return false
+
+Final answer: false</code></pre></div>
+<hr>
+<h2>🧠 DFS vs BFS — When to Choose Which</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>┌──────────────────┬────────────────────┬────────────────────┐
+</span>│ Aspect           │ DFS (This Project) │ BFS (Project 17)   │
+├──────────────────┼────────────────────┼────────────────────┤
+│ Traversal Order  │ Deep first         │ Wide first         │
+│ Data Structure   │ Call stack / Stack  │ Queue              │
+│ Best For         │ Path problems      │ Level problems     │
+│ Space (balanced) │ O(log n)           │ O(n)               │
+│ Space (skewed)   │ O(n)               │ O(1)               │
+│ Finds shortest?  │ No guarantee       │ Yes (unweighted)   │
+│ Backtracking?    │ Natural            │ Awkward             │
+│ Implementation   │ Recursive (clean)  │ Iterative (queue)  │
+│ Path tracking    │ Call stack = path   │ Must store per node│
+└──────────────────┴────────────────────┴────────────────────┘
+
+RULE OF THUMB:
+→ "Path" or "depth" in the problem → DFS
+→ "Level" or "shortest" in the problem → BFS
+→ "All paths" or "backtrack" → DFS
+→ "Neighbors" or "layer by layer" → BFS</code></pre></div>
+<hr>
+<h2>🧠 KEY TAKEAWAY</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>WHAT WE LEARNED:
+</span>→ DFS explores depth-first → follows one path to completion before trying another
+→ The SUBTRACTION technique turns path sum into a countdown
+→ At each node: "how much budget remains?"
+→ At each leaf: "does this leaf use exactly the remaining budget?"
+→ Recursion provides FREE backtracking via the call stack
+→ The leaf check (left == null AND right == null) is CRITICAL
+→ OR propagation: one valid path anywhere = whole tree returns true
+
+THE CORE MENTAL MODEL:
+→ "I need to find a root-to-leaf path summing to target"
+→ "At each node, subtract its value from my remaining budget"
+→ "At each leaf, check if budget is exactly zero"
+→ "If ANY leaf says yes, propagate true all the way up"
+
+PATTERN SIGNATURE:
+→ Tree structure ✓
+→ Root-to-leaf path ✓
+→ Cumulative property along path ✓
+→ "Does any path satisfy..." ✓
+→ = TREE DFS — RECURSIVE SUBTRACTION
+
+CONNECTION TO PROJECT 17 (BFS):
+→ Project 17: Queue → level-by-level → width-focused
+→ Project 18: Recursion → path-by-path → depth-focused
+→ Same tree, different traversal strategy, different problem types
+→ Mastering BOTH gives you complete tree traversal capability</code></pre></div>
+<hr>
+<h2>🌉 BRIDGE TO NEXT PROJECT</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>PROJECT 18 taught us:
+</span>→ DFS with subtraction → find IF a path exists → return boolean
+→ We know the path EXISTS but we don't CAPTURE the path itself
+
+PROJECT 19 (Activity Selection — Greedy) shifts gears:
+→ Moves from tree problems to interval/scheduling problems  
+→ Introduces the GREEDY paradigm: make locally optimal choices
+→ Sort by end time → always pick the earliest-finishing activity
+→ Proves that local optimal = global optimal for this class
+
+But looking ahead to PROJECT 26 (All Root-to-Leaf Paths for Target Sum):
+→ What if we need ALL paths, not just "does one exist?"
+→ We need to RECORD the path as we go
+→ We need to REMOVE the last element when we backtrack
+→ This is explicit backtracking → the path becomes a living list
+→ Project 18's boolean DFS becomes Project 26's list-collecting DFS
+
+The progression within Tree DFS:
+  Project 18: Does a path exist?        → boolean return
+  Project 26: Give me ALL valid paths   → list accumulation + backtracking
+  Project 27: Encode the entire tree    → preorder serialization + reconstruction
+  
+→ Same DFS skeleton, increasing output complexity</code></pre></div>
+<hr>
+<p><strong>Ready for Project 19: Activity Selection Problem (Greedy Algorithms → Sort by End Time → Local Optimal = Global Optimal)?</strong></p>
+</div>
+</div>
+
+<!-- ========== data-index="7" ========== -->
+<div class="chat-message" data-index="7"></div>
+</div>
+<div class="bottom-nav">
+  <a href="project-17.html" class="nav-btn prev">← Prev</a>
+  <div class="nav-center">
+    <span class="nav-project-label">PROJECT 18 of 60</span>
+    <span class="nav-project-title">Root-to-Leaf Path Sum</span>
+    <span class="kbd-hint">← → arrow keys to navigate</span>
+  </div>
+  <a href="project-19.html" class="nav-btn next">Next →</a>
+  <a href="index.html" class="nav-btn home">🏠 TOC</a>
+</div>
+<div id="progress-track"><div id="progress-fill"></div></div>
+<div id="progress-pct">0%</div>
+<script src="script.js"></script>
+<script>
+document.addEventListener('keydown', function(e) {
+  if (['INPUT','TEXTAREA'].includes(document.activeElement.tagName)) return;
+  if (e.key === 'ArrowRight' && "project-19.html" !== null) window.location = "project-19.html";
+  if (e.key === 'ArrowLeft' && "project-17.html" !== null) window.location = "project-17.html";
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,782 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PROJECT 36: Next Greater Element</title>
+<link rel="icon" type="image/png" href="images/favicon.png">
+<link rel="stylesheet" href="styles.css">
+
+</head>
+<body>
+<div id="progress-bar-container"><div id="progress-bar" style="width:61%"></div></div>
+<div id="progress-label">61%</div>
+<div class="page-wrapper">
+<div class="chat-message"><div class="px-2"><h1>PROJECT 36: Next Greater Element</h1>
+<h2>🎯 Monotonic Stack → Decreasing Stack Invariant → Right-Side Lookup</h2>
+<hr>
+<h2>🧩 THE HYPOTHETICAL PROBLEM</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ You are given an array of integers
+</span>→ For EACH element, find the NEXT element to its RIGHT that is GREATER than it
+→ If no such element exists, return -1 for that position
+→ Return an array of the same size with the answers
+
+Example 1:
+  Input:  [4, 5, 2, 10, 8]
+  Output: [5, 10, 10, -1, -1]
+  
+  → 4's next greater: 5  (immediately to the right)
+  → 5's next greater: 10 (skip 2, find 10)
+  → 2's next greater: 10 (immediately to the right)
+  → 10's next greater: -1 (nothing to the right is bigger)
+  → 8's next greater: -1  (nothing to the right at all)
+
+Example 2:
+  Input:  [3, 1, 2, 4]
+  Output: [4, 2, 4, -1]
+
+  → 3's next greater: 4  (skip 1, skip 2, find 4)
+  → 1's next greater: 2  (immediately right)
+  → 2's next greater: 4  (immediately right)
+  → 4's next greater: -1 (end of array)
+
+Example 3:
+  Input:  [5, 4, 3, 2, 1]
+  Output: [-1, -1, -1, -1, -1]
+
+  → Strictly decreasing → no element has a next greater
+
+Example 4:
+  Input:  [1, 2, 3, 4, 5]
+  Output: [2, 3, 4, 5, -1]
+
+  → Strictly increasing → each element's next greater is its immediate neighbor</code></pre></div>
+<hr>
+<h2>🔍 HOW TO APPROACH IT</h2>
+<h3>Step 1 — The Brute Force Is Obvious but Slow</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ For each element at index i:
+</span>     → Scan right from i+1 to n-1
+     → Find the first element &gt; nums[i]
+     → Record it (or -1 if not found)
+
+for (int i = 0; i &lt; n; i++) {
+    result[i] = -1;
+    for (int j = i + 1; j &lt; n; j++) {
+        if (nums[j] &gt; nums[i]) {
+            result[i] = nums[j];
+            break;
+        }
+    }
+}
+
+→ Time: O(n²) worst case (descending array → each element scans to the end)
+→ For n = 10^5: ~10^10 operations → TIMEOUT
+→ We need O(n)</code></pre></div>
+<h3>Step 2 — Why Brute Force Wastes Work</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>Consider: [4, 5, 2, 10, 8]
+</span>
+Brute force processing:
+  i=0: 4 → scan 5 → FOUND (stop)
+  i=1: 5 → scan 2 → no → scan 10 → FOUND
+  i=2: 2 → scan 10 → FOUND
+  i=3: 10 → scan 8 → no → END → -1
+  i=4: 8 → END → -1
+
+Notice:
+  → When we process 5 (i=1), we scan past 2 to reach 10
+  → When we process 2 (i=2), we ALSO scan to reach 10
+  → The element 10 "answers" BOTH 5 and 2
+  → But brute force discovers this independently for each
+
+INSIGHT:
+  → Multiple elements can be WAITING for the same answer
+  → When a large element arrives, it answers ALL smaller waiting elements
+  → If we could track "who is waiting" → we avoid redundant scanning
+  → This is what the STACK does</code></pre></div>
+<h3>Step 3 — The Stack as a "Waiting Room"</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>METAPHOR:
+</span>  → Imagine a queue of people standing in line
+  → Each person is looking for someone TALLER to their right
+  → When a tall person arrives, everyone shorter in front says "Found you!"
+  → They leave the line (pop from stack)
+  → The tall person then joins the line to wait for THEIR taller person
+
+THE STACK HOLDS: elements that haven't found their "next greater" yet
+THE INVARIANT: stack is in DECREASING order from bottom to top
+
+WHY DECREASING?
+  → If element A is below element B in the stack (A entered first)
+  → And A &lt; B → then B would have been A's next greater → A should have left
+  → Contradiction → A must be ≥ B → stack is decreasing (or non-increasing)
+
+WHEN A NEW ELEMENT ARRIVES:
+  → Compare with stack top
+  → If new &gt; stack top → stack top FOUND its next greater → POP
+  → Keep popping while new &gt; stack top
+  → Then PUSH new onto stack (it's now waiting for ITS next greater)
+
+AFTER PROCESSING ALL ELEMENTS:
+  → Anything remaining on the stack → never found a next greater → answer is -1</code></pre></div>
+<h3>Step 4 — Full Walkthrough</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>Array: [4, 5, 2, 10, 8]
+</span>Stack stores INDICES (so we can fill the result array)
+Result: [_, _, _, _, _]
+
+Process right to left? Or left to right?
+→ We'll do LEFT TO RIGHT (more intuitive for "next greater")
+
+i=0, nums[0]=4:
+  Stack is empty → nothing to compare
+  Push 0 onto stack
+  Stack: [0]  (values: [4])
+
+i=1, nums[1]=5:
+  Stack top = index 0, nums[0]=4
+  5 &gt; 4 → POP index 0 → result[0] = 5
+  Stack empty → stop popping
+  Push 1 onto stack
+  Stack: [1]  (values: [5])
+  Result: [5, _, _, _, _]
+
+i=2, nums[2]=2:
+  Stack top = index 1, nums[1]=5
+  2 &gt; 5? NO → stop popping
+  Push 2 onto stack
+  Stack: [1, 2]  (values: [5, 2])
+  Result: [5, _, _, _, _]
+
+i=3, nums[3]=10:
+  Stack top = index 2, nums[2]=2
+  10 &gt; 2 → POP index 2 → result[2] = 10
+  Stack top = index 1, nums[1]=5
+  10 &gt; 5 → POP index 1 → result[1] = 10
+  Stack empty → stop popping
+  Push 3 onto stack
+  Stack: [3]  (values: [10])
+  Result: [5, 10, 10, _, _]
+
+i=4, nums[4]=8:
+  Stack top = index 3, nums[3]=10
+  8 &gt; 10? NO → stop popping
+  Push 4 onto stack
+  Stack: [3, 4]  (values: [10, 8])
+  Result: [5, 10, 10, _, _]
+
+Done processing. Remaining stack: [3, 4]
+  → result[3] = -1
+  → result[4] = -1
+
+Final Result: [5, 10, 10, -1, -1] ✓
+
+OBSERVATIONS:
+  → Element 10 resolved BOTH 2 and 5 in a single pass
+  → No redundant scanning
+  → Each element was pushed once and popped at most once
+  → Total operations: exactly 2n (n pushes + at most n pops)</code></pre></div>
+<h3>Step 5 — Why This is a NEW Pattern (Not Related to Previous Structures)</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>Connection to Project 9 (Binary Search):
+</span>  → Binary search: eliminate half based on comparison with target
+  → Monotonic stack: eliminate elements based on comparison with NEW arrival
+  → Both reduce work through elimination
+  → But the elimination MECHANISM is completely different
+
+Connection to Project 35 (Two Heaps):
+  → Heaps: maintain partial order for efficient top-element access
+  → Monotonic stack: maintain total order for efficient "next greater" resolution
+  → Both maintain ORDER INVARIANTS on a data structure
+  → But the ACCESS PATTERN differs:
+       → Heaps: query the current best (peek)
+       → Stacks: resolve waiting elements when their answer arrives (pop)
+
+WHAT MAKES MONOTONIC STACK UNIQUE:
+  → Elements WAIT on the stack until their condition is met
+  → A single arrival can resolve MULTIPLE waiting elements
+  → This "batch resolution" is what gives O(n) amortized time
+  → No other pattern we've seen does this
+
+THE KEY MENTAL MODEL:
+  → Stack = "waiting room"
+  → Push = "start waiting"
+  → Pop = "found my answer"
+  → New element = "potential answer for everyone waiting"</code></pre></div>
+<h3>Step 6 — Left-to-Right vs Right-to-Left Processing</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>LEFT TO RIGHT (what we showed above):
+</span>  → Push index onto stack
+  → When new element pops old elements → new element IS the answer
+  → result[popped_index] = nums[current_index]
+  → Elements remaining on stack at the end → answer is -1
+
+RIGHT TO LEFT (alternative):
+  → Process from right end
+  → Stack holds POTENTIAL answers (elements to the right)
+  → For current element: pop stack until we find something greater
+  → Stack top (if exists) IS the next greater
+  → Then push current element
+
+BOTH produce identical results
+LEFT TO RIGHT is more intuitive for "next greater"
+RIGHT TO LEFT is more intuitive for some variants
+
+We'll implement BOTH in the code</code></pre></div>
+<hr>
+<h2>🛠️ HOW CAN WE SOLVE IT</h2>
+<h3>Approach A — Left to Right (Push Index, Pop When Resolved)</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>1. Initialize stack (stores INDICES)
+</span>2. Initialize result array with -1 (default: no next greater)
+3. For i = 0 to n-1:
+     a. While stack is not empty AND nums[i] &gt; nums[stack.peek()]:
+          → Pop index from stack
+          → result[popped_index] = nums[i]  (current element is the answer)
+     b. Push i onto stack
+4. Return result (remaining stack indices already have -1)</code></pre></div>
+<h3>Approach B — Right to Left (Stack Holds Potential Answers)</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>1. Initialize stack (stores VALUES or INDICES)
+</span>2. Initialize result array
+3. For i = n-1 down to 0:
+     a. While stack is not empty AND stack.peek() ≤ nums[i]:
+          → Pop (this element is too small to be the answer)
+     b. If stack is empty:
+          → result[i] = -1 (no greater element to the right)
+     c. Else:
+          → result[i] = stack.peek() (top of stack is the next greater)
+     d. Push nums[i] onto stack
+4. Return result</code></pre></div>
+<h3>Which to Use When?</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ LEFT TO RIGHT:
+</span>     → Stack stores INDICES of elements waiting for their answer
+     → New element resolves waiting elements by POPPING them
+     → More natural for: "next greater to the RIGHT"
+     → Elements find their answer at the moment it arrives
+
+→ RIGHT TO LEFT:
+     → Stack stores CANDIDATES (potential answers)
+     → For each element, we search the stack for its answer
+     → More natural for: "find answer among elements already processed"
+     → Simpler to understand for some people
+
+→ Both are O(n) with identical results
+→ Interview: use whichever you can explain more clearly
+→ We'll use LEFT TO RIGHT as the primary approach</code></pre></div>
+<hr>
+<h2>✅ WHAT SHOULD YOU DO</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ ALWAYS store INDICES on the stack (not values)
+</span>     → You need to know WHERE to write the result
+     → result[popped_index] = nums[current_index]
+     → If you store values → you can't fill the result array correctly
+     → Exception: right-to-left approach can store values if just looking up answers
+
+→ ALWAYS initialize result array with -1
+     → Default answer for elements that never find a next greater
+     → Elements remaining on the stack at the end automatically get -1
+     → No need to process the remaining stack separately
+
+→ ALWAYS use STRICT inequality for "next greater"
+     → nums[i] &gt; nums[stack.peek()] → strictly greater
+     → Using &gt;= would find "next greater or EQUAL" → different problem
+     → Read the problem carefully: "greater" vs "greater or equal"
+
+→ ALWAYS verify the stack maintains decreasing order
+     → After each push: stack top should be ≤ element below it
+     → If not → you're popping in the wrong direction
+
+→ ALWAYS think about what the stack REPRESENTS
+     → In left-to-right: "elements still waiting for their next greater"
+     → In right-to-left: "candidates that could be someone's next greater"
+     → Clear mental model prevents bugs
+
+→ ALWAYS consider the amortized complexity argument
+     → Inner while loop looks like it could make this O(n²)
+     → But each element is pushed ONCE and popped AT MOST ONCE
+     → Total pushes: n, total pops: ≤ n → total operations: ≤ 2n → O(n)</code></pre></div>
+<hr>
+<h2>🚫 WHAT SHOULD YOU NOT DO</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ DO NOT use a regular stack and scan it from bottom
+</span>     → Stacks only give efficient access to the TOP
+     → Scanning from bottom is O(n) per element → back to O(n²)
+     → The whole point is: we only interact with the TOP
+
+→ DO NOT forget to push the current element AFTER popping
+     → After resolving all smaller elements → current element joins the wait
+     → Forgetting to push → current element is never considered
+     → Its next greater is never found → wrong result
+
+→ DO NOT pop elements that are GREATER than the current
+     → We pop only elements SMALLER than the current (they found their answer)
+     → Greater elements are still waiting → leave them on the stack
+     → Popping greater elements → they lose their chance to find their answer
+
+→ DO NOT use this for "next SMALLER element" without flipping the comparison
+     → Next greater: pop when current &gt; stack top (decreasing stack)
+     → Next smaller: pop when current &lt; stack top (increasing stack)
+     → The stack order FLIPS for the opposite query
+
+→ DO NOT confuse "next greater" with "maximum to the right"
+     → Next greater: FIRST element to the right that is larger
+     → Maximum to right: LARGEST element to the right
+     → Different problems → different solutions
+     → Next greater uses monotonic stack
+     → Maximum to right uses suffix maximum array
+
+→ DO NOT try to use a heap for this problem
+     → Heap gives the overall max/min → not the NEXT positional greater
+     → Positional information matters → stack preserves it, heap doesn't</code></pre></div>
+<hr>
+<h2>🔀 WHEN TO USE THIS PATTERN</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>✓ "Find the NEXT greater/smaller element" for each position
+</span>     → Next greater to the right (this problem)
+     → Next smaller to the right
+     → Previous greater to the left
+     → Previous smaller to the left
+
+✓ "For each element, find the nearest element satisfying a comparison"
+     → The comparison is always &gt; or &lt; (monotonic relationship)
+     → The search direction is always left or right
+
+✓ Problems involving "bounded regions"
+     → Largest rectangle in histogram (Project 44)
+     → Trapping rain water (Project 45)
+     → These need "next smaller on both sides" → two passes
+
+✓ "How many days until a warmer temperature"
+     → Classic variant: instead of the VALUE, return the DISTANCE
+     → result[i] = index_of_next_greater - i
+
+✓ Stock span problems
+     → "How many consecutive days was the price ≤ today's?"
+     → Previous greater element variant
+
+✓ Any problem where brute force does "scan right/left until condition"
+     → If you see nested loops where inner loop scans for first match
+     → Monotonic stack likely applies
+
+✓ Circular array variants
+     → "Next greater in a circular array"
+     → Process the array TWICE (2n iterations)
+     → Use modulo for index wrapping</code></pre></div>
+<hr>
+<h2>🚫 WHEN NOT TO USE THIS PATTERN</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>✗ You need the Kth greater element (not the NEXT/first)
+</span>     → Monotonic stack finds the FIRST greater
+     → Kth greater needs different approach (heap or sorting)
+
+✗ The comparison is not monotonic
+     → "Find next element whose value is within range [a, b]"
+     → Non-monotonic condition → stack invariant doesn't help
+
+✗ You need ALL greater elements to the right (not just the next)
+     → Monotonic stack gives ONE answer per element
+     → All greater elements needs different structure
+
+✗ The array is modified between queries
+     → Monotonic stack processes the array ONCE
+     → If elements change → need segment tree or other dynamic structure
+
+✗ Elements have complex multi-dimensional comparison
+     → "Next element where both height AND weight are greater"
+     → Two-dimensional comparison → monotonic stack for 1D only
+     → Need sorting + stack combination or different approach</code></pre></div>
+<hr>
+<h2>⚙️ HOW IT ONLY WORKS — Internal Mechanics</h2>
+<h3>The Decreasing Stack Invariant</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>INVARIANT: At all times, elements on the stack are in DECREASING order
+</span>           from bottom to top.
+
+Stack (bottom → top): [10, 7, 5, 3]
+                        ↓   ↓  ↓  ↓
+                      biggest    smallest (top)
+
+WHY DECREASING?
+  → Suppose stack has [A, B] where A is below B and A &lt; B
+  → A entered the stack BEFORE B (A is older)
+  → When B was pushed, we should have checked: B &gt; A?
+  → If B &gt; A → A should have been POPPED (A found its next greater = B)
+  → But A is still here → contradiction
+  → Therefore A ≥ B → stack is decreasing ✓
+
+MAINTAINING THE INVARIANT:
+  → New element arrives with value X
+  → While stack top &lt; X:
+       → Pop stack top (it found its answer: X)
+       → Stack top was the smallest waiting element
+       → X is the first thing bigger than it → correct answer
+  → Push X
+  → Stack is still decreasing (X ≤ new stack top, or stack was empty)</code></pre></div>
+<h3>Amortized O(n) Proof</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>CLAIM: Total time is O(n) despite the inner while loop
+</span>
+PROOF using the ACCOUNTING METHOD:
+  → Each element is PUSHED onto the stack exactly ONCE (when we reach it)
+  → Each element is POPPED from the stack AT MOST ONCE (when its answer arrives)
+  → Push cost: O(1) per push → n pushes → O(n) total
+  → Pop cost: O(1) per pop → at most n pops → O(n) total
+  → Total: O(n) + O(n) = O(n)
+
+WHY THE INNER WHILE LOOP DOESN'T MAKE IT O(n²):
+  → Yes, for a single element, the while loop might pop many elements
+  → Example: [1, 2, 3, 4, 5, 100] → when 100 arrives, it pops 5, 4, 3, 2, 1
+  → That's 5 pops in one iteration!
+  → But those 5 elements can NEVER be popped again
+  → Total pops across ALL iterations ≤ n
+  → The "burst" of pops is paid for by the previous "quiet" pushes
+
+ANALOGY:
+  → Imagine n coins on a table
+  → Each push puts a coin in a jar (1 coin per element)
+  → Each pop removes a coin from the jar
+  → You can never remove more coins than you put in
+  → Total removals ≤ n → total work ≤ 2n → O(n)</code></pre></div>
+<h3>The Four Variants of Monotonic Stack</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>┌─────────────────────────┬──────────────┬────────────────┬──────────────────┐
+</span>│ Problem                 │ Stack Order  │ Process Dir    │ Pop Condition    │
+├─────────────────────────┼──────────────┼────────────────┼──────────────────┤
+│ Next Greater (right)    │ Decreasing   │ Left → Right   │ curr &gt; top       │
+│ Next Smaller (right)    │ Increasing   │ Left → Right   │ curr &lt; top       │
+│ Previous Greater (left) │ Decreasing   │ Left → Right   │ curr &gt; top       │
+│ Previous Smaller (left) │ Increasing   │ Left → Right   │ curr &lt; top       │
+└─────────────────────────┴──────────────┴────────────────┴──────────────────┘
+
+NEXT vs PREVIOUS:
+  → NEXT greater: "the answer IS the current element" → result[popped] = curr
+  → PREVIOUS greater: "the answer is WHAT'S LEFT on stack" → result[curr] = stack.peek()
+
+GREATER vs SMALLER:
+  → GREATER: use DECREASING stack → pop when current is BIGGER
+  → SMALLER: use INCREASING stack → pop when current is SMALLER
+
+MNEMONIC:
+  → "Next Greater" → Decreasing stack → pop the SMALLER ones
+  → "Next Smaller" → Increasing stack → pop the BIGGER ones
+  → The stack holds elements that are "safe" from popping
+  → "Safe from greater" = you're already big = decreasing stack
+  → "Safe from smaller" = you're already small = increasing stack</code></pre></div>
+<h3>How This Connects to Project 44 and 45</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>PROJECT 44 (Largest Rectangle in Histogram):
+</span>  → For each bar, find:
+       → Next SMALLER bar to the RIGHT
+       → Next SMALLER bar to the LEFT (or Previous Smaller)
+  → Width of rectangle = right_boundary - left_boundary - 1
+  → Height of rectangle = bar height
+  → Area = width × height
+  → Uses INCREASING monotonic stack (for "next smaller")
+
+PROJECT 45 (Trapping Rain Water):
+  → For each position, find bounded container
+  → Stack-based approach: process bars, find left and right walls
+  → Uses DECREASING monotonic stack
+  → Each pop calculates water trapped in a layer
+
+THIS PROJECT IS THE FOUNDATION:
+  → Master "next greater with decreasing stack" HERE
+  → Project 44 flips to "next smaller with increasing stack"
+  → Project 45 adds area/volume calculation on pop
+  → Same stack mechanics → different calculation on resolution</code></pre></div>
+<hr>
+<h2>⚠️ COMMON PITFALLS AND FAILURE MODES</h2>
+<h3>Pitfall 1: Storing Values Instead of Indices</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>WRONG (for left-to-right approach):
+</span>  Stack&lt;Integer&gt; stack = new Stack&lt;&gt;();
+  // ...
+  stack.push(nums[i]);  // ← Pushing VALUE
+  // ...
+  int popped = stack.pop();
+  result[???] = nums[i];  // ← WHERE to write? We lost the index!
+
+CORRECT:
+  Stack&lt;Integer&gt; stack = new Stack&lt;&gt;();
+  // ...
+  stack.push(i);  // ← Pushing INDEX
+  // ...
+  int poppedIdx = stack.pop();
+  result[poppedIdx] = nums[i];  // ← Write to the correct position ✓</code></pre></div>
+<h3>Pitfall 2: Using &gt;= Instead of &gt; for "Strictly Greater"</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>WRONG:
+</span>  while (!stack.isEmpty() &amp;&amp; nums[i] &gt;= nums[stack.peek()]) {
+      // This pops elements that are EQUAL too
+  }
+
+→ Array: [3, 3, 3, 4]
+→ With &gt;=: when second 3 arrives, it pops first 3 → result[0] = 3
+→ But 3 is NOT greater than 3 → WRONG
+
+CORRECT:
+  while (!stack.isEmpty() &amp;&amp; nums[i] &gt; nums[stack.peek()]) {
+      // Only pops elements that are STRICTLY smaller
+  }
+
+→ With &gt;: second 3 arrives, 3 &gt; 3? NO → don't pop → correct
+→ When 4 arrives: 4 &gt; 3? YES → pop all three 3's → result = [4, 4, 4, -1] ✓</code></pre></div>
+<h3>Pitfall 3: Forgetting to Push After Popping</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>WRONG:
+</span>  for (int i = 0; i &lt; n; i++) {
+      while (!stack.isEmpty() &amp;&amp; nums[i] &gt; nums[stack.peek()]) {
+          result[stack.pop()] = nums[i];
+      }
+      // FORGOT: stack.push(i);
+  }
+
+→ Stack stays empty after first element
+→ No elements ever wait → all results stay -1
+→ Only result[0] might be correct (if second element is greater)
+
+CORRECT:
+  for (int i = 0; i &lt; n; i++) {
+      while (!stack.isEmpty() &amp;&amp; nums[i] &gt; nums[stack.peek()]) {
+          result[stack.pop()] = nums[i];
+      }
+      stack.push(i);  // ← ALWAYS push current element
+  }</code></pre></div>
+<h3>Pitfall 4: Processing in Wrong Direction for the Variant</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ "Next greater to the RIGHT" → process LEFT to RIGHT
+</span>→ "Previous greater to the LEFT" → ALSO process LEFT to RIGHT
+     → But the answer comes from the stack, not the current element
+→ Mixing up which direction → wrong results
+
+RULE OF THUMB:
+  → For "NEXT" (looking right): answer is the CURRENT element → result[popped] = curr
+  → For "PREVIOUS" (looking left): answer is the STACK TOP → result[curr] = stack.peek()</code></pre></div>
+<h3>Pitfall 5: Circular Array Handling</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ Problem: "Next Greater Element in a CIRCULAR array"
+</span>→ Array [2, 1, 3] circularly → after 3, we wrap to 2, 1, 3 again
+→ 3's next greater (circularly) might be found by wrapping
+
+SOLUTION: Process the array TWICE (2n iterations)
+  for (int i = 2 * n - 1; i &gt;= 0; i--) {
+      int idx = i % n;
+      // ... same logic but use idx instead of i
+  }
+
+→ This simulates the circular wrap
+→ Use modulo for index
+→ Only write results for indices 0 to n-1</code></pre></div>
+<h3>Pitfall 6: Using Java Stack vs ArrayDeque</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ java.util.Stack is legacy → synchronized → slower
+</span>→ Preferred: java.util.ArrayDeque used as a stack
+
+CORRECT:
+  Deque&lt;Integer&gt; stack = new ArrayDeque&lt;&gt;();
+  stack.push(i);        // Push to top
+  stack.peek();         // Look at top
+  stack.pop();          // Remove from top
+  stack.isEmpty();      // Check if empty
+
+→ ArrayDeque is faster (no synchronization overhead)
+→ Both work correctly → but ArrayDeque is best practice in Java</code></pre></div>
+<hr>
+<h2>📈 SCALABILITY CONSIDERATIONS</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>Time Complexity: O(n)
+</span>  → Each element pushed once, popped at most once
+  → Total operations ≤ 2n
+  → Strictly linear
+
+Space Complexity: O(n)
+  → Stack can hold at most n elements (worst case: decreasing array)
+  → Result array: O(n)
+  → Total: O(n)
+
+Practical Performance:
+  → n = 10^5: ~200K operations → instant
+  → n = 10^6: ~2M operations → few milliseconds
+  → n = 10^7: ~20M operations → tens of milliseconds
+  → n = 10^8: ~200M operations → ~1 second
+
+Comparison with Brute Force:
+  → Brute force: O(n²) → n=10^5 → 10^10 → TIMEOUT
+  → Monotonic stack: O(n) → n=10^5 → 2×10^5 → instant
+  → Speedup: ~50,000x for n=10^5
+
+Memory Considerations:
+  → Stack stores ints (indices) → 4 bytes each
+  → n = 10^7 → 40MB → acceptable
+  → n = 10^8 → 400MB → might be tight
+  → For extreme cases: can use int array instead of Deque</code></pre></div>
+<hr>
+<h2>🔍 INTERPRETABILITY CONSIDERATIONS</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ The "waiting room" metaphor is very powerful:
+</span>     → Elements enter the waiting room (push onto stack)
+     → They're waiting for someone taller (greater) to arrive
+     → When a tall person enters, shorter people leave (pop)
+     → They leave saying "THAT person is my next greater"
+     → The tall person then sits down to wait for THEIR taller person
+
+→ Visual debugging is easy:
+     → Print stack contents at each step
+     → Watch elements enter and leave
+     → Verify the decreasing invariant holds
+
+→ Interview communication:
+     → "I use a monotonic decreasing stack"
+     → "Elements wait on the stack until their next greater arrives"
+     → "When a new element pops smaller ones, IT is their answer"
+     → "Each element is pushed and popped at most once → O(n)"
+     → "The stack maintains decreasing order from bottom to top"
+
+→ Common interviewer follow-ups:
+     → "What if we want next SMALLER?" → flip the comparison, use increasing stack
+     → "What about circular array?" → process 2n elements with modulo
+     → "What about PREVIOUS greater?" → answer comes from stack, not current
+     → "Can you do it with O(1) extra space?" → generally no, stack is needed</code></pre></div>
+<hr>
+<div class="github-btn-wrap"><a class="github-btn" href="https://github.com/Shakti4640/leetcode-patterns-guide-java/tree/main/project- (36)" target="_blank" rel="noopener"><svg viewBox="0 0 24 24"><path d="M12 .5C5.37.5 0 5.87 0 12.5c0 5.3 3.44 9.8 8.2 11.39.6.11.82-.26.82-.58v-2.03c-3.34.73-4.04-1.61-4.04-1.61-.55-1.39-1.34-1.76-1.34-1.76-1.09-.74.08-.73.08-.73 1.2.09 1.84 1.24 1.84 1.24 1.07 1.83 2.8 1.3 3.49 1 .1-.78.42-1.3.76-1.6-2.67-.3-5.47-1.33-5.47-5.93 0-1.31.47-2.38 1.24-3.22-.14-.3-.54-1.52.1-3.18 0 0 1.01-.32 3.3 1.23a11.5 11.5 0 0 1 3-.4c1.02 0 2.04.13 3 .4 2.28-1.55 3.29-1.23 3.29-1.23.64 1.66.24 2.88.12 3.18.77.84 1.23 1.91 1.23 3.22 0 4.61-2.81 5.63-5.48 5.92.43.37.81 1.1.81 2.22v3.29c0 .32.21.7.82.58C20.56 22.3 24 17.8 24 12.5 24 5.87 18.63.5 12 .5z"/></svg>💻 View Complete Java Code on GitHub</a></div>
+
+<hr>
+<h2>🔑 EXPECTED OUTPUT</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>╔══════════════════════════════════════════════════╗
+</span>║  PROJECT 36: Next Greater Element                ║
+║  Pattern: Monotonic Stack — Decreasing Invariant ║
+╚══════════════════════════════════════════════════╝
+
+═══ TEST 1: Basic Example (Traced) ═══
+Array: [4, 5, 2, 10, 8]
+─────────────────────────────────────────────────
+i=0, nums[0]=4
+  PUSH index 0 → Stack (bottom→top): [4] ← decreasing ✓
+
+i=1, nums[1]=5
+  POP index 0 (val=4) → next greater = 5  result[0] = 5
+  PUSH index 1 → Stack (bottom→top): [5] ← decreasing ✓
+
+i=2, nums[2]=2
+  PUSH index 2 → Stack (bottom→top): [5, 2] ← decreasing ✓
+
+i=3, nums[3]=10
+  POP index 2 (val=2) → next greater = 10  result[2] = 10
+  POP index 1 (val=5) → next greater = 10  result[1] = 10
+  PUSH index 3 → Stack (bottom→top): [10] ← decreasing ✓
+
+i=4, nums[4]=8
+  PUSH index 4 → Stack (bottom→top): [10, 8] ← decreasing ✓
+
+Remaining on stack (no next greater): index 4 (val=8)  index 3 (val=10)  
+Result: [5, 10, 10, -1, -1]
+
+═══ TEST 5: Left-to-Right vs Right-to-Left ═══
+  Input:   [7, 3, 5, 1, 6, 4, 2, 8]
+  L→R:     [8, 5, 6, 6, 8, 8, 8, -1]
+  R→L:     [8, 5, 6, 6, 8, 8, 8, -1]
+  Brute:   [8, 5, 6, 6, 8, 8, 8, -1]
+  All match: ✓
+
+═══ TEST 6: Circular Next Greater ═══
+  Input:    [1, 2, 1]
+  Linear:   [2, -1, -1]
+  Circular: [2, -1, 2]
+  Note: In circular, last 1 wraps around to find 2
+
+═══ TEST 7: Next Smaller Element ═══
+  Input:         [4, 5, 2, 10, 8]
+  Next Greater:  [5, 10, 10, -1, -1]
+  Next Smaller:  [2, 2, -1, 8, -1]
+
+═══ TEST 9: Daily Temperatures ═══
+  Temps:      [73, 74, 75, 71, 69, 72, 76, 73]
+  Days until: [1, 1, 4, 2, 1, 1, 0, 0]
+
+═══ TEST 10: Stock Span ═══
+  Prices: [100, 80, 60, 70, 60, 75, 85]
+  Spans:  [1, 1, 1, 2, 1, 4, 6]
+
+═══ TEST 11: Correctness Stress Test ═══
+  10000/10000 tests passed ✓ ALL CORRECT
+
+═══ TEST 13: Max Stack Size Analysis ═══
+  Increasing  : [1, 2, 3, 4, 5]
+    Max stack size: 1/5
+  Decreasing  : [5, 4, 3, 2, 1]
+    Max stack size: 5/5
+  Zigzag      : [1, 3, 2, 5, 4]
+    Max stack size: 2/5
+  Alternating : [5, 1, 5, 1, 5]
+    Max stack size: 2/5</code></pre></div>
+<hr>
+<h2>🧠 KEY TAKEAWAY</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>WHAT WE LEARNED:
+</span>→ Monotonic stack is a stack that maintains elements in sorted order
+→ For "next greater": use a DECREASING stack (bottom=big, top=small)
+→ When a new element is bigger than stack top → stack top found its answer
+→ Multiple elements can be resolved by a single new arrival
+→ Each element is pushed once and popped at most once → O(n) amortized
+
+THE FOUR VARIANTS:
+  → Next Greater (right):     decreasing stack, answer = current element
+  → Next Smaller (right):     increasing stack, answer = current element
+  → Previous Greater (left):  decreasing stack, answer = stack top
+  → Previous Smaller (left):  increasing stack, answer = stack top
+
+THE "WAITING ROOM" MENTAL MODEL:
+  → Elements sit on the stack WAITING for their condition to be met
+  → A new arrival checks: "Am I the answer for anyone waiting?"
+  → Resolved elements POP off → their result is recorded
+  → The new element then sits down to wait for ITS answer
+  → This "wait + batch resolve" pattern is the essence of monotonic stacks
+
+WHY IT'S O(n):
+  → Each of n elements: 1 push + at most 1 pop = 2 operations
+  → Total: ≤ 2n operations → O(n)
+  → The inner while loop is amortized over all iterations
+
+PATTERN SIGNATURE:
+  → "For each element, find the nearest greater/smaller" ✓
+  → "First element to the right/left satisfying a comparison" ✓
+  → Brute force has nested loop scanning for first match ✓
+  → = MONOTONIC STACK</code></pre></div>
+<hr>
+<h2>🌉 BRIDGE TO NEXT PROJECT</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>PROJECT 36 taught us:
+</span>→ Monotonic stack fundamentals
+→ Decreasing stack for "next greater"
+→ The waiting-room model: push to wait, pop when resolved
+→ All four variants: next/previous × greater/smaller
+
+PROJECT 37 (Find Two Single Numbers in Array) shifts to BITWISE XOR:
+→ Building on Project 10 (Find the Single Number with XOR)
+→ Project 10: ONE number appears once, all others appear twice
+→ Project 37: TWO numbers appear once, all others appear twice
+→ XOR of everything gives us singleA XOR singleB (not individual values)
+
+→ The NEW technique:
+     → Find a SET BIT in singleA XOR singleB
+     → This bit is 1 where singleA and singleB DIFFER
+     → Use this bit to PARTITION all numbers into two groups
+     → Group 1: numbers with this bit set
+     → Group 2: numbers with this bit unset
+     → singleA is in one group, singleB is in the other
+     → XOR each group separately → each gives one single number
+
+→ This is a CREATIVE extension of the basic XOR cancellation from Project 10
+→ The key insight: XOR gives us information about WHERE two numbers differ
+→ That information lets us SEPARATE the problem into two simpler subproblems
+→ Each subproblem is exactly Project 10
+
+The progression of Bitwise XOR:
+  Project 10: One single number → XOR everything → answer falls out
+  Project 37: Two single numbers → XOR + partition by differing bit → two subproblems</code></pre></div>
+<hr>
+<p><strong>Ready for Project 37: Find Two Single Numbers in Array (Bitwise XOR → XOR Grouping by Set Bit → Partition-Then-Cancel)?</strong></p>
+</div>
+</div>
+
+<!-- ========== data-index="21" ========== -->
+<div class="chat-message" data-index="21"></div>
+</div>
+<div class="bottom-nav">
+  <a href="project-35.html" class="nav-btn prev">← Prev</a>
+  <div class="nav-center">
+    <span class="nav-project-label">PROJECT 36 of 60</span>
+    <span class="nav-project-title">Next Greater Element</span>
+    <span class="kbd-hint">← → arrow keys to navigate</span>
+  </div>
+  <a href="project-37.html" class="nav-btn next">Next →</a>
+  <a href="index.html" class="nav-btn home">🏠 TOC</a>
+</div>
+<div id="progress-track"><div id="progress-fill"></div></div>
+<div id="progress-pct">0%</div>
+<script src="script.js"></script>
+<script>
+document.addEventListener('keydown', function(e) {
+  if (['INPUT','TEXTAREA'].includes(document.activeElement.tagName)) return;
+  if (e.key === 'ArrowRight' && "project-37.html" !== null) window.location = "project-37.html";
+  if (e.key === 'ArrowLeft' && "project-35.html" !== null) window.location = "project-35.html";
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,636 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PROJECT 19: Activity Selection Problem</title>
+<link rel="icon" type="image/png" href="images/favicon.png">
+<link rel="stylesheet" href="styles.css">
+
+</head>
+<body>
+<div id="progress-bar-container"><div id="progress-bar" style="width:33%"></div></div>
+<div id="progress-label">33%</div>
+<div class="page-wrapper">
+<div class="chat-message"><div class="px-2"><h1>PROJECT 19: Activity Selection Problem</h1>
+<h2>🎯 Greedy Algorithms → Sort by End Time → Local Optimal = Global Optimal</h2>
+<hr>
+<h2>🧩 THE HYPOTHETICAL PROBLEM</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ You are given N activities, each with a START time and END time
+</span>→ A person can only do ONE activity at a time
+→ Two activities CONFLICT if their time intervals overlap
+→ Find the MAXIMUM NUMBER of non-overlapping activities one person can attend
+
+Example 1:
+  Activities: [[1,3], [2,5], [0,6], [5,7], [8,9], [5,9]]
+  
+  Timeline:
+  0   1   2   3   4   5   6   7   8   9
+  |---|---|---|---|---|---|---|---|---|---|
+      [===]           Activity 0: [1,3]
+      [=======]       Activity 1: [2,5]
+  [===============]   Activity 2: [0,6]
+              [===]   Activity 3: [5,7]
+                          [===]   Activity 4: [8,9]
+              [=======]   Activity 5: [5,9]
+
+  Best selection: [1,3], [5,7], [8,9] → 3 activities → NO overlaps
+  Output: 3
+
+Example 2:
+  Activities: [[1,2], [2,3], [3,4], [4,5]]
+  → All can be selected → no overlaps → Output: 4
+  (End of one = start of next → NOT overlapping)
+
+Example 3:
+  Activities: [[1,10], [2,3], [4,5], [6,7]]
+  → Pick [2,3], [4,5], [6,7] → 3 activities
+  → NOT [1,10] which blocks everything
+  → Output: 3</code></pre></div>
+<hr>
+<h2>🔍 HOW TO APPROACH IT</h2>
+<h3>Step 1 — Connect to What We Know (Project 14 — Merge Intervals)</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ Project 14 taught us: sort intervals → scan for overlaps → merge them
+</span>→ That problem MERGED overlapping intervals into bigger ones
+→ This problem is the OPPOSITE: we want to AVOID overlaps
+→ We want to SELECT maximum non-overlapping intervals
+
+→ Same foundation: sorted intervals + overlap detection
+→ Different goal: merge vs select
+→ The sorting insight from Project 14 carries forward directly</code></pre></div>
+<h3>Step 2 — Why Brute Force Fails</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ For N activities, each can be INCLUDED or EXCLUDED
+</span>→ Total combinations = 2^N
+→ For each combination, check if all selected activities are non-overlapping
+→ Among valid combinations, find the one with maximum count
+
+→ N = 20 → 2^20 = 1,048,576 → manageable
+→ N = 30 → 2^30 = 1,073,741,824 → too slow
+→ N = 50 → 2^50 ≈ 10^15 → impossibly slow
+
+→ We need a SMARTER strategy
+→ Enter: GREEDY algorithms</code></pre></div>
+<h3>Step 3 — What is Greedy Thinking?</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ A GREEDY algorithm makes the LOCALLY OPTIMAL choice at each step
+</span>→ It never reconsiders past choices
+→ It hopes that local optimal choices lead to GLOBAL optimal solution
+
+→ Key question: WHAT should we be greedy about?
+
+Option A: Pick the SHORTEST activity first?
+  → Intuition: short activities leave more room
+  → Counterexample: [1,5], [4,6], [5,10]
+  → Shortest = [4,6] → blocks both others
+  → Better: [1,5] then [5,10] → 2 activities
+  → FAILS
+
+Option B: Pick the activity that starts EARLIEST?
+  → Intuition: start early, finish early, do more
+  → Counterexample: [1,100], [2,3], [4,5], [6,7]
+  → Earliest start = [1,100] → blocks everything → only 1 activity
+  → Better: [2,3], [4,5], [6,7] → 3 activities
+  → FAILS
+
+Option C: Pick the activity that ENDS EARLIEST?
+  → Intuition: finishing early frees up time for more activities
+  → This WORKS → and we can PROVE it works
+  → This is the CORRECT greedy choice</code></pre></div>
+<h3>Step 4 — Why "Earliest End Time" Works</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ If we always pick the activity that finishes FIRST:
+</span>  → We MAXIMALLY free up the timeline for remaining activities
+  → No other choice could leave MORE room than picking the earliest finisher
+
+PROOF BY EXCHANGE ARGUMENT (simplified):
+→ Suppose our greedy picks activity G which ends at time T
+→ Suppose some optimal solution picks activity O instead, ending at time T' &gt; T
+→ Everything that's compatible with O is ALSO compatible with G
+     → Because G ends EARLIER → anything after T' is also after T
+→ So replacing O with G in the optimal solution keeps it valid
+→ And doesn't reduce the count
+→ Therefore greedy is AT LEAST as good as optimal
+→ Therefore greedy IS optimal
+
+This is the hallmark of greedy problems:
+→ You can PROVE that the greedy choice never hurts
+→ The exchange argument is the standard proof technique</code></pre></div>
+<h3>Step 5 — Visualize the Algorithm</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>Activities (unsorted): [[1,3], [2,5], [0,6], [5,7], [8,9], [5,9]]
+</span>
+Step 1: Sort by END TIME:
+  [[1,3], [2,5], [0,6], [5,7], [5,9], [8,9]]
+
+Step 2: Greedily select:
+  
+  Pick [1,3] → first activity → always pick it
+    lastEnd = 3
+    count = 1
+  
+  Check [2,5] → starts at 2 &lt; lastEnd(3) → OVERLAPS → skip
+  
+  Check [0,6] → starts at 0 &lt; lastEnd(3) → OVERLAPS → skip
+  
+  Check [5,7] → starts at 5 ≥ lastEnd(3) → NO OVERLAP → pick it
+    lastEnd = 7
+    count = 2
+  
+  Check [5,9] → starts at 5 &lt; lastEnd(7) → OVERLAPS → skip
+  
+  Check [8,9] → starts at 8 ≥ lastEnd(7) → NO OVERLAP → pick it
+    lastEnd = 9
+    count = 3
+
+Result: 3 activities selected → [1,3], [5,7], [8,9]</code></pre></div>
+<hr>
+<h2>🛠️ HOW CAN WE SOLVE IT</h2>
+<h3>The Algorithm — Precise Steps</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>activitySelection(activities):
+</span>
+  1. SORT activities by END TIME (ascending)
+     → If end times are equal → sort by start time (ascending)
+     → This uses the sorting insight from Project 14
+     
+  2. SELECT the first activity (earliest end time)
+     → Set lastEndTime = first activity's end time
+     → Set count = 1
+     
+  3. SCAN remaining activities left to right:
+     → For each activity [start, end]:
+       → IF start &gt;= lastEndTime:
+            → Activity is COMPATIBLE → select it
+            → Update lastEndTime = end
+            → Increment count
+       → ELSE:
+            → Activity OVERLAPS with last selected → skip it
+            
+  4. RETURN count (or the list of selected activities)</code></pre></div>
+<h3>The Overlap Detection — Connecting to Project 14</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>Project 14 defined overlap as:
+</span>  → Two intervals [a,b] and [c,d] overlap if a &lt; d AND c &lt; b
+
+For activity selection, we simplify:
+  → Since we process left to right (sorted by end)
+  → We only need to check: does new activity start AFTER last selected ends?
+  → start &gt;= lastEndTime → compatible (no overlap)
+  → start &lt; lastEndTime → conflict (overlap)
+
+Note: start == lastEndTime means NO overlap
+  → [1,3] and [3,5] → one ends exactly when other starts → compatible
+  → This is a common convention → problem statement may vary
+  → If problem says "strictly greater" → use start &gt; lastEndTime</code></pre></div>
+<hr>
+<h2>✅ WHAT SHOULD YOU DO</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ ALWAYS sort by END TIME for activity selection / interval scheduling
+</span>     → This is the PROVEN correct greedy criterion
+     → Sorting by start time or duration does NOT work
+     
+→ ALWAYS pick the first activity after sorting
+     → The earliest-ending activity is always safe to include
+     → No valid solution is harmed by including it
+     
+→ ALWAYS update lastEndTime only when you SELECT an activity
+     → Skipped activities don't affect the state
+     
+→ ALWAYS clarify edge cases with the problem:
+     → Is [1,3] and [3,5] considered overlapping or not?
+     → Convention: usually NOT overlapping (end-exclusive or start-inclusive)
+     → Adjust &gt;= vs &gt; accordingly
+     
+→ ALWAYS think about whether to return COUNT or ACTUAL ACTIVITIES
+     → Count: just maintain an integer
+     → Actual list: maintain a result list and add selected activities</code></pre></div>
+<hr>
+<h2>🚫 WHAT SHOULD YOU NOT DO</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ DO NOT sort by start time
+</span>     → Counterexample shown above: [1,100] blocks everything
+     → Earliest start ≠ optimal
+     
+→ DO NOT sort by duration (shortest first)
+     → Counterexample: short activity in the middle blocks two longer non-overlapping ones
+     → Shortest duration ≠ optimal
+
+→ DO NOT use dynamic programming for basic activity selection
+     → Greedy solves it in O(n log n) — optimal
+     → DP would be O(n²) — unnecessary overhead
+     → DP is needed for WEIGHTED activity selection (different problem)
+     
+→ DO NOT reconsider past decisions
+     → Greedy commits → never looks back
+     → If you find yourself wanting to "undo" a selection → you're not doing greedy
+     → Undo = backtracking = different paradigm (Projects 24-29)
+     
+→ DO NOT confuse this with "merge intervals" (Project 14)
+     → Merge: combine overlapping intervals into one
+     → Activity selection: choose maximum non-overlapping intervals
+     → Same preprocessing (sort) → different processing logic
+     
+→ DO NOT modify the input array unless explicitly allowed
+     → Sort a copy if original order matters</code></pre></div>
+<hr>
+<h2>🔀 WHEN TO USE GREEDY</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>✓ Problem asks for MAXIMUM or MINIMUM of something
+</span>✓ Making a locally optimal choice PROVABLY leads to global optimum
+✓ Problem has OPTIMAL SUBSTRUCTURE:
+     → Optimal solution to problem contains optimal solutions to subproblems
+✓ Problem has GREEDY CHOICE PROPERTY:
+     → A globally optimal solution can be arrived at by making locally optimal choices
+✓ You can prove the exchange argument works:
+     → Swapping any element of optimal solution with greedy choice doesn't worsen it
+✓ Common greedy problems:
+     → Activity/interval scheduling (this project)
+     → Huffman coding
+     → Minimum spanning tree (Kruskal's, Prim's)
+     → Dijkstra's shortest path
+     → Fractional knapsack
+     → Jump game (Project 49)
+     → Task scheduler (Project 60)</code></pre></div>
+<hr>
+<h2>🚫 WHEN NOT TO USE GREEDY</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>✗ Problem has DEPENDENCIES between choices
+</span>     → Choosing item A affects the VALUE of choosing item B later
+     → Example: 0/1 Knapsack → item weights interact with capacity
+     → Use DP instead (Project 44)
+     
+✗ You CANNOT prove the greedy choice property
+     → If counterexample exists → greedy fails
+     → Example: coin change with arbitrary denominations
+     → Greedy picks largest coin first → may not find optimal
+     → coins = [1, 3, 4], target = 6
+     → Greedy: 4+1+1 = 3 coins → Optimal: 3+3 = 2 coins
+     
+✗ Problem requires ALL valid solutions (not just the optimal one)
+     → Greedy finds ONE solution → the optimal one
+     → For ALL solutions → use backtracking (Projects 24-29)
+     
+✗ Problem has complex constraints between items
+     → Multiple dimensions of conflict
+     → Graph coloring, constraint satisfaction
+     → Greedy may give suboptimal results
+
+✗ The "obvious" greedy choice has counterexamples
+     → Test your greedy criterion with small examples
+     → If you find a case where it fails → greedy is wrong for this problem</code></pre></div>
+<hr>
+<h2>⚙️ HOW IT ONLY WORKS — Internal Mechanics</h2>
+<h3>The Sort-Then-Scan Pattern</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>This is a FUNDAMENTAL pattern that appears across many problems:
+</span>
+  1. SORT the data to impose an order
+  2. SCAN left to right, making decisions
+
+Project 14 (Merge Intervals):  Sort by start → scan → merge overlaps
+Project 19 (Activity Selection): Sort by end → scan → select non-overlaps
+
+WHY does sorting help?
+→ Unsorted data → each element could relate to ANY other element → O(n²)
+→ Sorted data → each element only relates to its NEIGHBORS → O(n)
+→ Sorting converts a GLOBAL problem into a LOCAL problem
+→ Cost: O(n log n) for sort + O(n) for scan = O(n log n) total</code></pre></div>
+<h3>The Greedy Invariant</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>INVARIANT: At every point during the scan, we have selected the 
+</span>MAXIMUM number of non-overlapping activities from the activities 
+seen so far, AND the last selected activity has the EARLIEST 
+possible end time among all optimal selections.
+
+Why the "earliest possible end time" part matters:
+→ It maximizes future flexibility
+→ The earlier our last activity ends, the more future activities can fit
+→ This is the ESSENCE of the greedy choice
+
+Step-by-step invariant maintenance:
+  After selecting [1,3]: optimal count = 1, lastEnd = 3 (earliest possible)
+  After scanning [2,5]: skip (overlaps) → count stays 1, lastEnd stays 3
+  After scanning [0,6]: skip (overlaps) → count stays 1, lastEnd stays 3
+  After selecting [5,7]: optimal count = 2, lastEnd = 7 (earliest possible for count=2)
+  After scanning [5,9]: skip (overlaps) → count stays 2, lastEnd stays 7
+  After selecting [8,9]: optimal count = 3, lastEnd = 9 (earliest possible for count=3)</code></pre></div>
+<h3>The Exchange Argument — Formal Proof</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>CLAIM: Greedy activity selection produces an optimal solution.
+</span>
+PROOF:
+  Let G = {g1, g2, ..., gk} be the greedy solution (sorted by end time)
+  Let O = {o1, o2, ..., om} be an optimal solution (sorted by end time)
+  
+  We want to show: k ≥ m (greedy selects at least as many as optimal)
+  
+  We prove: for each i, end(gi) ≤ end(oi)
+  → Greedy's i-th activity ends NO LATER than optimal's i-th activity
+  
+  Base case: i = 1
+  → g1 has the earliest end time among ALL activities
+  → o1 is some activity in the optimal solution
+  → end(g1) ≤ end(o1) ✓ (greedy picked the earliest)
+  
+  Inductive step: Assume end(gi) ≤ end(oi) for some i
+  → gi+1 is the earliest-ending activity that starts after gi ends
+  → oi+1 starts after oi ends → starts after gi ends (since end(gi) ≤ end(oi))
+  → So oi+1 is a CANDIDATE for greedy's choice
+  → Greedy picks the EARLIEST ending among candidates
+  → end(gi+1) ≤ end(oi+1) ✓
+  
+  Now: if m &gt; k (optimal has more activities):
+  → end(gk) ≤ end(ok) → end(ok) ≤ start(ok+1)
+  → So ok+1 starts after gk ends
+  → But greedy would have selected ok+1 → contradiction with greedy stopping at k
+  → Therefore m ≤ k → k = m → greedy IS optimal ∎</code></pre></div>
+<h3>Time and Space Complexity</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>TIME: O(n log n)
+</span>→ Sorting: O(n log n)
+→ Single scan: O(n)
+→ Total: O(n log n) — dominated by the sort
+
+SPACE: O(1) extra (or O(n) if we store the selected activities)
+→ Sorting may use O(log n) for the sort algorithm's recursion
+→ The scan itself uses O(1): just lastEndTime and count
+→ If we collect selected activities → O(k) where k = number selected</code></pre></div>
+<h3>Why Different Sort Criteria Fail</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>SORT BY START TIME — Counterexample:
+</span>  Activities: [1,100], [2,3], [4,5], [6,7]
+  Sorted by start: [1,100], [2,3], [4,5], [6,7]
+  Greedy picks [1,100] → blocks all → count = 1
+  Optimal: [2,3], [4,5], [6,7] → count = 3
+  
+  WHY it fails: earliest START doesn't mean earliest END
+  → [1,100] starts earliest but hogs the entire timeline
+
+SORT BY DURATION — Counterexample:
+  Activities: [0,2], [1,3], [2,4]
+  Durations:   2      2      2   (all same → ambiguous)
+  
+  Better example: [0,4], [1,2], [3,6]
+  Durations:        4      1      3
+  Sorted by duration: [1,2], [3,6], [0,4]
+  Greedy picks [1,2] → then [3,6] → count = 2
+  But: [0,4], [... hmm actually this gives 2 too]
+  
+  Cleaner counterexample: [0,2], [1,3], [2,4], [3,5]
+  Shortest: all duration 2
+  
+  The point: duration doesn't account for POSITION on timeline
+  → A short activity in the MIDDLE can block two non-overlapping activities
+  → End time captures both "when does it finish" and "how much room is left"</code></pre></div>
+<hr>
+<h2>⚠️ COMMON PITFALLS AND FAILURE MODES</h2>
+<h3>Pitfall 1: Overlap Definition — Inclusive vs Exclusive Endpoints</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ Are [1,3] and [3,5] overlapping?
+</span>→ Convention 1: END is EXCLUSIVE → [1,3) and [3,5) → NO overlap
+→ Convention 2: END is INCLUSIVE → [1,3] and [3,5] → overlap at point 3
+
+→ Most LeetCode problems: end is EXCLUSIVE → start &gt;= lastEnd means compatible
+→ Some problems: end is INCLUSIVE → start &gt; lastEnd means compatible
+
+→ READ THE PROBLEM CAREFULLY
+→ Test with the boundary case: does [1,3] conflict with [3,5]?
+→ Adjust the comparison operator accordingly
+
+In our solution:
+  → start &gt;= lastEndTime → no overlap (end-exclusive convention)
+  → Change to start &gt; lastEndTime if end-inclusive</code></pre></div>
+<h3>Pitfall 2: Sorting Stability with Equal End Times</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>Activities: [1,5], [3,5], [2,5]
+</span>All end at 5 → order among them matters
+
+→ If we sort only by end time → order among these is arbitrary
+→ Secondary sort by START TIME (ascending) is safest
+     → Picks [1,5] first → starts earliest → most conservative
+
+→ For THIS problem, it doesn't affect the COUNT
+→ But for returning the ACTUAL activities → secondary sort ensures determinism</code></pre></div>
+<h3>Pitfall 3: Empty Input</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ No activities → return 0
+</span>→ One activity → always return 1 (single activity is always non-overlapping)
+→ Handle these before sorting to avoid index-out-of-bounds</code></pre></div>
+<h3>Pitfall 4: Confusing With Interval Merging</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>Project 14: Merge overlapping intervals
+</span>→ Sort by START time
+→ Extend current interval when overlap found
+
+Project 19: Select maximum non-overlapping activities
+→ Sort by END time
+→ Skip current activity when overlap found
+
+→ DIFFERENT sort criterion → DIFFERENT processing logic
+→ Mixing them up is a common interview mistake</code></pre></div>
+<h3>Pitfall 5: Weighted Activity Selection</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ What if each activity has a WEIGHT/VALUE?
+</span>→ We want to maximize TOTAL VALUE, not count
+→ Greedy by end time FAILS:
+     → [1,3] value=1, [2,5] value=100
+     → Greedy picks [1,3] (ends earlier) → total = 1
+     → Optimal: [2,5] → total = 100
+
+→ Weighted version requires DYNAMIC PROGRAMMING
+→ This is a common follow-up → be aware of the boundary
+→ DP for intervals comes in Phase 4</code></pre></div>
+<hr>
+<h2>📈 SCALABILITY CONSIDERATIONS</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ n = 100 → O(n log n) ≈ 700 ops → instant
+</span>→ n = 100,000 → O(n log n) ≈ 1,700,000 ops → fast
+→ n = 10,000,000 → O(n log n) ≈ 230,000,000 ops → a few seconds
+→ n = 1,000,000,000 → may need O(n) algorithm → not possible here
+     → Sort is the bottleneck → cannot avoid O(n log n)
+
+→ MEMORY:
+     → Input: O(n) for storing activities
+     → Sort: O(log n) for Java's sort recursion
+     → Output: O(1) for count, O(k) for selected list
+     → Very memory-efficient
+
+→ COMPARISON WITH ALTERNATIVES:
+     → Brute force: O(2^n) → impossibly slow for n &gt; 25
+     → DP approach: O(n²) → works but slower than needed
+     → Greedy: O(n log n) → optimal for this problem
+
+→ Can we do better than O(n log n)?
+     → Only if activities come PRE-SORTED → then O(n) scan
+     → Otherwise, sorting is necessary → O(n log n) is the floor</code></pre></div>
+<hr>
+<h2>🔍 INTERPRETABILITY CONSIDERATIONS</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ Greedy is the MOST INTUITIVE algorithm paradigm:
+</span>     → "Always pick the activity that finishes earliest"
+     → Non-programmers can understand this
+     → It matches human intuition about scheduling
+
+→ The proof (exchange argument) is elegant:
+     → "If I swap any other choice with the greedy choice, I can't do better"
+     → This is the gold standard for justifying greedy algorithms
+
+→ Easy to verify:
+     → Print selected activities
+     → Check no two overlap
+     → Count them → is this the maximum? → compare with brute force on small input
+
+→ Real-world applications:
+     → Meeting room scheduling
+     → CPU task scheduling
+     → TV show recording with one recorder
+     → Conference session attendance
+     → Job scheduling on a single machine
+
+→ Warning for interviews:
+     → ALWAYS explain WHY greedy works
+     → "I sort by end time because finishing early maximizes remaining room"
+     → "I can prove this via exchange argument"
+     → Without justification, greedy looks like guessing</code></pre></div>
+<hr>
+<div class="github-btn-wrap"><a class="github-btn" href="https://github.com/Shakti4640/leetcode-patterns-guide-java/tree/main/project- (19)" target="_blank" rel="noopener"><svg viewBox="0 0 24 24"><path d="M12 .5C5.37.5 0 5.87 0 12.5c0 5.3 3.44 9.8 8.2 11.39.6.11.82-.26.82-.58v-2.03c-3.34.73-4.04-1.61-4.04-1.61-.55-1.39-1.34-1.76-1.34-1.76-1.09-.74.08-.73.08-.73 1.2.09 1.84 1.24 1.84 1.24 1.07 1.83 2.8 1.3 3.49 1 .1-.78.42-1.3.76-1.6-2.67-.3-5.47-1.33-5.47-5.93 0-1.31.47-2.38 1.24-3.22-.14-.3-.54-1.52.1-3.18 0 0 1.01-.32 3.3 1.23a11.5 11.5 0 0 1 3-.4c1.02 0 2.04.13 3 .4 2.28-1.55 3.29-1.23 3.29-1.23.64 1.66.24 2.88.12 3.18.77.84 1.23 1.91 1.23 3.22 0 4.61-2.81 5.63-5.48 5.92.43.37.81 1.1.81 2.22v3.29c0 .32.21.7.82.58C20.56 22.3 24 17.8 24 12.5 24 5.87 18.63.5 12 .5z"/></svg>💻 View Complete Java Code on GitHub</a></div>
+
+<hr>
+<h2>🔑 EXPECTED OUTPUT (Key Sections)</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>═══ TEST 1: Classic Example ═══
+</span>  Original activities:
+    Activity 0: [1, 3]
+    Activity 1: [2, 5]
+    Activity 2: [0, 6]
+    Activity 3: [5, 7]
+    Activity 4: [8, 9]
+    Activity 5: [5, 9]
+
+  After sorting by END TIME:
+    [1, 3]
+    [2, 5]
+    [0, 6]
+    [5, 7]
+    [5, 9]
+    [8, 9]
+
+  Greedy Selection Process:
+  ─────────────────────────────────
+  ✓ SELECT [1, 3] → first activity → lastEnd = 3
+  ✗ SKIP   [2, 5] → start(2) &lt; lastEnd(3) → OVERLAPS
+  ✗ SKIP   [0, 6] → start(0) &lt; lastEnd(3) → OVERLAPS
+  ✓ SELECT [5, 7] → start(5) &gt;= prevLastEnd → compatible → new lastEnd = 7
+  ✗ SKIP   [5, 9] → start(5) &lt; lastEnd(7) → OVERLAPS
+  ✓ SELECT [8, 9] → start(8) &gt;= prevLastEnd → compatible → new lastEnd = 9
+
+  Result: 3 activities selected
+  Selected: [1,3] [5,7] [8,9]
+
+═══ TEST 3: Long Activity vs Many Short ═══
+  After sorting by END TIME:
+    [2, 3]
+    [4, 5]
+    [6, 7]
+    [1, 10]
+
+  ✓ SELECT [2, 3] → first activity → lastEnd = 3
+  ✓ SELECT [4, 5] → compatible → new lastEnd = 5
+  ✓ SELECT [6, 7] → compatible → new lastEnd = 7
+  ✗ SKIP   [1, 10] → OVERLAPS
+
+  Result: 3 activities selected
+
+═══ TEST 7: Greedy vs Brute Force Verification ═══
+  Test 1: Greedy=3 BruteForce=3 ✓
+  Test 2: Greedy=4 BruteForce=4 ✓
+  Test 3: Greedy=3 BruteForce=3 ✓
+  Test 4: Greedy=1 BruteForce=1 ✓
+  Test 5: Greedy=4 BruteForce=4 ✓
+  Test 6: Greedy=4 BruteForce=4 ✓
+  All match: true
+
+═══ TEST 8: Sort by Start Time vs End Time ═══
+  Greedy by END time:   3 ← CORRECT
+  Greedy by START time: 1 ← WRONG</code></pre></div>
+<hr>
+<h2>🧠 GREEDY vs OTHER PARADIGMS — Decision Framework</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>┌─────────────────────┬──────────────┬────────────────┬───────────────┐
+</span>│ Aspect              │ Greedy       │ DP             │ Backtracking  │
+├─────────────────────┼──────────────┼────────────────┼───────────────┤
+│ Decision approach   │ Local best   │ All subproblems│ All choices   │
+│ Looks back?         │ Never        │ Yes (table)    │ Yes (undo)    │
+│ Finds optimal?      │ If provable  │ Always         │ Always        │
+│ Speed               │ O(n log n)   │ O(n²) or more │ O(2^n) worst  │
+│ When to use         │ Greedy works │ Overlapping    │ Need all      │
+│                     │              │ subproblems    │ solutions     │
+│ Proof needed?       │ YES          │ No             │ No            │
+│ Activity selection  │ ✓ BEST       │ Overkill       │ Way too slow  │
+│ 0/1 Knapsack       │ ✗ Fails      │ ✓ BEST         │ Works (slow)  │
+│ Generate all subsets│ ✗ N/A        │ ✗ N/A          │ ✓ BEST        │
+└─────────────────────┴──────────────┴────────────────┴───────────────┘
+
+RULE: Try greedy FIRST → if you can prove it → use it
+      If greedy fails → try DP
+      If DP is too complex → try backtracking</code></pre></div>
+<hr>
+<h2>🧠 KEY TAKEAWAY</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>WHAT WE LEARNED:
+</span>→ Greedy algorithms make locally optimal choices that lead to global optimum
+→ Activity selection: sort by END TIME → always pick earliest finisher
+→ The exchange argument PROVES greedy is optimal for this problem
+→ Sort-then-scan is a fundamental pattern (shared with Project 14)
+→ Greedy is O(n log n) → far better than brute force O(2^n)
+→ Greedy MUST be proven correct → without proof, it's just guessing
+
+THE CORE MENTAL MODEL:
+→ "I need maximum non-overlapping selections"
+→ "Finishing early leaves maximum room for future"
+→ "Sort by end time → greedily pick compatible activities"
+→ "Each pick is provably safe → exchange argument"
+
+PATTERN SIGNATURE:
+→ Maximize/minimize count of non-conflicting items ✓
+→ Items have intervals/ranges ✓
+→ Locally optimal choice provably leads to global optimum ✓
+→ No weights/values attached to items ✓
+→ = GREEDY → SORT BY END TIME → SCAN AND SELECT
+
+CONNECTION TO PREVIOUS PROJECTS:
+→ Project 14 (Merge Intervals): Same sort-then-scan skeleton
+     → Project 14 sorts by start, merges overlaps
+     → Project 19 sorts by end, selects non-overlaps
+→ Project 18 (Tree DFS): Different paradigm entirely
+     → DFS explores all paths → greedy commits to one path
+     → DFS backtracks → greedy never looks back</code></pre></div>
+<hr>
+<h2>🌉 BRIDGE TO NEXT PROJECT</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>PROJECT 19 taught us:
+</span>→ GREEDY: make one choice, never reconsider
+→ Works when local optimal = global optimal (provable)
+
+PROJECT 20 (Find Start Node of Linked List Cycle) goes back to:
+→ Fast &amp; Slow pointers from Project 7
+→ But now with MATHEMATICAL analysis
+→ Project 7 asked: "IS there a cycle?" → boolean answer
+→ Project 20 asks: "WHERE does the cycle start?" → exact node
+→ Requires two-phase technique:
+     Phase 1: Detect cycle (same as Project 7)
+     Phase 2: Find entry point (new mathematical insight)
+
+The progression across paradigms:
+  Project 17: BFS → level-by-level → queue
+  Project 18: DFS → path-by-path → recursion
+  Project 19: Greedy → single best path → sort + scan
+  Project 20: Fast &amp; Slow → mathematical → two-phase detection
+
+→ Each project adds a new TOOL to your problem-solving toolkit
+→ Recognizing WHICH tool fits WHICH problem is the real skill</code></pre></div>
+<hr>
+<p><strong>Ready for Project 20: Find the Start Node of a Linked List Cycle (Fast &amp; Slow → Mathematical Cycle Entry Detection → Two-Phase Technique)?</strong></p>
+</div>
+</div>
+
+<!-- ========== data-index="9" ========== -->
+<div class="chat-message" data-index="9"></div>
+</div>
+<div class="bottom-nav">
+  <a href="project-18.html" class="nav-btn prev">← Prev</a>
+  <div class="nav-center">
+    <span class="nav-project-label">PROJECT 19 of 60</span>
+    <span class="nav-project-title">Activity Selection Problem</span>
+    <span class="kbd-hint">← → arrow keys to navigate</span>
+  </div>
+  <a href="project-20.html" class="nav-btn next">Next →</a>
+  <a href="index.html" class="nav-btn home">🏠 TOC</a>
+</div>
+<div id="progress-track"><div id="progress-fill"></div></div>
+<div id="progress-pct">0%</div>
+<script src="script.js"></script>
+<script>
+document.addEventListener('keydown', function(e) {
+  if (['INPUT','TEXTAREA'].includes(document.activeElement.tagName)) return;
+  if (e.key === 'ArrowRight' && "project-20.html" !== null) window.location = "project-20.html";
+  if (e.key === 'ArrowLeft' && "project-18.html" !== null) window.location = "project-18.html";
+});
+</script>
+</body>
+</html>

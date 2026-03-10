@@ -1,0 +1,697 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PROJECT 9: Classic Binary Search on Sorted Array</title>
+<link rel="icon" type="image/png" href="images/favicon.png">
+<link rel="stylesheet" href="styles.css">
+
+</head>
+<body>
+<div id="progress-bar-container"><div id="progress-bar" style="width:16%"></div></div>
+<div id="progress-label">16%</div>
+<div class="page-wrapper">
+<div class="chat-message"><div class="px-2"><h1>PROJECT 9: Classic Binary Search on Sorted Array</h1>
+<h2>🎯 Modified Binary Search → Half-Elimination → Mid-Point Logic</h2>
+<hr>
+<h2>🧩 THE HYPOTHETICAL PROBLEM</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ You are given a SORTED array of integers (ascending order)
+</span>→ You are given a TARGET value
+→ Find the INDEX of the target in the array
+→ If the target does not exist, return -1
+→ Must run in O(log N) time
+
+Example 1:
+  Input:  arr = [-1, 0, 3, 5, 9, 12], target = 9
+  Output: 4
+  Why:    arr[4] = 9 ✓
+
+Example 2:
+  Input:  arr = [-1, 0, 3, 5, 9, 12], target = 2
+  Output: -1
+  Why:    2 is not in the array
+
+Example 3:
+  Input:  arr = [1], target = 1
+  Output: 0
+
+Example 4:
+  Input:  arr = [1, 3, 5, 7, 9, 11, 13, 15, 17, 19], target = 13
+  Output: 6
+
+Example 5:
+  Input:  arr = [2, 5], target = 5
+  Output: 1</code></pre></div>
+<hr>
+<h2>🔍 HOW TO APPROACH IT</h2>
+<h3>Step 1 — Why Linear Search Isn't Good Enough</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ Linear search: walk through every element until found
+</span>     for i = 0 to N-1:
+         if arr[i] == target: return i
+     return -1
+
+→ Time: O(N) — checks every element in the worst case
+→ For N = 1,000,000 → up to 1,000,000 comparisons
+→ This completely IGNORES the fact that the array is SORTED
+
+→ Sorted means: elements are in ORDER
+→ Order means: we can make INTELLIGENT DECISIONS about where to look
+→ Instead of checking every element → we can ELIMINATE large portions at once</code></pre></div>
+<h3>Step 2 — The Dictionary Analogy</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ How do you find a word in a physical dictionary?
+</span>→ You DON'T start at page 1 and read every page
+→ You OPEN TO THE MIDDLE:
+     → If the word you want comes AFTER the middle page → look in the second half
+     → If the word you want comes BEFORE the middle page → look in the first half
+     → You've just eliminated HALF the dictionary in ONE step
+
+→ Repeat: open to the middle of the remaining half
+→ Again eliminate half
+→ Keep halving until you find the word
+
+→ A 1000-page dictionary:
+     Step 1: 1000 → 500 pages remaining
+     Step 2: 500 → 250 pages remaining
+     Step 3: 250 → 125 pages remaining
+     ...
+     Step 10: ~1 page remaining → found!
+
+→ 10 steps to search 1000 pages
+→ Linear search: up to 1000 steps
+→ That's 100x fewer steps — and the gap GROWS with larger data</code></pre></div>
+<h3>Step 3 — Formalizing the Halving Strategy</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ Define a SEARCH SPACE: [left, right]
+</span>→ Initially: left = 0, right = N-1 (entire array)
+
+→ At each step:
+     1. Find the MIDDLE: mid = left + (right - left) / 2
+     2. Compare arr[mid] with target:
+          → If arr[mid] == target → FOUND → return mid
+          → If arr[mid] &lt; target → target is in RIGHT half → left = mid + 1
+          → If arr[mid] &gt; target → target is in LEFT half → right = mid - 1
+     3. Repeat until left &gt; right (search space empty)
+
+→ Each step cuts the search space in HALF
+→ Starting with N elements:
+     After step 1: N/2 elements
+     After step 2: N/4 elements
+     After step 3: N/8 elements
+     ...
+     After step k: N/2^k elements
+     When N/2^k = 1 → k = log₂(N) steps
+
+→ Time: O(log N) — EXPONENTIALLY faster than O(N)</code></pre></div>
+<h3>Step 4 — Visualize the Binary Search</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>Array: [-1, 0, 3, 5, 9, 12]    target = 9
+</span>
+Step 1: left=0, right=5
+  mid = 0 + (5-0)/2 = 2
+  arr[2] = 3
+  3 &lt; 9 → target is in RIGHT half → left = 3
+  Search space: [5, 9, 12]
+
+Step 2: left=3, right=5
+  mid = 3 + (5-3)/2 = 4
+  arr[4] = 9
+  9 == 9 → FOUND → return 4 ✓
+
+Only 2 steps for an array of 6 elements!
+Linear search would have taken up to 5 steps.
+
+Another example: target = 2 (not in array)
+
+Step 1: left=0, right=5
+  mid = 2, arr[2] = 3
+  3 &gt; 2 → left half → right = 1
+  
+Step 2: left=0, right=1
+  mid = 0, arr[0] = -1
+  -1 &lt; 2 → right half → left = 1
+
+Step 3: left=1, right=1
+  mid = 1, arr[1] = 0
+  0 &lt; 2 → right half → left = 2
+
+Step 4: left=2, right=1
+  left &gt; right → SEARCH SPACE EMPTY → return -1 ✓</code></pre></div>
+<h3>Step 5 — How This Connects to Previous Projects</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ Project 1 (Two Pointers): Also used left/right on sorted data
+</span>     → But TWO POINTERS converge from BOTH ends → O(N)
+     → BINARY SEARCH eliminates from the MIDDLE → O(log N)
+
+→ Both exploit sorted order, but DIFFERENTLY:
+     Two Pointers: "I know the sum is too big/small → move one pointer"
+     Binary Search: "I know the target is in the left/right HALF → discard the other half"
+
+→ Two Pointers narrows by 1 element per step → O(N)
+→ Binary Search narrows by HALF per step → O(log N)
+
+→ When to use which?
+     → Need to find a PAIR satisfying a condition → Two Pointers
+     → Need to find a SINGLE element by value → Binary Search
+     → Two Pointers: relational (sum of two), Binary Search: positional (where is one)</code></pre></div>
+<hr>
+<h2>🛠️ HOW CAN WE SOLVE IT</h2>
+<h3>The Algorithm — Line by Line Logic</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>1. Initialize: left = 0, right = arr.length - 1
+</span>2. WHILE left &lt;= right:
+     a. Compute mid = left + (right - left) / 2
+     b. IF arr[mid] == target → return mid
+     c. IF arr[mid] &lt; target → left = mid + 1
+     d. IF arr[mid] &gt; target → right = mid - 1
+3. Return -1 (target not found)</code></pre></div>
+<h3>Why left &lt;= right (Not left &lt; right)?</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ When left == right → ONE element remains unchecked
+</span>→ That element might BE the target
+→ If we used left &lt; right → we'd skip checking the last element
+
+Example: arr = [5], target = 5
+  left=0, right=0 → left == right
+  With left &lt; right → loop doesn't execute → returns -1 → WRONG
+  With left &lt;= right → checks arr[0]=5 → FOUND → returns 0 → CORRECT
+
+→ The search space is [left, right] INCLUSIVE
+→ left &lt;= right means "at least one element remains"
+→ left &gt; right means "search space is empty"</code></pre></div>
+<h3>Why mid = left + (right - left) / 2 (Not (left + right) / 2)?</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ Both compute the same value mathematically
+</span>→ BUT (left + right) can OVERFLOW if both are large:
+     left = 2,000,000,000
+     right = 2,000,000,000
+     left + right = 4,000,000,000 → overflows int!
+
+→ left + (right - left) / 2:
+     right - left = 0 → no overflow
+     0 / 2 = 0
+     left + 0 = 2,000,000,000 → correct, no overflow
+
+→ This is a FAMOUS bug that existed in Java's Arrays.binarySearch for 9 years
+→ It was only discovered in 2006
+→ ALWAYS use left + (right - left) / 2</code></pre></div>
+<hr>
+<h2>✅ WHAT SHOULD YOU DO</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ ALWAYS use left + (right - left) / 2 for mid calculation
+</span>     → Prevents integer overflow
+     → Mathematically identical to (left + right) / 2
+     → This is industry standard
+
+→ ALWAYS use left &lt;= right as loop condition
+     → Ensures the last remaining element is checked
+     → left &gt; right = empty search space = not found
+
+→ ALWAYS move boundaries PAST mid (not TO mid)
+     → left = mid + 1 (not left = mid)
+     → right = mid - 1 (not right = mid)
+     → If you set left = mid or right = mid → possible infinite loop
+     → Because mid might equal left or right → no progress
+
+→ ALWAYS verify the array is SORTED before applying binary search
+     → Binary search on unsorted data gives WRONG results
+     → The elimination logic assumes sorted order
+
+→ ALWAYS handle the "not found" case
+     → If loop completes without returning → target doesn't exist
+     → Return -1 or whatever the problem specifies
+
+→ ALWAYS think about what binary search REALLY does:
+     → It doesn't just "find elements"
+     → It answers: "which half contains my answer?"
+     → This question can be applied to MANY problems beyond simple search
+     → Projects 26, 27, 30, 31 will exploit this</code></pre></div>
+<hr>
+<h2>🚫 WHAT SHOULD YOU NOT DO</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ DO NOT use (left + right) / 2 for mid
+</span>     → Integer overflow risk for large arrays
+     → Use left + (right - left) / 2 instead
+
+→ DO NOT use left &lt; right as loop condition (for standard search)
+     → Misses the case where left == right (single element)
+     → Some VARIANTS use left &lt; right, but they handle the remaining
+       element outside the loop
+     → For standard "find target" → use left &lt;= right
+
+→ DO NOT set left = mid or right = mid
+     BAD:
+       if (arr[mid] &lt; target) left = mid;      // might not make progress
+       if (arr[mid] &gt; target) right = mid;      // might not make progress
+     
+     → When left + 1 == right and mid == left:
+          left = mid → left stays the same → INFINITE LOOP
+     
+     GOOD:
+       if (arr[mid] &lt; target) left = mid + 1;   // always makes progress
+       if (arr[mid] &gt; target) right = mid - 1;  // always makes progress
+
+→ DO NOT apply binary search to unsorted data
+     → Binary search assumes: if arr[mid] &lt; target → target is to the RIGHT
+     → This is ONLY true if the array is sorted
+     → Unsorted → this assumption fails → wrong answer
+
+→ DO NOT forget to handle edge cases:
+     → Empty array → return -1 immediately
+     → Single element → one comparison needed
+     → Target smaller than all elements → left moves past right immediately
+     → Target larger than all elements → right moves past left immediately
+
+→ DO NOT use recursion for binary search in production
+     → Recursive binary search works but adds stack overhead
+     → Each recursive call uses stack space → O(log N) stack depth
+     → Iterative version uses O(1) space → always preferred
+     → In interviews: iterative is cleaner and safer</code></pre></div>
+<hr>
+<h2>🔀 WHEN TO USE THIS PATTERN</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>✓ Data is SORTED (or has a monotonic property)
+</span>✓ You need to find a specific value or position
+✓ You can determine "which half" the answer is in with O(1) work
+✓ You need O(log N) time (better than linear scan)
+
+✓ Common variants:
+     → Find exact target (this project)
+     → Find first occurrence of target (left boundary)
+     → Find last occurrence of target (right boundary)
+     → Find insertion position (where would target go?)
+     → Search in rotated sorted array (Project 26)
+     → Find peak element (Project 27)
+     → Find minimum in rotated array
+     → Search in a 2D sorted matrix
+     → Find the square root of a number
+     → Binary search on ANSWER (not on array) — very powerful technique
+
+✓ The GENERALIZED binary search question:
+     → "Can I divide the problem in half at each step?"
+     → "Is there a monotonic condition that separates 'yes' from 'no'?"
+     → If YES to both → binary search applies</code></pre></div>
+<hr>
+<h2>🚫 WHEN NOT TO USE THIS PATTERN</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>✗ Data is NOT sorted and cannot be treated as having a monotonic property
+</span>     → Unsorted array → linear scan or hash-based search
+     → No way to determine "which half" → can't eliminate
+
+✗ You need to find ALL occurrences (not just one)
+     → Binary search finds ONE position
+     → To find all: find first + find last → range [first, last]
+     → Or use binary search as a helper, not the main algorithm
+
+✗ The data structure doesn't support random access
+     → Linked lists → can't access middle in O(1)
+     → Binary search needs arr[mid] in O(1)
+     → For linked lists → use fast/slow pointers (Project 7) or convert to array
+
+✗ You need to process ALL elements anyway
+     → If every element must be visited (sum, transform, etc.)
+     → Binary search's O(log N) advantage is irrelevant
+     → You're already doing O(N) work
+
+✗ Array is very small (N &lt; 20)
+     → Binary search overhead (comparisons, mid calculation) isn't worth it
+     → Linear scan is simpler and similarly fast
+     → But in interviews: still use binary search to demonstrate knowledge</code></pre></div>
+<hr>
+<h2>⚙️ HOW IT ONLY WORKS — Internal Mechanics</h2>
+<h3>The Halving Invariant</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>INVARIANT: At every step, if the target exists in the array,
+</span>it is within the range [left, right] inclusive.
+
+PROOF:
+→ Initial state: left=0, right=N-1 → entire array → target is inside (if it exists)
+
+→ When arr[mid] &lt; target:
+     → All elements at indices [left, mid] are ≤ arr[mid] &lt; target
+     → Target CANNOT be at any of these positions
+     → Setting left = mid + 1 eliminates [left, mid] → safe
+     → Target (if exists) is still in [mid+1, right]
+
+→ When arr[mid] &gt; target:
+     → All elements at indices [mid, right] are ≥ arr[mid] &gt; target
+     → Target CANNOT be at any of these positions
+     → Setting right = mid - 1 eliminates [mid, right] → safe
+     → Target (if exists) is still in [left, mid-1]
+
+→ When arr[mid] == target:
+     → Found! Return immediately.
+
+→ If target doesn't exist:
+     → Eventually left &gt; right → search space empty → return -1
+     → The invariant still holds: target was never in the array</code></pre></div>
+<h3>Logarithmic Time — The Power of Halving</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ Starting search space: N elements
+</span>→ After 1 step: N/2 elements
+→ After 2 steps: N/4 elements
+→ After 3 steps: N/8 elements
+→ After k steps: N/2^k elements
+
+→ Search ends when N/2^k ≤ 1
+→ 2^k ≥ N
+→ k ≥ log₂(N)
+→ Maximum steps = ⌊log₂(N)⌋ + 1
+
+CONCRETE NUMBERS:
+  N = 10 → max 4 steps
+  N = 100 → max 7 steps
+  N = 1,000 → max 10 steps
+  N = 1,000,000 → max 20 steps
+  N = 1,000,000,000 → max 30 steps
+
+→ ONE BILLION elements → only 30 comparisons!
+→ Linear search: up to 1,000,000,000 comparisons
+→ Binary search: 30 comparisons
+→ That's 33,000,000x faster
+
+→ This is why binary search is considered one of the
+  most important algorithms in computer science</code></pre></div>
+<h3>The Three Possible Outcomes at Each Step</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>At every iteration, exactly ONE of three things happens:
+</span>
+OUTCOME 1: arr[mid] == target → FOUND → RETURN
+  → Probability depends on data
+  → Best case: found on first try (target is at the exact middle)
+
+OUTCOME 2: arr[mid] &lt; target → ELIMINATE LEFT HALF
+  → left = mid + 1
+  → Search space shrinks by ≥ half
+  → We move RIGHT because target is bigger
+
+OUTCOME 3: arr[mid] &gt; target → ELIMINATE RIGHT HALF
+  → right = mid - 1
+  → Search space shrinks by ≥ half
+  → We move LEFT because target is smaller
+
+→ Outcomes 2 and 3 ALWAYS make progress
+→ Search space STRICTLY decreases each step (by at least 1 element)
+→ Termination is GUARANTEED: either we find the target or search space empties
+→ No infinite loops possible (unlike some cyclic sort scenarios in Project 8)</code></pre></div>
+<h3>Comparing Binary Search with Previous Search Techniques</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>PROJECT 1 (Two Pointers — Pair Sum):
+</span>  → Also uses sorted data with left/right boundaries
+  → But: left and right each move by 1 → O(N) total moves
+  → Searches for a PAIR satisfying a condition
+  → Cannot use binary search because the condition involves TWO elements
+
+PROJECT 7 (Fast/Slow — Cycle Detection):
+  → Searches for a structural property (cycle)
+  → Sequential access only → can't jump to middle
+  → Binary search requires random access → not applicable to linked lists
+
+PROJECT 8 (Cyclic Sort — Missing Number):
+  → Finds missing/duplicate by PLACING elements
+  → Doesn't search — it REARRANGES
+  → O(N) because every element must be processed
+
+PROJECT 9 (Binary Search):
+  → Finds a SINGLE target in sorted data
+  → O(log N) because half is eliminated per step
+  → MOST POWERFUL search technique for sorted random-access data</code></pre></div>
+<hr>
+<h2>⚠️ COMMON PITFALLS AND FAILURE MODES</h2>
+<h3>Pitfall 1: Integer Overflow in Mid Calculation</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>BAD:
+</span>  int mid = (left + right) / 2;
+  → left = 1,500,000,000, right = 2,000,000,000
+  → left + right = 3,500,000,000 → OVERFLOWS int (max ~2.1 billion)
+  → mid gets a NEGATIVE value → ArrayIndexOutOfBoundsException
+
+GOOD:
+  int mid = left + (right - left) / 2;
+  → right - left = 500,000,000 → no overflow
+  → 500,000,000 / 2 = 250,000,000
+  → left + 250,000,000 = 1,750,000,000 → correct, no overflow
+
+→ This is the #1 most common binary search bug
+→ It went undetected in Java's standard library for YEARS
+→ ALWAYS use the safe formula</code></pre></div>
+<h3>Pitfall 2: Infinite Loop from Wrong Boundary Update</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>BAD:
+</span>  if (arr[mid] &lt; target) left = mid;    // NOT mid + 1
+
+  Scenario: left=3, right=4, mid=3
+  arr[3] &lt; target → left = mid = 3 → left DIDN'T CHANGE → INFINITE LOOP
+
+GOOD:
+  if (arr[mid] &lt; target) left = mid + 1;  // ALWAYS progresses
+
+→ left = mid + 1 guarantees left increases by at least 1
+→ right = mid - 1 guarantees right decreases by at least 1
+→ Search space ALWAYS shrinks → termination guaranteed</code></pre></div>
+<h3>Pitfall 3: Off-by-One in Loop Condition</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>Using left &lt; right (without equals):
+</span>  arr = [5], target = 5
+  left=0, right=0 → 0 &lt; 0 is FALSE → loop skipped → returns -1 → WRONG
+
+Using left &lt;= right:
+  left=0, right=0 → 0 &lt;= 0 is TRUE → checks arr[0]=5 → FOUND → returns 0 ✓
+
+→ For standard binary search: ALWAYS use left &lt;= right
+→ Some variant patterns use left &lt; right with post-loop handling
+→ Know which version you're using and be consistent</code></pre></div>
+<h3>Pitfall 4: Searching in Unsorted Data</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>Array: [5, 2, 8, 1, 9]  target = 8
+</span>
+Binary search:
+  left=0, right=4, mid=2
+  arr[2]=8 == target → return 2 → happens to be correct!
+
+But: [5, 2, 8, 1, 9]  target = 2
+  left=0, right=4, mid=2
+  arr[2]=8 &gt; 2 → right = 1
+  left=0, right=1, mid=0
+  arr[0]=5 &gt; 2 → right = -1
+  left &gt; right → return -1 → WRONG! 2 IS in the array at index 1
+
+→ Binary search on unsorted data: sometimes correct, sometimes wrong
+→ This is DANGEROUS — partial correctness is worse than total failure
+→ ALWAYS verify sorted order before using binary search</code></pre></div>
+<h3>Pitfall 5: Duplicate Elements</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>Array: [1, 2, 2, 2, 2, 3]  target = 2
+</span>
+Binary search finds 2 at mid=2 → returns index 2
+But: 2 also exists at indices 1, 3, 4
+
+→ Standard binary search returns ANY occurrence
+→ It does NOT guarantee first or last occurrence
+→ For first occurrence → need "leftmost binary search" variant
+→ For last occurrence → need "rightmost binary search" variant
+→ These are covered in the variants below</code></pre></div>
+<hr>
+<h2>📈 SCALABILITY CONSIDERATIONS</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ N = 100:
+</span>     → Linear: up to 100 comparisons
+     → Binary: up to 7 comparisons
+     → Both fast — doesn't matter
+
+→ N = 1,000,000:
+     → Linear: up to 1,000,000 comparisons
+     → Binary: up to 20 comparisons
+     → Binary is 50,000x faster
+
+→ N = 1,000,000,000:
+     → Linear: up to 10^9 comparisons → ~10 seconds
+     → Binary: up to 30 comparisons → ~0.0000001 seconds
+     → Binary is 33,000,000x faster
+
+→ DOUBLING the data:
+     → Linear: doubles the time (O(N) → O(2N))
+     → Binary: adds ONE more step (O(log N) → O(log 2N) = O(log N + 1))
+     → Binary search barely notices when data doubles!
+
+→ This is why binary search is used EVERYWHERE:
+     → Database index lookups (B-trees use binary search at each node)
+     → File system directory lookups
+     → Network routing tables
+     → Git bisect (find the commit that introduced a bug)
+     → Package manager dependency resolution
+     → Any system dealing with sorted data</code></pre></div>
+<hr>
+<h2>🔍 INTERPRETABILITY CONSIDERATIONS</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ The "guess a number" game makes it perfectly intuitive:
+</span>     → "I'm thinking of a number between 1 and 100"
+     → "Is it 50?" "Too low"
+     → "Is it 75?" "Too high"
+     → "Is it 62?" "Too low"
+     → "Is it 68?" "Correct!"
+     → 4 guesses for 100 numbers — that's binary search
+
+→ The algorithm has a clear NARRATIVE:
+     → "I look at the middle"
+     → "If it's my target → done"
+     → "If it's too small → target must be to the right → search right half"
+     → "If it's too big → target must be to the left → search left half"
+     → "Repeat until found or exhausted"
+
+→ The trace is SHORT and clear:
+     → Each step prints: left, right, mid, comparison result, new boundaries
+     → At most ~30 lines for a billion elements
+     → Very easy to verify manually
+
+→ Interview explanation:
+     → "Sorted array → I can eliminate half at each step"
+     → "Compare middle element with target"
+     → "Adjust boundaries based on comparison"
+     → "O(log N) time, O(1) space"</code></pre></div>
+<hr>
+<div class="github-btn-wrap"><a class="github-btn" href="https://github.com/Shakti4640/leetcode-patterns-guide-java/tree/main/project- (9)" target="_blank" rel="noopener"><svg viewBox="0 0 24 24"><path d="M12 .5C5.37.5 0 5.87 0 12.5c0 5.3 3.44 9.8 8.2 11.39.6.11.82-.26.82-.58v-2.03c-3.34.73-4.04-1.61-4.04-1.61-.55-1.39-1.34-1.76-1.34-1.76-1.09-.74.08-.73.08-.73 1.2.09 1.84 1.24 1.84 1.24 1.07 1.83 2.8 1.3 3.49 1 .1-.78.42-1.3.76-1.6-2.67-.3-5.47-1.33-5.47-5.93 0-1.31.47-2.38 1.24-3.22-.14-.3-.54-1.52.1-3.18 0 0 1.01-.32 3.3 1.23a11.5 11.5 0 0 1 3-.4c1.02 0 2.04.13 3 .4 2.28-1.55 3.29-1.23 3.29-1.23.64 1.66.24 2.88.12 3.18.77.84 1.23 1.91 1.23 3.22 0 4.61-2.81 5.63-5.48 5.92.43.37.81 1.1.81 2.22v3.29c0 .32.21.7.82.58C20.56 22.3 24 17.8 24 12.5 24 5.87 18.63.5 12 .5z"/></svg>💻 View Complete Java Code on GitHub</a></div>
+
+<hr>
+<h2>🔑 EXPECTED OUTPUT</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>╔══════════════════════════════════════════════════════╗
+</span>║  PROJECT 9: Classic Binary Search on Sorted Array    ║
+║  Pattern: Modified Binary Search → Half Elimination  ║
+╚══════════════════════════════════════════════════════╝
+
+═══ TEST 1: Basic Example — Target Found ═══
+Array: [-1, 0, 3, 5, 9, 12]  Target: 9
+─────────────────────────────────────────────
+Step 1:
+  Search space: [0..5] (6 elements)
+  mid = 2 → arr[2] = 3
+  → 3 &lt; 9 → target in RIGHT half → left = 3
+Step 2:
+  Search space: [3..5] (3 elements)
+  mid = 4 → arr[4] = 9
+  → arr[4] == 9 → FOUND at index 4 ✓
+
+═══ TEST 2: Target Not Found ═══
+Array: [-1, 0, 3, 5, 9, 12]  Target: 2
+─────────────────────────────────────────────
+Step 1:
+  Search space: [0..5] (6 elements)
+  mid = 2 → arr[2] = 3
+  → 3 &gt; 2 → target in LEFT half → right = 1
+Step 2:
+  Search space: [0..1] (2 elements)
+  mid = 0 → arr[0] = -1
+  → -1 &lt; 2 → target in RIGHT half → left = 1
+Step 3:
+  Search space: [1..1] (1 elements)
+  mid = 1 → arr[1] = 0
+  → 0 &lt; 2 → target in RIGHT half → left = 2
+Step 4: left(2) &gt; right(1) → SEARCH SPACE EMPTY → NOT FOUND ✗
+
+═══ TEST 8: First and Last Occurrence (Duplicates) ═══
+Array: [1, 2, 2, 2, 2, 3, 4]  Target: 2
+First occurrence: index 1
+Last occurrence:  index 4
+Total occurrences: 4
+
+═══ TEST 9: Insertion Position ═══
+Array: [1, 3, 5, 7, 9]
+  Target 0 → insert at index 0
+  Target 3 → insert at index 1
+  Target 4 → insert at index 2
+  Target 9 → insert at index 4
+  Target 10 → insert at index 5
+
+═══ TEST 10: Floor and Ceiling ═══
+Array: [1, 3, 5, 7, 9, 11]
+  Target 0 → floor=none, ceiling=1
+  Target 4 → floor=3, ceiling=5
+  Target 7 → floor=7, ceiling=7
+  Target 12 → floor=11, ceiling=none
+
+═══ TEST 13: Performance Comparison ═══
+Array size: 100000000 (100 million)
+Target: 99999999 (worst case — last element)
+Binary Search: index 99999999 → ~1 microseconds
+Linear Search: index 99999999 → ~50 milliseconds
+Speedup: ~50000x faster
+Binary search steps: ~26 comparisons
+Linear search steps: 100000000 comparisons</code></pre></div>
+<hr>
+<h2>🧠 KEY TAKEAWAY</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>WHAT WE LEARNED:
+</span>→ Binary search eliminates HALF the search space per step → O(log N)
+→ It exploits SORTED ORDER to make decisions about direction
+→ The safe mid formula: left + (right - left) / 2 prevents overflow
+→ left &lt;= right ensures every element is checked
+→ left = mid + 1 and right = mid - 1 ensure progress (no infinite loops)
+
+THE BINARY SEARCH TEMPLATE:
+  int left = 0, right = n - 1;
+  while (left &lt;= right) {
+      int mid = left + (right - left) / 2;
+      if (arr[mid] == target) return mid;
+      else if (arr[mid] &lt; target) left = mid + 1;
+      else right = mid - 1;
+  }
+  return -1;
+
+THE VARIANT TEMPLATES:
+  → First occurrence: when found → record + search LEFT (right = mid - 1)
+  → Last occurrence: when found → record + search RIGHT (left = mid + 1)
+  → Insertion point: return left when loop ends
+  → Floor: record when arr[mid] ≤ target → search RIGHT
+  → Ceiling: record when arr[mid] ≥ target → search LEFT
+
+THE GENERALIZED BINARY SEARCH INSIGHT:
+→ Binary search is NOT just about "finding a target in a sorted array"
+→ It's about ANSWERING A YES/NO QUESTION that partitions the search space
+→ "Is the answer in the left half or the right half?"
+→ ANY monotonic condition can be binary-searched:
+     → "What's the minimum speed to arrive on time?" (binary search on answer)
+     → "What's the smallest capacity to ship packages in D days?"
+     → "Is this element in the rotated sorted array?" (Project 26)
+     → "Is this the peak element?" (Project 27)
+
+ALL PHASE 1 PATTERNS COMPLETED:
+  Projects 1-4:  Two Pointers (4 variants)
+  Projects 5-6:  Sliding Window (fixed + variable)
+  Project 7:     Fast &amp; Slow Pointers
+  Project 8:     Cyclic Sort
+  Project 9:     Binary Search
+  Project 10:    Bitwise XOR (next)</code></pre></div>
+<hr>
+<h2>🌉 BRIDGE TO NEXT PROJECT</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>PROJECT 9 taught us:
+</span>→ Binary search on SORTED data → O(log N)
+→ The power of eliminating half the search space per step
+→ Multiple variants: first/last occurrence, insertion, floor/ceiling
+
+PROJECT 10 (Find the Single Number) introduces the FINAL Phase 1 pattern:
+→ BITWISE XOR — a completely different approach to problem solving
+→ Instead of searching or sorting → use BIT-LEVEL operations
+→ XOR has a magical property: a ⊕ a = 0 and a ⊕ 0 = a
+→ Every pair of duplicates CANCELS OUT → the single number SURVIVES
+
+The connection:
+→ Project 8 (Cyclic Sort): found missing number using INDEX-VALUE mapping
+→ Project 10 (XOR): finds the single number using BIT-LEVEL cancellation
+→ Both solve "find the special element" problems
+→ But use completely DIFFERENT mathematical properties:
+     Cyclic Sort: uses positional relationships (value = index)
+     XOR: uses algebraic relationships (a ⊕ a = 0)
+
+→ XOR is a BIT MANIPULATION technique — the first time we go below the
+  integer level and think about individual BITS
+→ This opens up a new category of O(N) time, O(1) space solutions
+→ Project 30 will extend XOR to find TWO single numbers — much harder</code></pre></div>
+<hr>
+<p><strong>Ready for Project 10: Find the Single Number (Bitwise XOR → Cancellation Property)?</strong></p>
+</div>
+</div>
+
+
+<!-- ========== data-index="5" ========== -->
+<div class="chat-message" data-index="5"></div>
+</div>
+<div class="bottom-nav">
+  <a href="project-8.html" class="nav-btn prev">← Prev</a>
+  <div class="nav-center">
+    <span class="nav-project-label">PROJECT 9 of 60</span>
+    <span class="nav-project-title">Classic Binary Search on Sorted Array</span>
+    <span class="kbd-hint">← → arrow keys to navigate</span>
+  </div>
+  <a href="project-10.html" class="nav-btn next">Next →</a>
+  <a href="index.html" class="nav-btn home">🏠 TOC</a>
+</div>
+<div id="progress-track"><div id="progress-fill"></div></div>
+<div id="progress-pct">0%</div>
+<script src="script.js"></script>
+<script>
+document.addEventListener('keydown', function(e) {
+  if (['INPUT','TEXTAREA'].includes(document.activeElement.tagName)) return;
+  if (e.key === 'ArrowRight' && "project-10.html" !== null) window.location = "project-10.html";
+  if (e.key === 'ArrowLeft' && "project-8.html" !== null) window.location = "project-8.html";
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PROJECT 3: Remove Duplicates from Sorted Array</title>
+<link rel="icon" type="image/png" href="images/favicon.png">
+<link rel="stylesheet" href="styles.css">
+
+</head>
+<body>
+<div id="progress-bar-container"><div id="progress-bar" style="width:7%"></div></div>
+<div id="progress-label">7%</div>
+<div class="page-wrapper">
+<div class="chat-message"><div class="px-2"><h1>PROJECT 3: Remove Duplicates from Sorted Array</h1>
+<h2>🎯 Two Pointers → Read/Write Pointer Technique → In-Place Mutation</h2>
+<hr>
+<h2>🧩 THE HYPOTHETICAL PROBLEM</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ You are given a SORTED array of integers (ascending order)
+</span>→ Remove duplicates IN-PLACE so each element appears only ONCE
+→ Return the count of unique elements (call it k)
+→ The first k elements of the array must contain the unique elements
+→ The order must be preserved
+→ You must do this with O(1) extra space — no new array allowed
+
+Example 1:
+  Input:  [1, 1, 2]
+  Output: k = 2, array becomes [1, 2, _]
+  → The '_' means we don't care what's after position k-1
+
+Example 2:
+  Input:  [0, 0, 1, 1, 1, 2, 2, 3, 3, 4]
+  Output: k = 5, array becomes [0, 1, 2, 3, 4, _, _, _, _, _]
+
+Example 3:
+  Input:  [1, 1, 1, 1, 1]
+  Output: k = 1, array becomes [1, _, _, _, _]
+
+Example 4:
+  Input:  [1, 2, 3, 4, 5]
+  Output: k = 5, array stays [1, 2, 3, 4, 5]
+  → Already unique — nothing to remove
+
+Example 5:
+  Input:  []
+  Output: k = 0</code></pre></div>
+<hr>
+<h2>🔍 HOW TO APPROACH IT</h2>
+<h3>Step 1 — Recognize What's Different from Projects 1 &amp; 2</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ Projects 1 &amp; 2: Two pointers moved TOWARD each other (convergence)
+</span>→ Project 3: We need to SCAN the array left-to-right AND build a result
+→ We can't use convergence — the task is TRANSFORMATION, not SEARCH
+→ We need a new variant: both pointers move in the SAME direction
+
+→ Projects 1 &amp; 2: Array was READ-ONLY — we just searched for something
+→ Project 3: Array must be MODIFIED — we write new values into it
+→ This introduces the concept of IN-PLACE MUTATION</code></pre></div>
+<h3>Step 2 — Think About the Brute Force First</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ Naive approach: Create a new array, copy unique elements into it
+</span>     Step 1: Create ArrayList
+     Step 2: Walk through array
+     Step 3: If current != previous → add to ArrayList
+     Step 4: Copy ArrayList back to original array
+→ This WORKS but uses O(n) extra space
+→ Problem says O(1) space — we need to modify the array ITSELF
+
+→ Another naive approach: For each duplicate, shift all elements left
+     → When you find a duplicate, shift everything after it one position left
+     → This is O(n²) — each shift is O(n) and there can be O(n) duplicates
+     → Way too slow for large arrays</code></pre></div>
+<h3>Step 3 — The Key Insight: Read/Write Separation</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ Imagine TWO people working on the same array:
+</span>     → READER: Walks through every element, one by one, left to right
+     → WRITER: Only moves forward when the Reader finds something NEW
+
+→ The Reader is FAST — visits every element
+→ The Writer is SLOW — only advances when a unique element is found
+
+→ The Writer marks the boundary of the "clean" portion:
+     → Everything at or before the Writer → unique, finalized
+     → Everything after the Writer → unprocessed or duplicate
+
+→ When the Reader finds a new unique value:
+     → The Writer advances one step
+     → The Reader's value is copied to the Writer's position
+     → The "clean" portion grows by one
+
+This is the READ/WRITE pointer pattern:
+  → read pointer  = fast = scans everything
+  → write pointer = slow = builds the result</code></pre></div>
+<h3>Step 4 — Visualize the Process</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>Array: [0, 0, 1, 1, 1, 2, 2, 3, 3, 4]
+</span>
+Initial:  write=0, read=1
+  Array: [0, 0, 1, 1, 1, 2, 2, 3, 3, 4]
+          W  R
+  → arr[write]=0, arr[read]=0 → SAME → skip → read++
+
+Step 1:   write=0, read=2
+  Array: [0, 0, 1, 1, 1, 2, 2, 3, 3, 4]
+          W     R
+  → arr[write]=0, arr[read]=1 → DIFFERENT → write++, arr[write]=arr[read]
+  → write becomes 1, arr[1] = 1
+
+Step 2:   write=1, read=3
+  Array: [0, 1, 1, 1, 1, 2, 2, 3, 3, 4]
+             W     R
+  → arr[write]=1, arr[read]=1 → SAME → skip → read++
+
+Step 3:   write=1, read=4
+  Array: [0, 1, 1, 1, 1, 2, 2, 3, 3, 4]
+             W        R
+  → arr[write]=1, arr[read]=1 → SAME → skip → read++
+
+Step 4:   write=1, read=5
+  Array: [0, 1, 1, 1, 1, 2, 2, 3, 3, 4]
+             W           R
+  → arr[write]=1, arr[read]=2 → DIFFERENT → write++, arr[write]=arr[read]
+  → write becomes 2, arr[2] = 2
+
+Step 5:   write=2, read=6
+  Array: [0, 1, 2, 1, 1, 2, 2, 3, 3, 4]
+                W           R
+  → arr[write]=2, arr[read]=2 → SAME → skip → read++
+
+Step 6:   write=2, read=7
+  Array: [0, 1, 2, 1, 1, 2, 2, 3, 3, 4]
+                W              R
+  → arr[write]=2, arr[read]=3 → DIFFERENT → write++, arr[write]=arr[read]
+  → write becomes 3, arr[3] = 3
+
+Step 7:   write=3, read=8
+  Array: [0, 1, 2, 3, 1, 2, 2, 3, 3, 4]
+                   W              R
+  → arr[write]=3, arr[read]=3 → SAME → skip → read++
+
+Step 8:   write=3, read=9
+  Array: [0, 1, 2, 3, 1, 2, 2, 3, 3, 4]
+                   W                 R
+  → arr[write]=3, arr[read]=4 → DIFFERENT → write++, arr[write]=arr[read]
+  → write becomes 4, arr[4] = 4
+
+Final:
+  Array: [0, 1, 2, 3, 4, 2, 2, 3, 3, 4]
+                      W                    (write=4)
+  → k = write + 1 = 5
+  → First 5 elements: [0, 1, 2, 3, 4] ✓</code></pre></div>
+<hr>
+<h2>🛠️ HOW CAN WE SOLVE IT</h2>
+<h3>The Algorithm — Line by Line Logic</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>1. Handle edge case: if array is empty → return 0
+</span>2. Initialize WRITE pointer at index 0
+     → The first element is ALWAYS unique (nothing before it to duplicate)
+3. Initialize READ pointer at index 1
+     → Start reading from the second element
+4. FOR read = 1 to n-1:
+     a. Compare arr[read] with arr[write]
+     b. IF arr[read] != arr[write]:
+          → Found a NEW unique value
+          → write++
+          → arr[write] = arr[read]
+     c. IF arr[read] == arr[write]:
+          → Duplicate → skip → do nothing
+5. Return write + 1 (count of unique elements)</code></pre></div>
+<h3>Why Does This Work? — The Invariant</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>INVARIANT: At every point during execution:
+</span>  → arr[0..write] contains ALL unique values seen so far
+  → They are in their original sorted order
+  → arr[write] is the LAST unique value placed
+
+WHY THE COMPARISON IS arr[read] vs arr[write] (not arr[read] vs arr[read-1]):
+  → arr[read-1] might be a DUPLICATE that was already overwritten
+  → arr[write] is the LAST CONFIRMED unique value
+  → Comparing with arr[write] is comparing with the "latest unique"
+  → This is SAFE because the array is SORTED:
+       → All duplicates of a value are CONSECUTIVE
+       → If arr[read] != arr[write] → arr[read] is strictly GREATER
+       → Therefore arr[read] is a NEW unique value
+
+EXAMPLE of why arr[read-1] would be WRONG:
+  Array: [1, 1, 2]   write=0, read=2
+  After processing read=1: arr[1] is still 1 (no write happened)
+  At read=2: arr[read-1] = arr[1] = 1, arr[read] = 2 → 2 != 1 → correct HERE
+  
+  But consider: [1, 1, 1, 2]   write=0, read=3
+  After processing: arr stays [1, 1, 1, 2]
+  At read=3: arr[read-1] = arr[2] = 1, arr[read] = 2 → correct HERE too
+  
+  ACTUALLY for this specific problem, arr[read-1] works because:
+  → We never overwrite AHEAD of the write pointer
+  → write is always ≤ read-1
+  → So arr[read-1] hasn't been corrupted
+  
+  BUT arr[write] is the CANONICAL approach because:
+  → It generalizes to variants where write could be far behind read
+  → It works even when the gap between read and write is large
+  → It's the STANDARD pattern used across all read/write pointer problems</code></pre></div>
+<hr>
+<h2>✅ WHAT SHOULD YOU DO</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ ALWAYS start write at 0 and read at 1
+</span>     → First element is always part of the result
+     → No need to check it — it has no predecessor to be a duplicate of
+
+→ ALWAYS compare arr[read] with arr[write] (not arr[read-1])
+     → arr[write] = last confirmed unique value
+     → This is the standard, generalizable approach
+
+→ ALWAYS advance write BEFORE writing
+     → write++ THEN arr[write] = arr[read]
+     → If you write first and advance after → you overwrite the last unique value
+
+→ ALWAYS return write + 1 (not write)
+     → write is an INDEX (0-based)
+     → The COUNT of unique elements = last index + 1
+
+→ ALWAYS handle the empty array edge case
+     → Empty array → return 0
+     → Without this → write=0 is wrong (no elements to be unique)</code></pre></div>
+<hr>
+<h2>🚫 WHAT SHOULD YOU NOT DO</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ DO NOT create a new array
+</span>     → Problem requires IN-PLACE modification
+     → New array = O(n) space = violates constraint
+     → The write pointer IS your "new array" — built inside the original
+
+→ DO NOT use nested loops to shift elements
+     → When you find a duplicate, DON'T shift everything left
+     → Shifting is O(n) per duplicate → O(n²) total
+     → Read/write pointer is O(n) total
+
+→ DO NOT try to "delete" elements
+     → Arrays in Java have fixed size — you can't actually delete
+     → You OVERWRITE positions with the correct values
+     → Elements beyond position write are "garbage" — ignored
+
+→ DO NOT advance write for duplicates
+     → write only moves when a NEW unique value is found
+     → If you advance write for duplicates → gaps in the result
+
+→ DO NOT forget that this only works on SORTED arrays
+     → Sorted → duplicates are CONSECUTIVE
+     → If unsorted → duplicates could be anywhere
+     → Unsorted dedup requires a HashSet (O(n) space) or sort first (O(n log n))
+
+→ DO NOT compare arr[read] with arr[read-1] in general
+     → Works for this specific problem but doesn't generalize
+     → The read/write pattern ALWAYS compares read with write
+     → Build the correct habit now</code></pre></div>
+<hr>
+<h2>🔀 WHEN TO USE THIS PATTERN</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>✓ You need to TRANSFORM an array IN-PLACE
+</span>✓ Some elements should be KEPT and others REMOVED/SKIPPED
+✓ The kept elements must maintain their RELATIVE ORDER
+✓ O(1) extra space is required
+✓ Common variants:
+     → Remove duplicates from sorted array (this project)
+     → Remove all instances of a specific value
+     → Move all zeros to the end
+     → Remove duplicates allowing at most K occurrences
+     → Partition array by a condition (keep elements matching condition)
+
+✓ The general template:
+     → WRITE pointer = "where to place the next valid element"
+     → READ pointer = "scanning through all elements"
+     → CONDITION = "what determines if an element is valid"
+     → Only the CONDITION changes between variants</code></pre></div>
+<hr>
+<h2>🚫 WHEN NOT TO USE THIS PATTERN</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>✗ Array is NOT sorted and you need to remove duplicates
+</span>     → Duplicates are not consecutive → can't compare adjacent
+     → Need HashSet to track seen values → O(n) space
+     → Or sort first → but that changes the relative order
+
+✗ You need to return a NEW array (not modify in-place)
+     → If the problem gives you freedom to create new arrays
+     → Stream/filter/collect might be cleaner
+     → Read/write is specifically for IN-PLACE requirements
+
+✗ You need to SEARCH for something (not transform)
+     → Projects 1 &amp; 2 convergence is better for searching
+     → Read/write is for BUILDING a result inside the same array
+
+✗ The "keep" condition depends on FUTURE elements
+     → Read/write works when the decision is based on PAST/CURRENT
+     → If you need to know what comes LATER → different approach needed
+
+✗ You need to remove elements from the MIDDLE and close gaps efficiently
+     → Linked lists handle this better (O(1) deletion)
+     → Arrays require shifting → read/write avoids this
+     → But if the problem structure doesn't fit read/write → linked list</code></pre></div>
+<hr>
+<h2>⚙️ HOW IT ONLY WORKS — Internal Mechanics</h2>
+<h3>The Two Zones Model</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>At any point during execution, the array has THREE zones:
+</span>
+Zone 1: FINALIZED     [0 .. write]      → unique values, in order, done
+Zone 2: UNPROCESSED   [read .. n-1]     → haven't looked at these yet
+Zone 3: GARBAGE        [write+1 .. read-1] → overwritten/irrelevant
+
+Visual:
+  [0, 1, 2, 3, | X, X, X, | 3, 3, 4, 5, 5]
+   ←─ Zone 1 ─→ ← Zone 3 → ←── Zone 2 ──→
+   (finalized)   (garbage)   (unprocessed)
+       write ↑                ↑ read
+
+→ Zone 1 GROWS as we find unique values (write advances)
+→ Zone 2 SHRINKS as we scan (read advances)
+→ Zone 3 is the GAP between them — these positions don't matter
+→ When Zone 2 is empty (read reaches n) → algorithm is done
+→ Zone 1 contains the complete answer</code></pre></div>
+<h3>Why Write is Always ≤ Read</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ Write only advances when Read finds something new
+</span>→ Read advances EVERY iteration
+→ Write advances ONLY on unique finds
+→ So Read moves faster than or equal to Write
+→ Write can NEVER overtake Read
+→ This means: writing to arr[write] NEVER corrupts unread data
+→ This is why in-place modification is SAFE
+
+PROOF:
+  → Initially: write=0, read=1 → write &lt; read ✓
+  → Each iteration: read always increments by 1
+  → write increments by AT MOST 1 (only on unique find)
+  → Gap = read - write → gap never decreases below 1
+  → Therefore: write &lt; read is ALWAYS true
+  → arr[write] always points to already-processed territory
+  → Writing there is safe</code></pre></div>
+<h3>Comparison with Project 2's Skip Logic</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>Project 2 introduced SKIP logic:
+</span>→ Inner while loops to skip non-alphanumeric characters
+→ The skip was about IGNORING irrelevant data during SEARCH
+
+Project 3 introduces a DIFFERENT kind of skipping:
+→ The read pointer "skips" duplicates implicitly
+→ When arr[read] == arr[write] → the read pointer advances but write doesn't
+→ The duplicate is effectively "skipped" without being written
+
+Both are FILTER mechanisms:
+→ Project 2: filter by character type (alphanumeric vs not)
+→ Project 3: filter by uniqueness (new value vs duplicate)
+→ The filtering CONCEPT is the same — the CRITERIA differ</code></pre></div>
+<h3>Time Complexity Breakdown</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ Read pointer visits every element exactly once: n iterations
+</span>→ Each iteration does O(1) work: one comparison, possibly one write
+→ Write pointer advances at most n times total
+→ TOTAL: O(n) time
+
+→ Compare with brute force shifting approach:
+     → Array [1, 1, 1, ..., 1, 2] with n-1 ones
+     → Each removal shifts n-1 elements
+     → Total shifts: O(n) × O(n) = O(n²)
+     → Read/write is O(n) — dramatically better</code></pre></div>
+<h3>Space Complexity Breakdown</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ Two integer variables: read, write
+</span>→ All modification happens inside the original array
+→ No auxiliary data structures
+→ TOTAL: O(1) space</code></pre></div>
+<hr>
+<h2>⚠️ COMMON PITFALLS AND FAILURE MODES</h2>
+<h3>Pitfall 1: Off-by-One on Return Value</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ write is an INDEX → 0-based
+</span>→ The COUNT of unique elements = write + 1
+→ Returning write instead of write+1 → count is off by 1
+
+Example: [1, 2, 3] → write ends at 2 → count = 3 (not 2)
+→ ALWAYS return write + 1</code></pre></div>
+<h3>Pitfall 2: Advancing Write AFTER Writing</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>BAD ORDER:
+</span>  arr[write] = arr[read];   // overwrites last unique value!
+  write++;
+
+GOOD ORDER:
+  write++;                   // move to empty slot first
+  arr[write] = arr[read];   // then write the new value
+
+→ If you write before advancing → you DESTROY the last unique value
+→ The write pointer must point to the NEXT EMPTY slot before writing</code></pre></div>
+<h3>Pitfall 3: Starting Read at 0 Instead of 1</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ If read starts at 0: arr[read] vs arr[write] → arr[0] vs arr[0] → always equal
+</span>→ First element is "skipped" as a duplicate of itself
+→ Write never advances → result is wrong
+
+→ Read MUST start at 1 (the second element)
+→ The first element is IMPLICITLY included (write starts at 0)</code></pre></div>
+<h3>Pitfall 4: Empty Array</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ If array is empty → write=0 is meaningless
+</span>→ Returning write+1 = 1 → WRONG (should be 0)
+→ Must handle this edge case explicitly: if (n == 0) return 0;</code></pre></div>
+<h3>Pitfall 5: Confusing This with Unsorted Dedup</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ This technique ONLY works on sorted arrays
+</span>→ Sorted → duplicates are adjacent → comparing with last unique is sufficient
+→ Unsorted → duplicates can be anywhere → need HashSet
+
+Example:
+  Sorted: [1, 1, 2, 2, 3] → duplicates are adjacent ✓
+  Unsorted: [3, 1, 2, 1, 3] → duplicates are scattered ✗
+  → Read/write pointer would keep both 3s and both 1s → WRONG</code></pre></div>
+<hr>
+<h2>📈 SCALABILITY CONSIDERATIONS</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ n = 100 → brute force O(n²) = 10,000 → fast
+</span>→ n = 100,000 → brute force = 10^10 → extremely slow
+→ n = 100,000 → read/write = 10^5 → instant
+
+→ The read/write pattern is ALWAYS O(n) regardless of:
+     → How many duplicates there are
+     → How the duplicates are distributed
+     → Whether most elements are unique or all are same
+
+→ Space remains O(1) regardless of input size
+→ This matters in memory-constrained environments:
+     → Processing sorted sensor data streams
+     → Deduplicating sorted database results
+     → Cleaning sorted log entries
+
+→ In REAL SYSTEMS:
+     → Database engines use this for DISTINCT operations on sorted indices
+     → File systems use this for deduplicating sorted file lists
+     → Network packets sorted by timestamp → remove duplicate entries</code></pre></div>
+<hr>
+<h2>🔍 INTERPRETABILITY CONSIDERATIONS</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ The algorithm maps to a physical metaphor:
+</span>     → Imagine a BOOKSHELF (the array)
+     → A LIBRARIAN (write pointer) stands at the start
+     → An ASSISTANT (read pointer) walks along scanning every book
+     → Assistant picks up each book and shows it to the Librarian
+     → If the book is NEW → Librarian takes it and places it next on the shelf
+     → If the book is a DUPLICATE → Librarian says "skip it"
+     → At the end → the shelf has only unique books, in order
+
+→ The "two zones" model makes debugging easy:
+     → At any breakpoint, you can see:
+          → Zone 1 (clean) vs Zone 2 (unprocessed) vs Zone 3 (garbage)
+     → The boundary is always clear: write and read positions
+
+→ Interview explanation:
+     → "I use a read pointer and a write pointer"
+     → "Read scans everything; write only advances for unique values"
+     → "Since the array is sorted, I compare with the last written value"
+     → "This gives O(n) time and O(1) space"</code></pre></div>
+<hr>
+<div class="github-btn-wrap"><a class="github-btn" href="https://github.com/Shakti4640/leetcode-patterns-guide-java/tree/main/project- (3)" target="_blank" rel="noopener"><svg viewBox="0 0 24 24"><path d="M12 .5C5.37.5 0 5.87 0 12.5c0 5.3 3.44 9.8 8.2 11.39.6.11.82-.26.82-.58v-2.03c-3.34.73-4.04-1.61-4.04-1.61-.55-1.39-1.34-1.76-1.34-1.76-1.09-.74.08-.73.08-.73 1.2.09 1.84 1.24 1.84 1.24 1.07 1.83 2.8 1.3 3.49 1 .1-.78.42-1.3.76-1.6-2.67-.3-5.47-1.33-5.47-5.93 0-1.31.47-2.38 1.24-3.22-.14-.3-.54-1.52.1-3.18 0 0 1.01-.32 3.3 1.23a11.5 11.5 0 0 1 3-.4c1.02 0 2.04.13 3 .4 2.28-1.55 3.29-1.23 3.29-1.23.64 1.66.24 2.88.12 3.18.77.84 1.23 1.91 1.23 3.22 0 4.61-2.81 5.63-5.48 5.92.43.37.81 1.1.81 2.22v3.29c0 .32.21.7.82.58C20.56 22.3 24 17.8 24 12.5 24 5.87 18.63.5 12 .5z"/></svg>💻 View Complete Java Code on GitHub</a></div>
+
+<hr>
+<h2>🔑 EXPECTED OUTPUT</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>╔═══════════════════════════════════════════════════╗
+</span>║  PROJECT 3: Remove Duplicates from Sorted Array   ║
+║  Pattern: Two Pointers — Read/Write Technique     ║
+╚═══════════════════════════════════════════════════╝
+
+═══ TEST 1: Basic Example ═══
+Input: [1, 1, 2]
+─────────────────────────────────────
+Step 1:
+  write=0 (val=1)  read=1 (val=1)
+  → SAME → duplicate → skip
+Step 2:
+  write=0 (val=1)  read=2 (val=2)
+  → DIFFERENT → write++, arr[1] = 2
+  → Zone 1 (finalized): [1, 2]
+─────────────────────────────────────
+Result: k = 2
+Final array: [1, 2, 2]
+Unique portion: [1, 2]
+
+═══ TEST 2: Multiple Duplicates ═══
+Input: [0, 0, 1, 1, 1, 2, 2, 3, 3, 4]
+─────────────────────────────────────
+Step 1:
+  write=0 (val=0)  read=1 (val=0)
+  → SAME → duplicate → skip
+Step 2:
+  write=0 (val=0)  read=2 (val=1)
+  → DIFFERENT → write++, arr[1] = 1
+  → Zone 1 (finalized): [0, 1]
+Step 3:
+  write=1 (val=1)  read=3 (val=1)
+  → SAME → duplicate → skip
+Step 4:
+  write=1 (val=1)  read=4 (val=1)
+  → SAME → duplicate → skip
+Step 5:
+  write=1 (val=1)  read=5 (val=2)
+  → DIFFERENT → write++, arr[2] = 2
+  → Zone 1 (finalized): [0, 1, 2]
+...
+─────────────────────────────────────
+Result: k = 5
+Unique portion: [0, 1, 2, 3, 4]
+
+═══ TEST 7: Allow At Most K=2 Duplicates ═══
+Input: [1, 1, 1, 2, 2, 3] with k=2
+Result: k = 5
+Array: [1, 1, 2, 2, 3]
+
+═══ TEST 8: Remove All Instances of Value 3 ═══
+Input: [0, 1, 2, 3, 3, 4, 5, 3, 6] remove val=3
+Result: k = 6
+Array: [0, 1, 2, 4, 5, 6]
+
+═══ TEST 9: Move Zeros to End ═══
+Input: [0, 1, 0, 3, 12]
+After: [1, 3, 12, 0, 0]</code></pre></div>
+<hr>
+<h2>🧠 KEY TAKEAWAY</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>WHAT WE LEARNED:
+</span>→ Two pointers can move in the SAME DIRECTION (not just convergence)
+→ The READ/WRITE pattern is a fundamental array transformation technique
+→ It enables IN-PLACE modification with O(1) extra space
+→ The key insight: write pointer only advances for VALID elements
+
+PATTERN EVOLUTION SO FAR:
+  Project 1: Two pointers → OPPOSITE directions → convergence → search
+  Project 2: Two pointers → OPPOSITE directions → convergence + skip → search
+  Project 3: Two pointers → SAME direction → read/write → transform
+
+THE READ/WRITE TEMPLATE:
+  int write = startPosition;
+  for (int read = startPosition; read &lt; n; read++) {
+      if (CONDITION(nums[read])) {
+          nums[write] = nums[read];
+          write++;
+      }
+  }
+  return write;
+
+→ Change the CONDITION and you solve:
+     → Remove duplicates (this project)
+     → Remove specific value (variant 2)
+     → Move zeros to end (variant 3)
+     → Keep elements matching a predicate
+     → Any in-place filter operation
+
+TWO POINTER VARIANTS MASTERED:
+  1. Left/Right convergence (Project 1) → searching pairs
+  2. Inward convergence with skip (Project 2) → symmetry checking
+  3. Same-direction read/write (Project 3) → in-place transformation</code></pre></div>
+<hr>
+<h2>🌉 BRIDGE TO NEXT PROJECT</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>PROJECT 3 taught us:
+</span>→ Two pointers moving in the SAME direction
+→ One reads, one writes → transformation
+
+PROJECT 4 (Squares of a Sorted Array) will combine BOTH techniques:
+→ The input array is sorted but contains NEGATIVE numbers
+→ Squaring negatives makes them positive → sorted order BREAKS
+     Example: [-4, -1, 0, 3, 10] → squares: [16, 1, 0, 9, 100]
+     → NOT sorted!
+→ The LARGEST squares are at BOTH ENDS (most negative or most positive)
+→ Solution: Two pointers from OPPOSITE ENDS (like Project 1)
+→ But instead of searching → we MERGE results into a new array
+→ This combines convergence (Project 1) with building output (Project 3)
+
+The mental shift:
+  Project 1: Converge inward → find a pair
+  Project 3: Same direction → build result in-place
+  Project 4: Converge inward → build result from the BACK
+  
+→ Project 4 is the SYNTHESIS of both approaches
+→ Convergence + output building = merge from both ends</code></pre></div>
+<hr>
+<p><strong>Ready for Project 4: Squares of a Sorted Array (Two Pointers — Merge from Both Ends)?</strong></p>
+</div>
+</div>
+
+<!-- ========== data-index="9" ========== -->
+<div class="chat-message" data-index="9"></div>
+</div>
+<div class="bottom-nav">
+  <a href="project-2.html" class="nav-btn prev">← Prev</a>
+  <div class="nav-center">
+    <span class="nav-project-label">PROJECT 3 of 60</span>
+    <span class="nav-project-title">Remove Duplicates from Sorted Array</span>
+    <span class="kbd-hint">← → arrow keys to navigate</span>
+  </div>
+  <a href="project-4.html" class="nav-btn next">Next →</a>
+  <a href="index.html" class="nav-btn home">🏠 TOC</a>
+</div>
+<div id="progress-track"><div id="progress-fill"></div></div>
+<div id="progress-pct">0%</div>
+<script src="script.js"></script>
+<script>
+document.addEventListener('keydown', function(e) {
+  if (['INPUT','TEXTAREA'].includes(document.activeElement.tagName)) return;
+  if (e.key === 'ArrowRight' && "project-4.html" !== null) window.location = "project-4.html";
+  if (e.key === 'ArrowLeft' && "project-2.html" !== null) window.location = "project-2.html";
+});
+</script>
+</body>
+</html>

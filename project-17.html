@@ -1,0 +1,975 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PROJECT 17: Binary Tree Level Order Traversal</title>
+<link rel="icon" type="image/png" href="images/favicon.png">
+<link rel="stylesheet" href="styles.css">
+
+</head>
+<body>
+<div id="progress-bar-container"><div id="progress-bar" style="width:30%"></div></div>
+<div id="progress-label">30%</div>
+<div class="page-wrapper">
+<div class="chat-message"><div class="px-2"><h1>PROJECT 17: Binary Tree Level Order Traversal</h1>
+<h2>🎯 Tree BFS → Queue-Based Processing → Level Boundary Tracking</h2>
+<hr>
+<h2>🔗 DEPENDENCY CHAIN</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>Project 1  → Two Pointers → managing multiple elements simultaneously
+</span>Project 9  → Binary Search → trees have a binary structure → half-elimination thinking
+Project 14 → Merge Intervals → sequential processing → scan left-to-right
+Project 16 → Reverse Linked List → pointer-based data structures → non-array thinking
+Project 17 → Binary Tree BFS → QUEUE-based level-by-level processing
+             → introduces TREES as a data structure
+             → introduces BFS as a traversal STRATEGY
+             → introduces QUEUE as a processing tool
+             → foundation for ALL tree-level problems</code></pre></div>
+<hr>
+<h2>🧩 THE HYPOTHETICAL PROBLEM</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ You are given the ROOT of a binary tree
+</span>→ Return the LEVEL ORDER traversal of its nodes' values
+→ Level order means: process nodes LEVEL BY LEVEL, from top to bottom
+→ Within each level: process from LEFT to RIGHT
+→ Return a list of lists: each inner list contains values of one level
+
+Example 1:
+        3
+       / \
+      9   20
+         /  \
+        15    7
+
+  Output: [[3], [9, 20], [15, 7]]
+  
+  Level 0: [3]          → root
+  Level 1: [9, 20]      → root's children
+  Level 2: [15, 7]      → grandchildren
+
+Example 2:
+      1
+     / \
+    2    3
+   / \    \
+  4   5    6
+
+  Output: [[1], [2, 3], [4, 5, 6]]
+
+Example 3:
+      1
+
+  Output: [[1]]
+  → Single node → one level with one element
+
+Example 4:
+      null (empty tree)
+
+  Output: []
+  → No nodes → empty result
+
+WHY LEVEL ORDER MATTERS:
+  → Shortest path in unweighted graphs → BFS finds it first
+  → Serialization/deserialization of trees
+  → Finding tree width, depth, or rightmost nodes per level
+  → Connecting nodes at the same level (Project 25)
+  → Zigzag traversal (Project 24)
+  → Foundation for graph BFS (Projects 47, 56)</code></pre></div>
+<hr>
+<h2>🔍 HOW TO APPROACH IT</h2>
+<h3>Step 1 — Understanding Trees vs Previous Data Structures</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>ARRAY (Projects 1-13):
+</span>  → Linear → one dimension → left to right
+  → Random access → arr[i] → O(1)
+  → Every element is reachable directly
+
+LINKED LIST (Projects 7, 15, 16):
+  → Linear → one dimension → follow .next pointers
+  → No random access → must traverse sequentially
+  → One path: head → ... → tail
+
+BINARY TREE (Project 17 onwards):
+  → HIERARCHICAL → two dimensions → branches spread out
+  → Each node has AT MOST two children: .left and .right
+  → Multiple paths from root to different leaves
+  → No single "next" pointer → must CHOOSE which direction to go
+
+THE FUNDAMENTAL QUESTION:
+  → In what ORDER do we visit tree nodes?
+  → There are multiple valid orderings
+  → Each ordering serves different purposes
+
+TWO MAIN STRATEGIES:
+  → BFS (Breadth-First Search): level by level → wide before deep
+  → DFS (Depth-First Search): branch by branch → deep before wide
+  → This project covers BFS → Project 18 covers DFS</code></pre></div>
+<h3>Step 2 — The TreeNode Structure</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>class TreeNode {
+</span>    int val;
+    TreeNode left;
+    TreeNode right;
+    
+    TreeNode(int val) {
+        this.val = val;
+        this.left = null;
+        this.right = null;
+    }
+}
+
+VISUAL:
+        ┌──────┐
+        │val: 3│
+        │left:→│──→ node 9
+        │right:→──→ node 20
+        └──────┘
+
+KEY PROPERTIES:
+  → Each node stores ONE value
+  → Each node has TWO child pointers (left and right)
+  → Children can be null (no child in that direction)
+  → A LEAF node has both children null
+  → The ROOT is the topmost node (entry point to the tree)
+  → There is NO parent pointer (can't go UP, only DOWN)
+  → Unlike linked lists → TWO choices at each step (left or right)</code></pre></div>
+<h3>Step 3 — Why BFS Needs a Queue</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>PROBLEM:
+</span>  → We want to visit ALL nodes at level 1 before ANY node at level 2
+  → But from the root, we can reach level 1 nodes
+  → From level 1 nodes, we can reach level 2 nodes
+  → We need to REMEMBER level 1 nodes while processing them
+  → And QUEUE UP their children for later processing
+
+QUEUE = FIFO (First In, First Out):
+  → Nodes added to the BACK
+  → Nodes removed from the FRONT
+  → This naturally preserves left-to-right order within each level
+
+WHY NOT A STACK?
+  → Stack = LIFO (Last In, First Out)
+  → Would process the LAST added child first
+  → This gives DFS behavior (depth-first), not BFS (breadth-first)
+  → Stack → DFS → Project 18
+  → Queue → BFS → THIS project
+
+VISUALIZATION:
+        3
+       / \
+      9   20
+         /  \
+        15    7
+
+  Queue starts: [3]
+  
+  Process 3 → add children 9, 20 → queue: [9, 20]
+  Process 9 → no children → queue: [20]
+  Process 20 → add children 15, 7 → queue: [15, 7]
+  Process 15 → no children → queue: [7]
+  Process 7 → no children → queue: []
+  
+  Order visited: 3, 9, 20, 15, 7 → LEVEL ORDER ✓</code></pre></div>
+<h3>Step 4 — The Level Boundary Problem</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>THE BASIC QUEUE gives us the correct ORDER:
+</span>  3, 9, 20, 15, 7
+
+BUT we need to GROUP them by level:
+  [[3], [9, 20], [15, 7]]
+
+HOW DO WE KNOW WHERE ONE LEVEL ENDS AND THE NEXT BEGINS?
+
+TECHNIQUE: Snapshot the queue size at the START of each level
+
+  Queue: [3] → size = 1 → level 0 has 1 node
+    Process 1 node → add children → queue becomes [9, 20]
+
+  Queue: [9, 20] → size = 2 → level 1 has 2 nodes
+    Process 2 nodes → add children → queue becomes [15, 7]
+
+  Queue: [15, 7] → size = 2 → level 2 has 2 nodes
+    Process 2 nodes → add children → queue becomes []
+
+  Queue: [] → empty → done
+
+THE KEY INSIGHT:
+  → At the START of processing each level:
+    → ALL nodes in the queue belong to THAT level
+    → None of the next level's nodes are in the queue yet
+  → By recording queue.size() BEFORE processing:
+    → We know EXACTLY how many nodes to process for this level
+    → After processing them, only next-level nodes remain in the queue</code></pre></div>
+<h3>Step 5 — Complete Walkthrough</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>        3
+</span>       / \
+      9   20
+         /  \
+        15    7
+
+STEP 1: Initialize queue with root
+  Queue: [3]
+  Result: []
+
+STEP 2: Level 0
+  levelSize = queue.size() = 1
+  currentLevel = []
+  
+  Process node 3:
+    → Add 3 to currentLevel → [3]
+    → Enqueue left child 9 → queue: [9]
+    → Enqueue right child 20 → queue: [9, 20]
+  
+  levelSize exhausted (processed 1 node)
+  Add currentLevel to result → result: [[3]]
+
+STEP 3: Level 1
+  levelSize = queue.size() = 2
+  currentLevel = []
+  
+  Process node 9 (1 of 2):
+    → Add 9 to currentLevel → [9]
+    → No left child → skip
+    → No right child → skip
+    → Queue: [20]
+  
+  Process node 20 (2 of 2):
+    → Add 20 to currentLevel → [9, 20]
+    → Enqueue left child 15 → queue: [15]
+    → Enqueue right child 7 → queue: [15, 7]
+  
+  levelSize exhausted (processed 2 nodes)
+  Add currentLevel to result → result: [[3], [9, 20]]
+
+STEP 4: Level 2
+  levelSize = queue.size() = 2
+  currentLevel = []
+  
+  Process node 15 (1 of 2):
+    → Add 15 to currentLevel → [15]
+    → No children
+    → Queue: [7]
+  
+  Process node 7 (2 of 2):
+    → Add 7 to currentLevel → [15, 7]
+    → No children
+    → Queue: []
+  
+  levelSize exhausted (processed 2 nodes)
+  Add currentLevel to result → result: [[3], [9, 20], [15, 7]]
+
+STEP 5: Queue is empty → done
+
+FINAL RESULT: [[3], [9, 20], [15, 7]] ✓</code></pre></div>
+<hr>
+<h2>🛠️ HOW CAN WE SOLVE IT</h2>
+<h3>The Algorithm — Complete Logic</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>1. EDGE CASE: if root is null → return empty list
+</span>
+2. INITIALIZE:
+     → Queue&lt;TreeNode&gt; queue = new LinkedList&lt;&gt;()
+     → queue.offer(root)
+     → List&lt;List&lt;Integer&gt;&gt; result = new ArrayList&lt;&gt;()
+
+3. WHILE queue is not empty:
+     a. int levelSize = queue.size()      ← snapshot current level's count
+     b. List&lt;Integer&gt; currentLevel = new ArrayList&lt;&gt;()
+     c. FOR i = 0 to levelSize - 1:      ← process EXACTLY levelSize nodes
+          i.   TreeNode node = queue.poll()     ← dequeue front node
+          ii.  currentLevel.add(node.val)       ← record its value
+          iii. if node.left != null → queue.offer(node.left)    ← enqueue left child
+          iv.  if node.right != null → queue.offer(node.right)  ← enqueue right child
+     d. result.add(currentLevel)          ← save this level's values
+
+4. RETURN result</code></pre></div>
+<h3>Why LinkedList as Queue (Not ArrayList)?</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>Java's Queue interface:
+</span>  → offer(e): add to the back → O(1)
+  → poll():   remove from the front → O(1)
+  → peek():   look at front without removing → O(1)
+
+LinkedList implements Queue:
+  → offer: append to tail → O(1)
+  → poll: remove from head → O(1)
+  → Perfect for FIFO behavior
+
+ArrayList as queue would be:
+  → add to back: O(1) amortized
+  → remove from front: O(n) → must shift all elements left
+  → TERRIBLE for queue operations
+
+ArrayDeque is ALSO good:
+  → Implements Deque (double-ended queue)
+  → offer/poll are O(1)
+  → Slightly faster than LinkedList (contiguous memory)
+  → Either LinkedList or ArrayDeque works → ArrayDeque is preferred in practice</code></pre></div>
+<hr>
+<h2>✅ WHAT SHOULD YOU DO</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ ALWAYS snapshot queue.size() BEFORE the inner loop
+</span>     → int levelSize = queue.size();
+     → This captures exactly how many nodes belong to the current level
+     → During the inner loop, new nodes (next level) are added to the queue
+     → Without the snapshot, we'd process next-level nodes as part of this level
+
+→ ALWAYS check for null children BEFORE enqueuing
+     → if (node.left != null) queue.offer(node.left)
+     → Adding null to the queue → NullPointerException when processing
+     → Trees have null children (leaf nodes) → must guard
+
+→ ALWAYS use offer/poll (not add/remove) for Queue operations
+     → offer returns false on failure (for bounded queues) → safer
+     → poll returns null on empty queue → safer
+     → add throws exception on failure → less safe
+     → remove throws exception on empty → less safe
+     → For LinkedList (unbounded) both work, but offer/poll is idiomatic
+
+→ ALWAYS handle the empty tree case first
+     → root == null → return empty list
+     → Prevents NullPointerException when adding root to queue
+
+→ ALWAYS process left child before right child
+     → This ensures left-to-right order within each level
+     → Reversing the order gives right-to-left (useful for zigzag in Project 24)</code></pre></div>
+<hr>
+<h2>🚫 WHAT SHOULD YOU NOT DO</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ DO NOT use recursion for BFS
+</span>     → BFS is naturally ITERATIVE (queue-based)
+     → Recursive BFS is awkward and unnatural
+     → DFS (Project 18) is naturally recursive
+     → Use the right tool for each traversal type
+
+→ DO NOT use a Stack for BFS
+     → Stack gives LIFO order → processes deepest nodes first → DFS behavior
+     → Queue gives FIFO order → processes shallowest nodes first → BFS behavior
+     → Wrong data structure → wrong traversal order
+
+→ DO NOT process nodes beyond levelSize in the inner loop
+     WRONG:
+       while (!queue.isEmpty()) {
+           TreeNode node = queue.poll();
+           currentLevel.add(node.val);
+           // enqueue children...
+       }
+     → This processes ALL remaining nodes → no level separation
+     → All nodes end up in ONE list → [[3, 9, 20, 15, 7]] → WRONG
+
+     CORRECT:
+       int levelSize = queue.size();
+       for (int i = 0; i &lt; levelSize; i++) {
+           // process exactly levelSize nodes
+       }
+     → Processes one level at a time → correct grouping
+
+→ DO NOT add null nodes to the queue
+     → Some implementations add null as a "level separator"
+     → This works but is fragile and error-prone
+     → The levelSize technique is cleaner and standard
+
+→ DO NOT confuse BFS with DFS traversal orders
+     → BFS: level order → [3, 9, 20, 15, 7]
+     → DFS preorder: root, left, right → [3, 9, 20, 15, 7] (coincidentally same here!)
+     → DFS inorder: left, root, right → [9, 3, 15, 20, 7]
+     → DFS postorder: left, right, root → [9, 15, 7, 20, 3]
+     → BFS and DFS preorder can produce the same FLAT sequence
+     → But BFS groups by LEVEL → [[3], [9,20], [15,7]]
+     → DFS does NOT group by level naturally</code></pre></div>
+<hr>
+<h2>🔀 WHEN TO USE THIS PATTERN</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>✓ Problem asks for LEVEL-BY-LEVEL processing of a tree
+</span>     → "Level order traversal" → direct application
+     → "Average of each level" → BFS + compute average per level
+     → "Rightmost node of each level" → BFS + last node of each level
+     → "Largest value in each level" → BFS + max per level
+
+✓ Problem asks for SHORTEST PATH in an unweighted graph
+     → BFS visits nodes in order of distance from source
+     → First time a node is reached = shortest path
+     → Trees are special graphs → BFS applies directly
+
+✓ Problem asks to CONNECT nodes at the same level
+     → "Next right pointer" → process level, link adjacent nodes
+     → Project 25 covers this
+
+✓ Problem asks for ZIGZAG or SPIRAL order
+     → BFS with alternating direction per level
+     → Project 24 covers this
+
+✓ Problem asks for tree WIDTH or DEPTH
+     → Width: max level size during BFS
+     → Depth: number of levels processed
+
+✓ Any problem where LEVEL AWARENESS is needed
+     → If you need to know which level a node is on
+     → BFS naturally tracks this through the outer while loop</code></pre></div>
+<hr>
+<h2>🚫 WHEN NOT TO USE THIS PATTERN</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>✗ Problem asks for ROOT-TO-LEAF paths
+</span>     → Need to maintain the path from root to current node
+     → DFS naturally maintains this path (through recursion stack)
+     → BFS doesn't maintain path information → awkward to track
+     → Use DFS → Project 18
+
+✗ Problem asks for INORDER, PREORDER, or POSTORDER traversal
+     → These are DFS orderings → use recursion or explicit stack
+     → BFS cannot produce these orderings naturally
+
+✗ Problem involves BACKTRACKING
+     → "Try one path, if it fails, try another"
+     → BFS explores all paths simultaneously → no backtracking
+     → DFS explores one path deeply, then backtracks → natural fit
+
+✗ Problem asks for operations on a SUBTREE
+     → "Sum of all nodes in the left subtree"
+     → DFS naturally recurses into subtrees
+     → BFS mixes nodes from different subtrees at each level
+
+✗ Tree is extremely WIDE but shallow
+     → BFS stores an entire level in the queue
+     → A complete binary tree of depth d has 2^d nodes at the last level
+     → Depth 20 → over 1 million nodes in queue simultaneously
+     → Memory can be a concern for very wide trees
+     → (DFS uses O(depth) memory instead → better for wide trees)
+
+✗ Problem can be solved with simple recursion
+     → Many tree problems have elegant recursive solutions
+     → BFS is more code → use DFS/recursion when simpler
+     → BFS is preferred when LEVEL information is needed</code></pre></div>
+<hr>
+<h2>⚙️ HOW IT ONLY WORKS — Internal Mechanics</h2>
+<h3>Mechanic 1: Why Queue Preserves Level Order</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>PROPERTY OF FIFO:
+</span>  → First added → first processed
+  → Within each level, left children are added before right children
+  → Therefore, within each level, left nodes are processed first
+
+LEVEL-BY-LEVEL GUARANTEE:
+  → All level-k nodes are in the queue before any level-(k+1) node
+  → Processing level-k nodes adds level-(k+1) nodes to the BACK of the queue
+  → Level-k nodes are at the FRONT → processed first
+  → Level-(k+1) nodes wait at the BACK → processed after level-k is done
+
+PROOF BY INDUCTION:
+  Base: Level 0 has only the root → root is in queue → correct
+  
+  Inductive step: Assume all level-k nodes are in queue, 
+                  and no level-(k+1) nodes are in queue yet.
+  
+  → Processing level-k nodes: each node's children (level k+1) are added to back
+  → After processing all level-k nodes: only level-(k+1) nodes remain
+  → Invariant maintained for level k+1
+  
+  QED.</code></pre></div>
+<h3>Mechanic 2: The Level Size Snapshot</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>WHY queue.size() AT THE START OF EACH LEVEL IS CORRECT:
+</span>
+  Moment: just before processing level k
+  Queue contains: [all level-k nodes]
+  Queue does NOT contain: any level-(k+1) nodes (not added yet)
+  
+  queue.size() = number of level-k nodes = levelSize
+  
+  Inner loop runs exactly levelSize times:
+  → Each iteration: dequeue one level-k node, enqueue its children (level k+1)
+  → After levelSize iterations: all level-k nodes processed
+  → Queue now contains: [all level-(k+1) nodes]
+  → Ready for the next outer loop iteration
+
+IF WE DIDN'T SNAPSHOT:
+  → As we process level-k nodes, level-(k+1) nodes enter the queue
+  → queue.size() keeps changing
+  → We can't tell where level-k ends and level-(k+1) begins
+  → Levels blur together → grouping is lost</code></pre></div>
+<h3>Mechanic 3: Queue State Evolution</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>Tree:
+</span>        1
+       / \
+      2    3
+     / \    \
+    4   5    6
+
+Queue state at each moment:
+
+  OUTER LOOP 1 (Level 0):
+    Queue before: [1]          ← levelSize = 1
+    Process 1: enqueue 2, 3
+    Queue after: [2, 3]
+    Level 0 result: [1]
+
+  OUTER LOOP 2 (Level 1):
+    Queue before: [2, 3]       ← levelSize = 2
+    Process 2: enqueue 4, 5   → queue: [3, 4, 5]
+    Process 3: enqueue 6      → queue: [4, 5, 6]
+    Queue after: [4, 5, 6]
+    Level 1 result: [2, 3]
+
+  OUTER LOOP 3 (Level 2):
+    Queue before: [4, 5, 6]   ← levelSize = 3
+    Process 4: no children    → queue: [5, 6]
+    Process 5: no children    → queue: [6]
+    Process 6: no children    → queue: []
+    Queue after: []
+    Level 2 result: [4, 5, 6]
+
+  OUTER LOOP 4:
+    Queue is empty → exit while loop
+
+  FINAL: [[1], [2, 3], [4, 5, 6]]</code></pre></div>
+<h3>Mechanic 4: BFS vs DFS Comparison</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>Same tree:
+</span>        1
+       / \
+      2    3
+     / \    \
+    4   5    6
+
+BFS (Queue — this project):
+  Visit order: 1, 2, 3, 4, 5, 6
+  Strategy: finish entire level before going deeper
+  Data structure: Queue (FIFO)
+  Grouped: [[1], [2,3], [4,5,6]]
+  Space: O(w) where w = max width of tree
+
+DFS Preorder (Stack/Recursion — Project 18):
+  Visit order: 1, 2, 4, 5, 3, 6
+  Strategy: go as deep as possible, then backtrack
+  Data structure: Stack or recursion (LIFO)
+  Grouped: not naturally grouped by level
+  Space: O(h) where h = height of tree
+
+WHEN TO USE WHICH:
+  → Need level info → BFS
+  → Need path info → DFS
+  → Need shortest distance → BFS
+  → Need to explore all paths → DFS
+  → Memory-constrained wide tree → DFS (O(h) &lt; O(w))
+  → Memory-constrained deep tree → BFS (O(w) &lt; O(h))</code></pre></div>
+<h3>Time and Space Complexity</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>TIME: O(n)
+</span>  → Every node is enqueued exactly once
+  → Every node is dequeued exactly once
+  → Processing each node: O(1) work (add value, enqueue children)
+  → Total: O(n)
+
+SPACE: O(n)
+  → Queue holds at most one full level at a time
+  → Maximum level size = n/2 (last level of complete binary tree)
+  → Result list holds all n values
+  → Total: O(n)
+
+  More precisely:
+  → Queue space: O(w) where w = maximum width
+  → For complete binary tree: w = n/2 → O(n)
+  → For skewed tree (linked-list-like): w = 1 → O(1)
+  → Result space: always O(n) (stores all values)</code></pre></div>
+<hr>
+<h2>⚠️ COMMON PITFALLS AND FAILURE MODES</h2>
+<h3>Pitfall 1: Not Snapshotting Level Size</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>WRONG:
+</span>  while (!queue.isEmpty()) {
+      List&lt;Integer&gt; level = new ArrayList&lt;&gt;();
+      while (!queue.isEmpty()) {          // ← processes ALL nodes, not one level
+          TreeNode node = queue.poll();
+          level.add(node.val);
+          if (node.left != null) queue.offer(node.left);
+          if (node.right != null) queue.offer(node.right);
+      }
+      result.add(level);
+  }
+
+  → Inner while processes ALL nodes → only one "level" in result
+  → Result: [[1, 2, 3, 4, 5, 6]] → WRONG (should be [[1],[2,3],[4,5,6]])
+
+CORRECT:
+  while (!queue.isEmpty()) {
+      int levelSize = queue.size();       // ← snapshot
+      List&lt;Integer&gt; level = new ArrayList&lt;&gt;();
+      for (int i = 0; i &lt; levelSize; i++) {  // ← process exactly levelSize
+          TreeNode node = queue.poll();
+          level.add(node.val);
+          if (node.left != null) queue.offer(node.left);
+          if (node.right != null) queue.offer(node.right);
+      }
+      result.add(level);
+  }</code></pre></div>
+<h3>Pitfall 2: Enqueuing Null Children</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>WRONG:
+</span>  queue.offer(node.left);   // ← node.left might be null!
+  queue.offer(node.right);
+
+  → null gets added to queue
+  → Later: TreeNode node = queue.poll() → node is null
+  → node.val → NullPointerException!
+
+CORRECT:
+  if (node.left != null) queue.offer(node.left);
+  if (node.right != null) queue.offer(node.right);
+
+  → Only valid nodes enter the queue
+  → Every dequeued node is guaranteed non-null</code></pre></div>
+<h3>Pitfall 3: Forgetting Empty Tree Check</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>WRONG:
+</span>  Queue&lt;TreeNode&gt; queue = new LinkedList&lt;&gt;();
+  queue.offer(root);   // ← root might be null!
+  
+  → null added to queue → NullPointerException when processing
+
+CORRECT:
+  if (root == null) return new ArrayList&lt;&gt;();
+  
+  Queue&lt;TreeNode&gt; queue = new LinkedList&lt;&gt;();
+  queue.offer(root);
+  
+  → null root handled before queue operations</code></pre></div>
+<h3>Pitfall 4: Using the Wrong Queue Method</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>Java Queue methods:
+</span>
+  add(e)  vs  offer(e):
+    → add throws IllegalStateException if queue is full
+    → offer returns false if queue is full
+    → For LinkedList (unbounded) → both work → offer is conventional
+
+  remove()  vs  poll():
+    → remove throws NoSuchElementException if queue is empty
+    → poll returns null if queue is empty
+    → poll is safer → use poll
+
+  element()  vs  peek():
+    → element throws NoSuchElementException if empty
+    → peek returns null if empty
+    → peek is safer → use peek
+
+→ Always use offer/poll/peek for defensive programming
+→ These are the STANDARD Queue operations in interviews</code></pre></div>
+<h3>Pitfall 5: Confusing Level Order with Other Traversals</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>Tree:
+</span>        1
+       / \
+      2    3
+
+Level order (BFS): [1, 2, 3]     ← wide first
+Preorder (DFS):    [1, 2, 3]     ← coincidentally same for this tree!
+Inorder (DFS):     [2, 1, 3]     ← different
+Postorder (DFS):   [2, 3, 1]     ← different
+
+For this SPECIFIC tree, BFS and preorder DFS give the same result
+→ This is a COINCIDENCE, not a rule
+→ For most trees, they differ
+→ Don't assume BFS = preorder
+
+Tree:
+        1
+       / \
+      2    3
+     /      \
+    4        5
+
+BFS:      [1, 2, 3, 4, 5]    ← level by level
+Preorder: [1, 2, 4, 3, 5]    ← clearly different</code></pre></div>
+<hr>
+<h2>📈 SCALABILITY CONSIDERATIONS</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>NODE COUNT SCALING:
+</span>→ n = 100       → 100 enqueue + 100 dequeue → instant
+→ n = 10,000    → 20K queue operations → instant
+→ n = 1,000,000 → 2M queue operations → ~20ms
+→ n = 10,000,000 → 20M operations → ~200ms
+
+QUEUE SIZE (maximum simultaneous nodes):
+  Complete binary tree of depth d:
+    → Last level has 2^d nodes
+    → Total nodes: 2^(d+1) - 1
+    → Queue max size: 2^d ≈ n/2
+
+  d = 10:  last level = 1,024       → queue fits easily
+  d = 20:  last level = 1,048,576   → ~4MB for node references → fine
+  d = 30:  last level = 1 billion   → ~8GB for references → problematic
+
+  → For typical trees (depth ≤ 20) → no memory issues
+  → For very deep trees (depth &gt; 25) → consider DFS alternative
+
+SKEWED TREE (worst case for DFS, best case for BFS):
+  1 → 2 → 3 → 4 → 5 → ... → n (all left children)
+  
+  → BFS queue max size: 1 (one node per level) → O(1) space!
+  → DFS recursion depth: n → O(n) space (stack overflow risk)
+  → BFS is better for skewed trees
+  
+  → For balanced trees: BFS uses O(n/2), DFS uses O(log n)
+  → For skewed trees: BFS uses O(1), DFS uses O(n)
+  → Neither dominates → depends on tree shape</code></pre></div>
+<hr>
+<h2>🔍 INTERPRETABILITY CONSIDERATIONS</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>MENTAL MODEL:
+</span>  → Imagine flooding water from the top of the tree
+  → Water fills level 0 first (root)
+  → Then overflows to level 1 (root's children)
+  → Then to level 2 (grandchildren)
+  → Each level fills completely before water reaches the next
+  → BFS = "flood fill" from the top
+
+DEBUGGING:
+  → Print queue contents at each level boundary
+  → You can see exactly which nodes are in the current level
+  → Each level's contents are deterministic → easy to verify
+  → If a node is missing → check its parent's enqueue logic
+
+INTERVIEW COMMUNICATION:
+  → "I use BFS with a queue to process the tree level by level"
+  → "At each level, I snapshot the queue size to know how many nodes belong to this level"
+  → "I process exactly that many nodes, adding their children for the next level"
+  → "Time: O(n), Space: O(n) for the queue and result"
+
+WHITEBOARD TECHNIQUE:
+  → Draw the tree
+  → Draw the queue below it
+  → Show arrows from tree nodes entering the queue
+  → Process one level at a time on the whiteboard
+  → This visual makes the algorithm crystal clear</code></pre></div>
+<hr>
+<div class="github-btn-wrap"><a class="github-btn" href="https://github.com/Shakti4640/leetcode-patterns-guide-java/tree/main/project- (17)" target="_blank" rel="noopener"><svg viewBox="0 0 24 24"><path d="M12 .5C5.37.5 0 5.87 0 12.5c0 5.3 3.44 9.8 8.2 11.39.6.11.82-.26.82-.58v-2.03c-3.34.73-4.04-1.61-4.04-1.61-.55-1.39-1.34-1.76-1.34-1.76-1.09-.74.08-.73.08-.73 1.2.09 1.84 1.24 1.84 1.24 1.07 1.83 2.8 1.3 3.49 1 .1-.78.42-1.3.76-1.6-2.67-.3-5.47-1.33-5.47-5.93 0-1.31.47-2.38 1.24-3.22-.14-.3-.54-1.52.1-3.18 0 0 1.01-.32 3.3 1.23a11.5 11.5 0 0 1 3-.4c1.02 0 2.04.13 3 .4 2.28-1.55 3.29-1.23 3.29-1.23.64 1.66.24 2.88.12 3.18.77.84 1.23 1.91 1.23 3.22 0 4.61-2.81 5.63-5.48 5.92.43.37.81 1.1.81 2.22v3.29c0 .32.21.7.82.58C20.56 22.3 24 17.8 24 12.5 24 5.87 18.63.5 12 .5z"/></svg>💻 View Complete Java Code on GitHub</a></div>
+
+<hr>
+<h2>🔑 EXPECTED OUTPUT</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>╔═══════════════════════════════════════════════════════╗
+</span>║  PROJECT 17: Binary Tree Level Order Traversal        ║
+║  Pattern: Tree BFS → Queue + Level Size Snapshot      ║
+╚═══════════════════════════════════════════════════════╝
+
+═══ TEST 1: Classic Example (Traced) ═══
+  Tree: Classic
+  3
+  ├── R:20
+  │   ├── R:7
+  │   └── L:15
+  └── L:9
+  ─────────────────────────────────────────
+  Level 0 (size=1): queue=[3]
+    Process 3 → enqueue: L=9, R=20
+    Level 0 result: [3]
+
+  Level 1 (size=2): queue=[9, 20]
+    Process 9 → enqueue: no children
+    Process 20 → enqueue: L=15, R=7
+    Level 1 result: [9, 20]
+
+  Level 2 (size=2): queue=[15, 7]
+    Process 15 → enqueue: no children
+    Process 7 → enqueue: no children
+    Level 2 result: [15, 7]
+
+  ★ FINAL RESULT: [[3], [9, 20], [15, 7]]
+
+═══ TEST 2: Fuller Tree (Traced) ═══
+  Tree: Fuller
+  1
+  ├── R:3
+  │   └── R:6
+  └── L:2
+      ├── R:5
+      └── L:4
+  ─────────────────────────────────────────
+  Level 0 (size=1): queue=[1]
+    Process 1 → enqueue: L=2, R=3
+    Level 0 result: [1]
+
+  Level 1 (size=2): queue=[2, 3]
+    Process 2 → enqueue: L=4, R=5
+    Process 3 → enqueue: R=6
+    Level 1 result: [2, 3]
+
+  Level 2 (size=3): queue=[4, 5, 6]
+    Process 4 → enqueue: no children
+    Process 5 → enqueue: no children
+    Process 6 → enqueue: no children
+    Level 2 result: [4, 5, 6]
+
+  ★ FINAL RESULT: [[1], [2, 3], [4, 5, 6]]
+
+═══ TEST 3: Skewed Tree (Traced) ═══
+  Tree: Skewed Left
+  1
+  └── L:2
+      └── L:3
+          └── L:4
+  ─────────────────────────────────────────
+  Level 0 (size=1): queue=[1]
+    Process 1 → enqueue: L=2
+    Level 0 result: [1]
+
+  Level 1 (size=1): queue=[2]
+    Process 2 → enqueue: L=3
+    Level 1 result: [2]
+
+  Level 2 (size=1): queue=[3]
+    Process 3 → enqueue: L=4
+    Level 2 result: [3]
+
+  Level 3 (size=1): queue=[4]
+    Process 4 → enqueue: no children
+    Level 3 result: [4]
+
+  ★ FINAL RESULT: [[1], [2], [3], [4]]
+
+═══ TEST 4: Edge Cases ═══
+  Single node: [[1]]
+  Null tree:   []
+  Three nodes: [[1], [2, 3]]
+
+═══ TEST 5: Bottom-Up Level Order ═══
+  Tree 1 normal:    [[3], [9, 20], [15, 7]]
+  Tree 1 bottom-up: [[15, 7], [9, 20], [3]]
+  Tree 2 normal:    [[1], [2, 3], [4, 5, 6]]
+  Tree 2 bottom-up: [[4, 5, 6], [2, 3], [1]]
+
+═══ TEST 6: Right Side View ═══
+  Right view: [3, 20, 7]
+  Right view: [1, 3, 6]
+  Right view: [1, 2, 3, 4]
+
+═══ TEST 7: Left Side View ═══
+  Tree 1 left view:  [3, 9, 15]
+  Tree 2 left view:  [1, 2, 4]
+  Skewed left view:  [1, 2, 3, 4]
+
+═══ TEST 8: Average of Each Level ═══
+  Tree 1 levels:   [[3], [9, 20], [15, 7]]
+  Tree 1 averages: [3.0, 14.5, 11.0]
+  Tree 2 levels:   [[1], [2, 3], [4, 5, 6]]
+  Tree 2 averages: [1.0, 2.5, 5.0]
+
+═══ TEST 9: Largest Value in Each Level ═══
+  Tree 1 levels:  [[3], [9, 20], [15, 7]]
+  Tree 1 largest: [3, 20, 15]
+  Tree 2 levels:  [[1], [2, 3], [4, 5, 6]]
+  Tree 2 largest: [1, 3, 6]
+
+═══ TEST 10: Tree Depth and Width ═══
+  Classic: depth=3 width=2 levels=[[3], [9, 20], [15, 7]]
+  Fuller:  depth=3 width=3 levels=[[1], [2, 3], [4, 5, 6]]
+  Skewed:  depth=4 width=1 levels=[[1], [2], [3], [4]]
+  Single:  depth=1 width=1 levels=[[1]]
+
+═══ TEST 11: Larger Complete Tree ═══
+  Level order: [[1], [2, 3], [4, 5, 6, 7], [8, 9, 10, 11, 12, 13, 14, 15]]
+  Right view:  [1, 3, 7, 15]
+  Left view:   [1, 2, 4, 8]
+  Depth:       4
+  Max width:   8
+  Averages:    [1.0, 2.5, 5.5, 11.5]
+  Largest:     [1, 3, 7, 15]
+
+═══ TEST 13: Performance Benchmark ═══
+  Complete binary tree depth: 20
+  Total nodes: 2097151
+  Levels in result: 21
+  Last level size: 1048576
+  Time: ~180 ms</code></pre></div>
+<hr>
+<h2>🧠 KEY TAKEAWAY</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>WHAT WE LEARNED:
+</span>→ Tree BFS uses a QUEUE to process nodes level by level
+→ The LEVEL SIZE SNAPSHOT is the critical technique
+→ queue.size() before the inner loop = number of nodes in current level
+→ Process exactly that many nodes → enqueue their children → repeat
+→ This gives grouped level-order output: [[level0], [level1], [level2], ...]
+
+THE BFS TEMPLATE (universal):
+  queue.offer(root)
+  while (!queue.isEmpty()):
+      levelSize = queue.size()        ← SNAPSHOT
+      for i = 0 to levelSize-1:
+          node = queue.poll()
+          PROCESS(node)               ← varies per problem
+          enqueue children
+      LEVEL_COMPLETE()                ← varies per problem
+
+  → Change ONLY the PROCESS and LEVEL_COMPLETE logic
+  → The skeleton stays the same for ALL BFS problems
+  → Level order: PROCESS adds value to list
+  → Right view: PROCESS records last node only
+  → Average: PROCESS sums values, LEVEL_COMPLETE divides
+  → Max per level: PROCESS tracks max
+  → ALL use the SAME skeleton
+
+NEW DATA STRUCTURE INTRODUCED:
+  → TreeNode with val, left, right
+  → Queue (LinkedList/ArrayDeque) for BFS
+  → Trees are hierarchical → multiple traversal strategies exist
+  → BFS = breadth-first (level by level) → uses Queue
+  → DFS = depth-first (branch by branch) → uses Stack/Recursion → next project
+
+PATTERN FAMILY COMPARISON:
+  Arrays:       Two Pointers, Sliding Window, Binary Search
+  Linked Lists: Fast/Slow, Reversal
+  Intervals:    Sort-then-Scan
+  Trees:        BFS (this project), DFS (next project)
+  
+→ Each data structure has its own pattern family
+→ We systematically build mastery across all families</code></pre></div>
+<hr>
+<h2>🌉 BRIDGE TO NEXT PROJECT</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>PROJECT 17 solved:
+</span>→ Tree BFS → level-by-level traversal using Queue
+→ Level size snapshot technique → groups nodes by level
+→ Variants: right view, left view, averages, max per level, depth, width
+→ All variants use the SAME BFS template with different PROCESS logic
+
+PROJECT 18 (Root-to-Leaf Path Sum) will introduce:
+→ Tree DFS (Depth-First Search) → the OTHER traversal strategy
+→ Instead of going WIDE (level by level) → we go DEEP (branch by branch)
+→ Instead of a Queue → we use RECURSION (implicit stack)
+→ Instead of processing levels → we follow ROOT-TO-LEAF paths
+→ The question changes from "what's at each level?" to "what's along each path?"
+
+THE CONNECTION:
+  → BFS (Project 17): explores tree HORIZONTALLY → level awareness
+  → DFS (Project 18): explores tree VERTICALLY → path awareness
+  → BFS uses QUEUE → FIFO → wide before deep
+  → DFS uses STACK/RECURSION → LIFO → deep before wide
+  → BOTH visit every node exactly once → O(n) time
+  → BOTH are fundamental → you MUST know both
+
+WHY DFS FOR PATH SUM:
+  → "Does a root-to-leaf path exist with a given sum?"
+  → This requires following a COMPLETE path from root to leaf
+  → BFS processes level by level → doesn't naturally track paths
+  → DFS naturally follows one path at a time → perfect for path questions
+  → Recursion makes DFS elegant: "can my left subtree reach target-val? can my right?"
+
+THE BIGGER TREE PICTURE:
+  Project 17: Tree BFS → level order → Queue → level awareness
+  Project 18: Tree DFS → path sum → Recursion → path awareness
+  Project 24: Tree BFS → zigzag order → Queue + direction flag
+  Project 25: Tree BFS → connect siblings → Queue + neighbor linking
+  Project 26: Tree DFS → all paths for target → backtracking
+  Project 27: Tree DFS → serialize/deserialize → preorder encoding
+
+→ BFS and DFS are the TWO pillars of tree traversal
+→ All tree problems use one or both
+→ Master both → master trees</code></pre></div>
+<hr>
+<p><strong>Ready for Project 18: Root-to-Leaf Path Sum (Tree DFS → Recursive Subtraction → Base Case at Leaf)?</strong></p>
+</div>
+</div>
+
+
+
+<!-- ========== data-index="5" ========== -->
+<div class="chat-message" data-index="5"></div>
+</div>
+<div class="bottom-nav">
+  <a href="project-16.html" class="nav-btn prev">← Prev</a>
+  <div class="nav-center">
+    <span class="nav-project-label">PROJECT 17 of 60</span>
+    <span class="nav-project-title">Binary Tree Level Order Traversal</span>
+    <span class="kbd-hint">← → arrow keys to navigate</span>
+  </div>
+  <a href="project-18.html" class="nav-btn next">Next →</a>
+  <a href="index.html" class="nav-btn home">🏠 TOC</a>
+</div>
+<div id="progress-track"><div id="progress-fill"></div></div>
+<div id="progress-pct">0%</div>
+<script src="script.js"></script>
+<script>
+document.addEventListener('keydown', function(e) {
+  if (['INPUT','TEXTAREA'].includes(document.activeElement.tagName)) return;
+  if (e.key === 'ArrowRight' && "project-18.html" !== null) window.location = "project-18.html";
+  if (e.key === 'ArrowLeft' && "project-16.html" !== null) window.location = "project-16.html";
+});
+</script>
+</body>
+</html>

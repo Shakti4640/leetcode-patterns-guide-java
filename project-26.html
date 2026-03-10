@@ -1,0 +1,636 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PROJECT 26: All Root-to-Leaf Paths for a Target Sum</title>
+<link rel="icon" type="image/png" href="images/favicon.png">
+<link rel="stylesheet" href="styles.css">
+
+</head>
+<body>
+<div id="progress-bar-container"><div id="progress-bar" style="width:44%"></div></div>
+<div id="progress-label">44%</div>
+<div class="page-wrapper">
+<div class="chat-message"><div class="px-2"><h1>PROJECT 26: All Root-to-Leaf Paths for a Target Sum</h1>
+<h2>🎯 Tree DFS → Path Accumulation → Backtracking on DFS Return</h2>
+<hr>
+<h2>🔗 DEPENDENCY CHAIN</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>Project 17 (Tree BFS — Level Order Traversal)
+</span>    → Introduced tree structure, TreeNode, queue-based traversal
+Project 18 (Root-to-Leaf Path Sum)
+    → Introduced DFS recursion, subtraction technique, leaf base case
+    → Asked: "Does ANY path sum to target?" → returned boolean
+
+PROJECT 26 (THIS):
+    → Asks: "Find ALL paths that sum to target" → return list of lists
+    → NEW SKILL: Path accumulation + Backtracking
+    → This is the FIRST time we explicitly manage state on DFS return</code></pre></div>
+<hr>
+<h2>🧩 THE HYPOTHETICAL PROBLEM</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ You are given a BINARY TREE and a TARGET SUM
+</span>→ Find ALL root-to-leaf paths where the sum of node values equals the target
+→ Return each path as a list of node values from root to leaf
+→ Return ALL such paths (not just one, not just true/false)
+
+Example:
+            5
+           / \
+          4    8
+         /    / \
+        11   13   4
+       / \       / \
+      7   2     5   1
+
+  Target = 22
+
+  Path 1: 5 → 4 → 11 → 2  = 22 ✓
+  Path 2: 5 → 8 → 4 → 5   = 22 ✓
+
+  Output: [[5,4,11,2], [5,8,4,5]]
+
+Other paths:
+  5 → 4 → 11 → 7  = 27 ✗
+  5 → 8 → 13       = 26 ✗
+  5 → 8 → 4 → 1    = 18 ✗</code></pre></div>
+<hr>
+<h2>🔍 HOW TO APPROACH IT</h2>
+<h3>Step 1 — Recall What Project 18 Taught Us</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>In Project 18 we solved: "Does ANY path sum to target?"
+</span>→ We subtracted current node value from remaining target
+→ At leaf: checked if remaining == 0
+→ Returned true/false
+→ The moment ONE path matched, we returned true
+
+KEY LIMITATION OF PROJECT 18:
+→ We only needed a YES/NO answer
+→ We never needed to REMEMBER which nodes formed the path
+→ We never needed to find ALL such paths
+
+PROJECT 26 DEMANDS:
+→ Find ALL matching paths (not just one)
+→ RECORD the actual node values along each path
+→ Return them as complete lists
+→ This requires a fundamentally new technique: BACKTRACKING</code></pre></div>
+<h3>Step 2 — The Core New Concept: Path Accumulation</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>Imagine walking through the tree with a NOTEBOOK:
+</span>→ When you ENTER a node → WRITE its value in the notebook
+→ When you reach a LEAF → CHECK if notebook values sum to target
+→ If YES → COPY the notebook page and save it as a result
+→ When you BACKTRACK (return from a node) → ERASE the last entry
+
+This "write on enter, erase on exit" is BACKTRACKING
+
+Visual walkthrough:
+            5
+           / \
+          4    8
+
+Step 1: Enter node 5 → notebook = [5]
+Step 2: Go left → Enter node 4 → notebook = [5, 4]
+Step 3: Node 4 is leaf (in simple tree) → check sum → backtrack
+Step 4: Erase 4 → notebook = [5]
+Step 5: Go right → Enter node 8 → notebook = [5, 8]
+Step 6: Node 8 is leaf → check sum → backtrack
+Step 7: Erase 8 → notebook = [5]
+Step 8: Erase 5 → notebook = []</code></pre></div>
+<h3>Step 3 — Why Backtracking is ESSENTIAL</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>Without backtracking — what goes WRONG:
+</span>
+            5
+           / \
+          4    8
+
+Enter 5 → path = [5]
+Enter 4 → path = [5, 4]
+Return from 4 → path is STILL [5, 4]   ← PROBLEM!
+Enter 8 → path = [5, 4, 8]             ← WRONG! Should be [5, 8]
+
+The left subtree's nodes CONTAMINATE the right subtree's path
+because we never REMOVED them.
+
+With backtracking:
+Enter 5 → path = [5]
+Enter 4 → path = [5, 4]
+Return from 4 → REMOVE last → path = [5]    ← CLEAN!
+Enter 8 → path = [5, 8]                      ← CORRECT!</code></pre></div>
+<h3>Step 4 — Deep Copy vs Reference Trap</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>CRITICAL PITFALL that catches almost everyone:
+</span>
+When we find a valid path, we must COPY it into results.
+We CANNOT just add the path reference.
+
+WHY?
+→ The path list is being MODIFIED throughout the DFS
+→ If you add a reference: results.add(currentPath)
+→ That reference points to the SAME list object
+→ As backtracking erases entries, your "saved" result gets erased too
+→ At the end, ALL entries in results point to the SAME empty list
+
+FIX:
+→ results.add(new ArrayList&lt;&gt;(currentPath))   ← DEEP COPY
+→ This creates a SNAPSHOT of the path at that moment
+→ Future modifications to currentPath don't affect the snapshot</code></pre></div>
+<hr>
+<h2>🛠️ HOW CAN WE SOLVE IT</h2>
+<h3>The Algorithm — Step by Step</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>1. Create a results list (list of lists) to store all valid paths
+</span>2. Create a currentPath list to track the current DFS path
+3. Start DFS from root
+
+DFS(node, remainingSum, currentPath, results):
+    a. If node is null → return (base case — dead end)
+    b. ADD node.val to currentPath
+    c. Subtract node.val from remainingSum
+    d. If node is a LEAF (no left, no right):
+         → If remainingSum == 0:
+              → COPY currentPath into results
+    e. Else (not a leaf):
+         → Recurse LEFT:  DFS(node.left, remainingSum, currentPath, results)
+         → Recurse RIGHT: DFS(node.right, remainingSum, currentPath, results)
+    f. BACKTRACK: REMOVE last element from currentPath
+       → This is the KEY step — restores state for sibling exploration</code></pre></div>
+<h3>Walkthrough on Full Example</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>            5
+</span>           / \
+          4    8
+         /    / \
+        11   13   4
+       / \       / \
+      7   2     5   1
+
+Target = 22
+
+─── DFS START ───
+Enter 5 → path=[5], remaining=17
+  Enter 4 → path=[5,4], remaining=13
+    Enter 11 → path=[5,4,11], remaining=2
+      Enter 7 → path=[5,4,11,7], remaining=-5
+        Leaf! remaining≠0 → no match
+        BACKTRACK → remove 7 → path=[5,4,11]
+      Enter 2 → path=[5,4,11,2], remaining=0
+        Leaf! remaining==0 → ✅ SAVE COPY [5,4,11,2]
+        BACKTRACK → remove 2 → path=[5,4,11]
+      BACKTRACK → remove 11 → path=[5,4]
+    BACKTRACK → remove 4 → path=[5]
+  Enter 8 → path=[5,8], remaining=9
+    Enter 13 → path=[5,8,13], remaining=-4
+      Leaf! remaining≠0 → no match
+      BACKTRACK → remove 13 → path=[5,8]
+    Enter 4 → path=[5,8,4], remaining=5
+      Enter 5 → path=[5,8,4,5], remaining=0
+        Leaf! remaining==0 → ✅ SAVE COPY [5,8,4,5]
+        BACKTRACK → remove 5 → path=[5,8,4]
+      Enter 1 → path=[5,8,4,1], remaining=4
+        Leaf! remaining≠0 → no match
+        BACKTRACK → remove 1 → path=[5,8,4]
+      BACKTRACK → remove 4 → path=[5,8]
+    BACKTRACK → remove 8 → path=[5]
+  BACKTRACK → remove 5 → path=[]
+
+─── RESULT ───
+[[5,4,11,2], [5,8,4,5]]</code></pre></div>
+<hr>
+<h2>✅ WHAT SHOULD YOU DO</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ ALWAYS backtrack (remove last element) AFTER processing both children
+</span>     → This is non-negotiable — forgetting it corrupts ALL subsequent paths
+→ ALWAYS deep-copy the path when saving to results
+     → new ArrayList&lt;&gt;(currentPath) — not just currentPath
+→ ALWAYS subtract BEFORE checking leaf condition
+     → Add to path → subtract → check → recurse → backtrack
+     → This order is the canonical DFS-with-path pattern
+→ ALWAYS check leaf condition as: node.left == null &amp;&amp; node.right == null
+     → Not just "no children in one direction"
+→ ALWAYS pass the results list and currentPath by REFERENCE
+     → Java passes object references naturally
+     → Both the path and results accumulate across recursive calls
+→ ALWAYS handle null node as the FIRST check in recursion
+     → Prevents NullPointerException on node.val access</code></pre></div>
+<hr>
+<h2>🚫 WHAT SHOULD YOU NOT DO</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ DO NOT create a new path list at every recursive call
+</span>     → This wastes O(n) memory per call → total O(n × 2^n) memory
+     → Backtracking reuses ONE list → O(n) memory for the path
+
+     BAD (creates new list every call):
+       List&lt;Integer&gt; newPath = new ArrayList&lt;&gt;(currentPath);
+       newPath.add(node.val);
+       dfs(node.left, remaining, newPath, results);
+     
+     → This "works" but is extremely wasteful
+     → It avoids the need for backtracking but at massive memory cost
+     → Real interviews expect the backtracking approach
+
+→ DO NOT forget the deep copy when saving results
+
+     BAD:  results.add(currentPath);         ← reference to mutable list
+     GOOD: results.add(new ArrayList&lt;&gt;(currentPath)); ← snapshot copy
+
+→ DO NOT try to use BFS for this problem
+     → BFS processes level by level → paths cross levels
+     → Tracking individual root-to-leaf paths in BFS is awkward
+     → DFS naturally follows ONE path at a time → perfect fit
+
+→ DO NOT check remaining &lt; 0 as an early exit IF negative values exist
+     → If tree has negative values, a path can go below zero then come back
+     → 5 → (-3) → 20 with target 22: remaining goes 17 → 20 → 0 ✓
+     → Pruning at remaining &lt; 0 would MISS this path
+     → Only prune on remaining &lt; 0 if ALL values are guaranteed POSITIVE
+
+→ DO NOT confuse "root-to-leaf" with "root-to-any-node"
+     → Leaf = node with NO children (both left and right are null)
+     → A node with one child is NOT a leaf
+     → Stopping at non-leaf nodes gives wrong answers</code></pre></div>
+<hr>
+<h2>🔀 WHEN TO USE THIS PATTERN</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>✓ Problem says "find ALL paths" in a tree
+</span>✓ Problem says "root-to-leaf" → DFS is the natural traversal
+✓ You need to COLLECT results, not just check existence
+✓ The path itself (sequence of nodes) matters, not just a boolean
+✓ The tree has potential for MULTIPLE valid answers
+✓ Backtracking is needed whenever:
+     → You build up state going DOWN the tree
+     → You must UNDO that state coming BACK UP
+     → The state is shared across sibling subtrees
+
+RECOGNIZABLE KEYWORDS:
+→ "all paths", "find every path", "list all", "enumerate"
+→ "root to leaf", "path sum", "path with property X"
+→ "return list of lists"</code></pre></div>
+<hr>
+<h2>🚫 WHEN NOT TO USE THIS PATTERN</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>✗ Problem only asks "does ANY path exist?" → Project 18 approach (boolean DFS)
+</span>✗ Problem asks for "any path in the tree" (not root-to-leaf)
+     → Different problem: path can start/end anywhere
+     → Needs different technique (path between any two nodes)
+✗ Problem asks for COUNT of paths, not the actual paths
+     → Counting doesn't need path accumulation
+     → Simpler DFS with integer return suffices
+✗ Tree is extremely deep (&gt;10,000 levels)
+     → Recursive DFS may cause StackOverflowError
+     → Need iterative DFS with explicit stack (rare in interviews)
+✗ Problem involves graph cycles
+     → Trees have no cycles → no visited tracking needed
+     → Graphs need visited sets → different approach (Project 47)</code></pre></div>
+<hr>
+<h2>⚙️ HOW IT ONLY WORKS — Internal Mechanics</h2>
+<h3>The Call Stack as an Implicit Path Tracker</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>The Java call stack itself mirrors the tree path:
+</span>
+Call stack when at node 2 (path [5,4,11,2]):
+
+  main()
+    └─ dfs(node=5, rem=22)      ← entered 5
+        └─ dfs(node=4, rem=17)   ← entered 4
+            └─ dfs(node=11, rem=13) ← entered 11
+                └─ dfs(node=2, rem=2)  ← entered 2 (LEAF, rem=0 ✓)
+
+Each stack frame holds its own local variables.
+But the currentPath list is SHARED across all frames.
+That's why we must manually add/remove from it.
+
+When dfs(node=2) returns:
+→ We remove 2 from currentPath
+→ Control returns to dfs(node=11)
+→ Which then calls dfs(node=7) with clean path [5,4,11]</code></pre></div>
+<h3>Memory Layout During Execution</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>At the moment we find path [5,4,11,2]:
+</span>
+  currentPath (ONE shared list): [5, 4, 11, 2]
+  results: []
+
+  Action: results.add(new ArrayList&lt;&gt;(currentPath))
+  
+  After action:
+  currentPath: [5, 4, 11, 2]  ← still mutable, will be modified
+  results: [[5, 4, 11, 2]]     ← independent copy, safe from changes
+
+  After backtrack (remove 2):
+  currentPath: [5, 4, 11]      ← modified
+  results: [[5, 4, 11, 2]]     ← copy unchanged ✓
+
+If we had done results.add(currentPath) WITHOUT copy:
+  After backtrack:
+  currentPath: [5, 4, 11]
+  results: [[5, 4, 11]]        ← ALSO modified because same reference!
+  
+  At end of all DFS:
+  currentPath: []
+  results: [[], []]             ← ALL entries are empty! DISASTER!</code></pre></div>
+<h3>Backtracking Invariant</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>INVARIANT: Before and after calling dfs(node, ...),
+</span>           currentPath contains exactly the path from root
+           to node's PARENT.
+
+PROOF:
+→ Before entering dfs(node): path = [root, ..., parent]
+→ First line of dfs: path.add(node.val) → path = [root, ..., parent, node]
+→ Process children → path grows and shrinks through their backtracking
+→ Last line of dfs: path.remove(last) → path = [root, ..., parent]
+→ After returning from dfs(node): path = [root, ..., parent]
+→ INVARIANT RESTORED ✓
+
+This means the CALLER always sees the path in the same state
+before and after the recursive call. This is the ESSENCE of backtracking.</code></pre></div>
+<h3>Time Complexity Analysis</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ We visit every node exactly ONCE → O(n) visits
+</span>→ At each leaf, we MIGHT copy the path → path length is O(h) where h = tree height
+→ In worst case, every leaf is a valid path
+→ Number of leaves ≤ n/2
+→ Each path copy costs O(h)
+→ Total copy cost: O(n/2 × h) = O(n × h)
+→ For balanced tree: h = log(n) → O(n log n)
+→ For skewed tree: h = n → O(n²)
+→ Overall: O(n × h) where h is tree height</code></pre></div>
+<h3>Space Complexity Analysis</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ currentPath list: O(h) — at most tree height elements
+</span>→ Call stack depth: O(h) — recursive depth equals tree height
+→ Results storage: O(k × h) where k = number of valid paths
+→ Total auxiliary: O(h) + O(k × h)
+→ For balanced tree: O(log n) auxiliary (excluding output)
+→ For skewed tree: O(n) auxiliary</code></pre></div>
+<hr>
+<h2>⚠️ COMMON PITFALLS AND FAILURE MODES</h2>
+<h3>Pitfall 1: Forgetting to Backtrack</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span class="token" style="color: rgb(0, 128, 0); font-style: italic;">// ❌ BROKEN — no backtracking</span><span>
+</span><span></span><span class="token" style="color: rgb(0, 0, 255);">void</span><span> </span><span class="token" style="color: rgb(57, 58, 52);">dfs</span><span class="token" style="color: rgb(57, 58, 52);">(</span><span class="token" style="color: rgb(43, 145, 175);">TreeNode</span><span> node</span><span class="token" style="color: rgb(57, 58, 52);">,</span><span> </span><span class="token" style="color: rgb(0, 0, 255);">int</span><span> rem</span><span class="token" style="color: rgb(57, 58, 52);">,</span><span> </span><span class="token" style="color: rgb(43, 145, 175);">List</span><span class="token generics" style="color: rgb(57, 58, 52);">&lt;</span><span class="token generics" style="color: rgb(43, 145, 175);">Integer</span><span class="token generics" style="color: rgb(57, 58, 52);">&gt;</span><span> path</span><span class="token" style="color: rgb(57, 58, 52);">,</span><span> </span><span class="token" style="color: rgb(43, 145, 175);">List</span><span class="token generics" style="color: rgb(57, 58, 52);">&lt;</span><span class="token generics" style="color: rgb(43, 145, 175);">List</span><span class="token generics" style="color: rgb(57, 58, 52);">&lt;</span><span class="token generics" style="color: rgb(43, 145, 175);">Integer</span><span class="token generics" style="color: rgb(57, 58, 52);">&gt;</span><span class="token generics" style="color: rgb(57, 58, 52);">&gt;</span><span> res</span><span class="token" style="color: rgb(57, 58, 52);">)</span><span> </span><span class="token" style="color: rgb(57, 58, 52);">{</span><span>
+</span><span>    </span><span class="token" style="color: rgb(0, 0, 255);">if</span><span> </span><span class="token" style="color: rgb(57, 58, 52);">(</span><span>node </span><span class="token" style="color: rgb(57, 58, 52);">==</span><span> </span><span class="token" style="color: rgb(0, 0, 255);">null</span><span class="token" style="color: rgb(57, 58, 52);">)</span><span> </span><span class="token" style="color: rgb(0, 0, 255);">return</span><span class="token" style="color: rgb(57, 58, 52);">;</span><span>
+</span><span>    path</span><span class="token" style="color: rgb(57, 58, 52);">.</span><span class="token" style="color: rgb(57, 58, 52);">add</span><span class="token" style="color: rgb(57, 58, 52);">(</span><span>node</span><span class="token" style="color: rgb(57, 58, 52);">.</span><span>val</span><span class="token" style="color: rgb(57, 58, 52);">)</span><span class="token" style="color: rgb(57, 58, 52);">;</span><span>
+</span><span>    </span><span class="token" style="color: rgb(0, 0, 255);">if</span><span> </span><span class="token" style="color: rgb(57, 58, 52);">(</span><span>node</span><span class="token" style="color: rgb(57, 58, 52);">.</span><span>left </span><span class="token" style="color: rgb(57, 58, 52);">==</span><span> </span><span class="token" style="color: rgb(0, 0, 255);">null</span><span> </span><span class="token" style="color: rgb(57, 58, 52);">&amp;&amp;</span><span> node</span><span class="token" style="color: rgb(57, 58, 52);">.</span><span>right </span><span class="token" style="color: rgb(57, 58, 52);">==</span><span> </span><span class="token" style="color: rgb(0, 0, 255);">null</span><span> </span><span class="token" style="color: rgb(57, 58, 52);">&amp;&amp;</span><span> rem </span><span class="token" style="color: rgb(57, 58, 52);">-</span><span> node</span><span class="token" style="color: rgb(57, 58, 52);">.</span><span>val </span><span class="token" style="color: rgb(57, 58, 52);">==</span><span> </span><span class="token" style="color: rgb(54, 172, 170);">0</span><span class="token" style="color: rgb(57, 58, 52);">)</span><span> </span><span class="token" style="color: rgb(57, 58, 52);">{</span><span>
+</span><span>        res</span><span class="token" style="color: rgb(57, 58, 52);">.</span><span class="token" style="color: rgb(57, 58, 52);">add</span><span class="token" style="color: rgb(57, 58, 52);">(</span><span class="token" style="color: rgb(0, 0, 255);">new</span><span> </span><span class="token" style="color: rgb(43, 145, 175);">ArrayList</span><span class="token generics" style="color: rgb(57, 58, 52);">&lt;</span><span class="token generics" style="color: rgb(57, 58, 52);">&gt;</span><span class="token" style="color: rgb(57, 58, 52);">(</span><span>path</span><span class="token" style="color: rgb(57, 58, 52);">)</span><span class="token" style="color: rgb(57, 58, 52);">)</span><span class="token" style="color: rgb(57, 58, 52);">;</span><span>
+</span><span>    </span><span class="token" style="color: rgb(57, 58, 52);">}</span><span>
+</span><span>    </span><span class="token" style="color: rgb(57, 58, 52);">dfs</span><span class="token" style="color: rgb(57, 58, 52);">(</span><span>node</span><span class="token" style="color: rgb(57, 58, 52);">.</span><span>left</span><span class="token" style="color: rgb(57, 58, 52);">,</span><span> rem </span><span class="token" style="color: rgb(57, 58, 52);">-</span><span> node</span><span class="token" style="color: rgb(57, 58, 52);">.</span><span>val</span><span class="token" style="color: rgb(57, 58, 52);">,</span><span> path</span><span class="token" style="color: rgb(57, 58, 52);">,</span><span> res</span><span class="token" style="color: rgb(57, 58, 52);">)</span><span class="token" style="color: rgb(57, 58, 52);">;</span><span>
+</span><span>    </span><span class="token" style="color: rgb(57, 58, 52);">dfs</span><span class="token" style="color: rgb(57, 58, 52);">(</span><span>node</span><span class="token" style="color: rgb(57, 58, 52);">.</span><span>right</span><span class="token" style="color: rgb(57, 58, 52);">,</span><span> rem </span><span class="token" style="color: rgb(57, 58, 52);">-</span><span> node</span><span class="token" style="color: rgb(57, 58, 52);">.</span><span>val</span><span class="token" style="color: rgb(57, 58, 52);">,</span><span> path</span><span class="token" style="color: rgb(57, 58, 52);">,</span><span> res</span><span class="token" style="color: rgb(57, 58, 52);">)</span><span class="token" style="color: rgb(57, 58, 52);">;</span><span>
+</span><span>    </span><span class="token" style="color: rgb(0, 128, 0); font-style: italic;">// MISSING: path.remove(path.size() - 1);</span><span>
+</span><span></span><span class="token" style="color: rgb(57, 58, 52);">}</span><span>
+</span>
+<span></span><span class="token" style="color: rgb(0, 128, 0); font-style: italic;">// Result: paths accumulate ALL visited nodes</span><span>
+</span><span></span><span class="token" style="color: rgb(0, 128, 0); font-style: italic;">// Path for rightmost leaf would contain EVERY node in the tree</span></code></pre></div>
+<h3>Pitfall 2: Reference vs Copy Bug</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span class="token" style="color: rgb(0, 128, 0); font-style: italic;">// ❌ BROKEN — saves reference, not copy</span><span>
+</span><span></span><span class="token" style="color: rgb(0, 0, 255);">if</span><span> </span><span class="token" style="color: rgb(57, 58, 52);">(</span><span>isLeaf </span><span class="token" style="color: rgb(57, 58, 52);">&amp;&amp;</span><span> rem </span><span class="token" style="color: rgb(57, 58, 52);">==</span><span> </span><span class="token" style="color: rgb(54, 172, 170);">0</span><span class="token" style="color: rgb(57, 58, 52);">)</span><span> </span><span class="token" style="color: rgb(57, 58, 52);">{</span><span>
+</span><span>    res</span><span class="token" style="color: rgb(57, 58, 52);">.</span><span class="token" style="color: rgb(57, 58, 52);">add</span><span class="token" style="color: rgb(57, 58, 52);">(</span><span>path</span><span class="token" style="color: rgb(57, 58, 52);">)</span><span class="token" style="color: rgb(57, 58, 52);">;</span><span>  </span><span class="token" style="color: rgb(0, 128, 0); font-style: italic;">// ALL entries in res point to SAME list</span><span>
+</span><span></span><span class="token" style="color: rgb(57, 58, 52);">}</span><span>
+</span>
+<span></span><span class="token" style="color: rgb(0, 128, 0); font-style: italic;">// ✅ CORRECT — saves independent snapshot</span><span>
+</span><span></span><span class="token" style="color: rgb(0, 0, 255);">if</span><span> </span><span class="token" style="color: rgb(57, 58, 52);">(</span><span>isLeaf </span><span class="token" style="color: rgb(57, 58, 52);">&amp;&amp;</span><span> rem </span><span class="token" style="color: rgb(57, 58, 52);">==</span><span> </span><span class="token" style="color: rgb(54, 172, 170);">0</span><span class="token" style="color: rgb(57, 58, 52);">)</span><span> </span><span class="token" style="color: rgb(57, 58, 52);">{</span><span>
+</span><span>    res</span><span class="token" style="color: rgb(57, 58, 52);">.</span><span class="token" style="color: rgb(57, 58, 52);">add</span><span class="token" style="color: rgb(57, 58, 52);">(</span><span class="token" style="color: rgb(0, 0, 255);">new</span><span> </span><span class="token" style="color: rgb(43, 145, 175);">ArrayList</span><span class="token generics" style="color: rgb(57, 58, 52);">&lt;</span><span class="token generics" style="color: rgb(57, 58, 52);">&gt;</span><span class="token" style="color: rgb(57, 58, 52);">(</span><span>path</span><span class="token" style="color: rgb(57, 58, 52);">)</span><span class="token" style="color: rgb(57, 58, 52);">)</span><span class="token" style="color: rgb(57, 58, 52);">;</span><span>  </span><span class="token" style="color: rgb(0, 128, 0); font-style: italic;">// each entry is independent</span><span>
+</span><span></span><span class="token" style="color: rgb(57, 58, 52);">}</span></code></pre></div>
+<h3>Pitfall 3: Wrong Leaf Check</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span class="token" style="color: rgb(0, 128, 0); font-style: italic;">// ❌ WRONG — this is NOT a leaf check</span><span>
+</span><span></span><span class="token" style="color: rgb(0, 0, 255);">if</span><span> </span><span class="token" style="color: rgb(57, 58, 52);">(</span><span>node</span><span class="token" style="color: rgb(57, 58, 52);">.</span><span>left </span><span class="token" style="color: rgb(57, 58, 52);">==</span><span> </span><span class="token" style="color: rgb(0, 0, 255);">null</span><span> </span><span class="token" style="color: rgb(57, 58, 52);">||</span><span> node</span><span class="token" style="color: rgb(57, 58, 52);">.</span><span>right </span><span class="token" style="color: rgb(57, 58, 52);">==</span><span> </span><span class="token" style="color: rgb(0, 0, 255);">null</span><span class="token" style="color: rgb(57, 58, 52);">)</span><span> </span><span class="token" style="color: rgb(57, 58, 52);">{</span><span>  </span><span class="token" style="color: rgb(0, 128, 0); font-style: italic;">// OR instead of AND</span><span>
+</span><span>    </span><span class="token" style="color: rgb(0, 128, 0); font-style: italic;">// A node with ONE child satisfies this</span><span>
+</span><span>    </span><span class="token" style="color: rgb(0, 128, 0); font-style: italic;">// But it's NOT a leaf — it has one child</span><span>
+</span><span></span><span class="token" style="color: rgb(57, 58, 52);">}</span><span>
+</span>
+<span></span><span class="token" style="color: rgb(0, 128, 0); font-style: italic;">// ✅ CORRECT — both children must be null</span><span>
+</span><span></span><span class="token" style="color: rgb(0, 0, 255);">if</span><span> </span><span class="token" style="color: rgb(57, 58, 52);">(</span><span>node</span><span class="token" style="color: rgb(57, 58, 52);">.</span><span>left </span><span class="token" style="color: rgb(57, 58, 52);">==</span><span> </span><span class="token" style="color: rgb(0, 0, 255);">null</span><span> </span><span class="token" style="color: rgb(57, 58, 52);">&amp;&amp;</span><span> node</span><span class="token" style="color: rgb(57, 58, 52);">.</span><span>right </span><span class="token" style="color: rgb(57, 58, 52);">==</span><span> </span><span class="token" style="color: rgb(0, 0, 255);">null</span><span class="token" style="color: rgb(57, 58, 52);">)</span><span> </span><span class="token" style="color: rgb(57, 58, 52);">{</span><span>
+</span><span>    </span><span class="token" style="color: rgb(0, 128, 0); font-style: italic;">// TRUE leaf — no children at all</span><span>
+</span><span></span><span class="token" style="color: rgb(57, 58, 52);">}</span></code></pre></div>
+<h3>Pitfall 4: Subtract Before or After Adding?</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>The order matters for consistency:
+</span>
+APPROACH A (subtract after add — used in this project):
+  path.add(node.val)
+  newRemaining = remaining - node.val
+  if leaf &amp;&amp; newRemaining == 0 → match
+
+APPROACH B (subtract before recursive call):
+  path.add(node.val)
+  if leaf &amp;&amp; remaining == node.val → match
+  dfs(node.left, remaining - node.val, ...)
+
+Both work — but be CONSISTENT
+Mixing approaches causes off-by-one in the sum check</code></pre></div>
+<h3>Pitfall 5: Negative Values and Early Pruning</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span class="token" style="color: rgb(0, 128, 0); font-style: italic;">// ❌ DANGEROUS — only safe if ALL values are positive</span><span>
+</span><span></span><span class="token" style="color: rgb(0, 0, 255);">if</span><span> </span><span class="token" style="color: rgb(57, 58, 52);">(</span><span>remaining </span><span class="token" style="color: rgb(57, 58, 52);">&lt;</span><span> </span><span class="token" style="color: rgb(54, 172, 170);">0</span><span class="token" style="color: rgb(57, 58, 52);">)</span><span> </span><span class="token" style="color: rgb(0, 0, 255);">return</span><span class="token" style="color: rgb(57, 58, 52);">;</span><span>  </span><span class="token" style="color: rgb(0, 128, 0); font-style: italic;">// prunes negative remaining</span><span>
+</span>
+<span></span><span class="token" style="color: rgb(0, 128, 0); font-style: italic;">// Tree:    5</span><span>
+</span><span></span><span class="token" style="color: rgb(0, 128, 0); font-style: italic;">//         / \</span><span>
+</span><span></span><span class="token" style="color: rgb(0, 128, 0); font-style: italic;">//       -3   8</span><span>
+</span><span></span><span class="token" style="color: rgb(0, 128, 0); font-style: italic;">//       /</span><span>
+</span><span></span><span class="token" style="color: rgb(0, 128, 0); font-style: italic;">//      20</span><span>
+</span><span></span><span class="token" style="color: rgb(0, 128, 0); font-style: italic;">// Target: 22</span><span>
+</span><span></span><span class="token" style="color: rgb(0, 128, 0); font-style: italic;">// Path 5 → -3 → 20: remaining goes 22 → 17 → 20 → 0 ✓</span><span>
+</span><span></span><span class="token" style="color: rgb(0, 128, 0); font-style: italic;">// But remaining after -3 is 20 (positive), so this specific case works</span><span>
+</span><span></span><span class="token" style="color: rgb(0, 128, 0); font-style: italic;">// However: 5 → -3: remaining = 20, not negative, so no pruning issue HERE</span><span>
+</span><span></span><span class="token" style="color: rgb(0, 128, 0); font-style: italic;">// But consider target = 2, path 5 → -3: remaining = -3+... </span><span>
+</span><span></span><span class="token" style="color: rgb(0, 128, 0); font-style: italic;">// Point: only prune if problem GUARANTEES positive values</span><span>
+</span>
+<span></span><span class="token" style="color: rgb(0, 128, 0); font-style: italic;">// ✅ SAFE — always works regardless of value signs</span><span>
+</span><span></span><span class="token" style="color: rgb(0, 128, 0); font-style: italic;">// Simply don't prune based on remaining sign</span><span>
+</span><span></span><span class="token" style="color: rgb(0, 128, 0); font-style: italic;">// Let the leaf check handle validity</span></code></pre></div>
+<hr>
+<h2>📈 SCALABILITY CONSIDERATIONS</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>TREE SIZE vs PERFORMANCE:
+</span>
+n = 100 (tiny tree):
+→ Visit 100 nodes, ~50 leaves, paths of length ~7
+→ Instant — no concerns
+
+n = 10,000 (medium tree):
+→ Visit 10,000 nodes
+→ Balanced: paths of length ~14, up to 5,000 leaves
+→ Still fast — under 1ms
+
+n = 100,000 (large tree):
+→ Balanced: height ~17, manageable stack depth
+→ Skewed: height ~100,000 → STACK OVERFLOW RISK
+→ Java default stack size: ~512KB to 1MB
+→ Each stack frame: ~50-100 bytes
+→ 100,000 frames: ~5-10MB → likely overflow
+→ FIX: increase stack with -Xss flag or use iterative approach
+
+n = 1,000,000:
+→ Balanced: height ~20 → fine for recursion
+→ Skewed: definitely stack overflow
+→ Iterative DFS with explicit stack needed
+
+OUTPUT SIZE:
+→ Worst case: every leaf is valid → up to n/2 paths
+→ Each path up to O(h) long
+→ Total output: O(n × h) → can be large
+→ Cannot optimize this — the output itself is that big</code></pre></div>
+<hr>
+<h2>🔍 INTERPRETABILITY CONSIDERATIONS</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>WHY THIS PATTERN IS INTUITIVE:
+</span>→ Think of exploring a maze with breadcrumbs
+→ Drop a breadcrumb at each turn (add to path)
+→ Dead end? Pick up the last breadcrumb (backtrack)
+→ Found the exit? Photograph your breadcrumb trail (copy path)
+→ Then pick up breadcrumbs anyway (backtrack to find OTHER exits)
+
+DEBUGGING STRATEGY:
+→ Print the path at every node entry and exit
+→ Watch the path grow and shrink
+→ Verify it matches the tree structure
+→ Check that backtracking restores exactly one element
+
+INTERVIEW COMMUNICATION:
+→ "I'll DFS from root to leaves, maintaining a running path"
+→ "At each leaf, I check if the path sum matches the target"
+→ "If yes, I save a COPY of the current path"
+→ "After exploring both children, I BACKTRACK by removing the current node"
+→ "This ensures the path is clean for sibling subtree exploration"</code></pre></div>
+<hr>
+<div class="github-btn-wrap"><a class="github-btn" href="https://github.com/Shakti4640/leetcode-patterns-guide-java/tree/main/project- (26)" target="_blank" rel="noopener"><svg viewBox="0 0 24 24"><path d="M12 .5C5.37.5 0 5.87 0 12.5c0 5.3 3.44 9.8 8.2 11.39.6.11.82-.26.82-.58v-2.03c-3.34.73-4.04-1.61-4.04-1.61-.55-1.39-1.34-1.76-1.34-1.76-1.09-.74.08-.73.08-.73 1.2.09 1.84 1.24 1.84 1.24 1.07 1.83 2.8 1.3 3.49 1 .1-.78.42-1.3.76-1.6-2.67-.3-5.47-1.33-5.47-5.93 0-1.31.47-2.38 1.24-3.22-.14-.3-.54-1.52.1-3.18 0 0 1.01-.32 3.3 1.23a11.5 11.5 0 0 1 3-.4c1.02 0 2.04.13 3 .4 2.28-1.55 3.29-1.23 3.29-1.23.64 1.66.24 2.88.12 3.18.77.84 1.23 1.91 1.23 3.22 0 4.61-2.81 5.63-5.48 5.92.43.37.81 1.1.81 2.22v3.29c0 .32.21.7.82.58C20.56 22.3 24 17.8 24 12.5 24 5.87 18.63.5 12 .5z"/></svg>💻 View Complete Java Code on GitHub</a></div>
+
+<hr>
+<h2>🔑 EXPECTED OUTPUT</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>╔═══════════════════════════════════════════════════╗
+</span>║  PROJECT 26: All Root-to-Leaf Paths for Target   ║
+║  Pattern: Tree DFS → Path Accumulation →         ║
+║           Backtracking on DFS Return             ║
+╚═══════════════════════════════════════════════════╝
+
+═══ TREE STRUCTURE ═══
+└── 5
+    ├── 4
+    │   └── 11
+    │       ├── 7
+    │       └── 2
+    └── 8
+        ├── 13
+        └── 4
+            ├── 5
+            └── 1
+
+═══ TEST 1: Find all paths summing to 22 ═══
+Result: [[5, 4, 11, 2], [5, 8, 4, 5]]
+
+═══ TEST 2: Traced DFS (target=22) ═══
+Target Sum: 22
+────────────────────────────────────
+→ ENTER node 5 | path=[5] | remaining=17
+  → ENTER node 4 | path=[5, 4] | remaining=13
+    → ENTER node 11 | path=[5, 4, 11] | remaining=2
+      → ENTER node 7 | path=[5, 4, 11, 7] | remaining=-5
+        ✗ Leaf but remaining=-5 ≠ 0
+      ← EXIT node 7 | path after backtrack=[5, 4, 11]
+      → ENTER node 2 | path=[5, 4, 11, 2] | remaining=0
+        ✅ VALID PATH FOUND: [5, 4, 11, 2]
+      ← EXIT node 2 | path after backtrack=[5, 4, 11]
+    ← EXIT node 11 | path after backtrack=[5, 4]
+  ← EXIT node 4 | path after backtrack=[5]
+  → ENTER node 8 | path=[5, 8] | remaining=9
+    → ENTER node 13 | path=[5, 8, 13] | remaining=-4
+      ✗ Leaf but remaining=-4 ≠ 0
+    ← EXIT node 13 | path after backtrack=[5, 8]
+    → ENTER node 4 | path=[5, 8, 4] | remaining=5
+      → ENTER node 5 | path=[5, 8, 4, 5] | remaining=0
+        ✅ VALID PATH FOUND: [5, 8, 4, 5]
+      ← EXIT node 5 | path after backtrack=[5, 8, 4]
+      → ENTER node 1 | path=[5, 8, 4, 1] | remaining=4
+        ✗ Leaf but remaining=4 ≠ 0
+      ← EXIT node 1 | path after backtrack=[5, 8, 4]
+    ← EXIT node 4 | path after backtrack=[5, 8]
+  ← EXIT node 8 | path after backtrack=[5]
+← EXIT node 5 | path after backtrack=[]
+
+Final result: [[5, 4, 11, 2], [5, 8, 4, 5]]
+
+═══ TEST 5: All root-to-leaf paths (any sum) ═══
+  Path: [5, 4, 11, 7] → sum=27
+  Path: [5, 4, 11, 2] → sum=22
+  Path: [5, 8, 13] → sum=26
+  Path: [5, 8, 4, 5] → sum=22
+  Path: [5, 8, 4, 1] → sum=18
+
+═══ TEST 7: Reference Bug Demonstration ═══
+Broken result (should be [[5,4,11,2],[5,8,4,5]]):
+  Actual: [[], []]
+  All entries are same empty list due to reference sharing!
+
+═══ TEST 9: Tree with negative values ═══
+Target=8:  [[10, -5, 3]]
+Target=12: [[10, -5, 7]]
+Target=25: [[10, 15]]
+
+═══ TEST 10: Skewed tree (all left children) ═══
+Target=10: [[1, 2, 3, 4]]
+Target=6:  []
+All paths: [[1, 2, 3, 4]]</code></pre></div>
+<hr>
+<h2>🧠 KEY TAKEAWAY</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>WHAT PROJECT 18 GAVE US:
+</span>→ DFS recursion on trees
+→ Subtraction technique for target matching
+→ Leaf detection as base case
+→ Boolean return → "does any path exist?"
+
+WHAT PROJECT 26 ADDS:
+→ PATH ACCUMULATION: Carrying a mutable list through DFS
+→ BACKTRACKING: Undoing state changes on recursive return
+→ DEEP COPY: Saving snapshots of mutable state
+→ COLLECTING RESULTS: Gathering ALL valid answers, not just one
+
+THE BACKTRACKING MENTAL MODEL:
+→ "Add before descending, remove after returning"
+→ The state must be IDENTICAL before and after each recursive call
+→ This allows sibling subtrees to see CLEAN state
+→ This pattern extends FAR beyond trees:
+     → Subsets (Project 28)
+     → Permutations (Project 29)
+     → Combination Sum (Project 42)
+     → Word Search (Project 59)
+
+PATTERN SIGNATURE:
+→ "Find ALL ___ in a tree/graph/structure" ✓
+→ Need to record the ACTUAL path/sequence ✓
+→ Multiple valid answers possible ✓
+→ = DFS + PATH ACCUMULATION + BACKTRACKING</code></pre></div>
+<hr>
+<h2>🌉 BRIDGE TO NEXT PROJECT</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>PROJECT 26 taught us:
+</span>→ Backtracking on a TREE — add/remove around recursive calls
+→ The tree STRUCTURE guides our recursion (left child, right child)
+→ We don't CHOOSE which branches to explore — we explore ALL of them
+
+PROJECT 27 (Serialize and Deserialize a Binary Tree) will ask:
+→ Can we ENCODE a tree into a string and RECONSTRUCT it back?
+→ Uses the SAME DFS traversal (preorder) we used here
+→ But instead of collecting paths, we collect NODE VALUES + NULL MARKERS
+→ The reconstruction uses the same recursive structure in reverse
+→ KEY CONNECTION: Project 26 reads paths FROM a tree
+→ Project 27 will read the ENTIRE TREE STRUCTURE into a flat format
+→ And then rebuild the tree from that flat format
+
+The progression:
+  Project 18: DFS → boolean answer (does path exist?)
+  Project 26: DFS → collect all paths (backtracking introduced)
+  Project 27: DFS → encode entire tree structure (preorder + null markers)
+  Project 28: Backtracking WITHOUT a tree → subsets of a set (pure backtracking)
+
+→ We are transitioning from "backtracking guided by tree structure"
+→ To "backtracking guided by our own CHOICES" — that's Project 28</code></pre></div>
+<hr>
+<p><strong>Ready for Project 27: Serialize and Deserialize a Binary Tree (Tree DFS → Preorder Encoding → Null Markers → Reconstruction Logic)?</strong></p>
+</div>
+</div>
+
+<!-- ========== data-index="7" ========== -->
+<div class="chat-message" data-index="7"></div>
+</div>
+<div class="bottom-nav">
+  <a href="project-25.html" class="nav-btn prev">← Prev</a>
+  <div class="nav-center">
+    <span class="nav-project-label">PROJECT 26 of 60</span>
+    <span class="nav-project-title">All Root-to-Leaf Paths for a Target Sum</span>
+    <span class="kbd-hint">← → arrow keys to navigate</span>
+  </div>
+  <a href="project-27.html" class="nav-btn next">Next →</a>
+  <a href="index.html" class="nav-btn home">🏠 TOC</a>
+</div>
+<div id="progress-track"><div id="progress-fill"></div></div>
+<div id="progress-pct">0%</div>
+<script src="script.js"></script>
+<script>
+document.addEventListener('keydown', function(e) {
+  if (['INPUT','TEXTAREA'].includes(document.activeElement.tagName)) return;
+  if (e.key === 'ArrowRight' && "project-27.html" !== null) window.location = "project-27.html";
+  if (e.key === 'ArrowLeft' && "project-25.html" !== null) window.location = "project-25.html";
+});
+</script>
+</body>
+</html>

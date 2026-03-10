@@ -1,0 +1,814 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PROJECT 22: Insert a New Interval into Sorted Intervals</title>
+<link rel="icon" type="image/png" href="images/favicon.png">
+<link rel="stylesheet" href="styles.css">
+
+</head>
+<body>
+<div id="progress-bar-container"><div id="progress-bar" style="width:38%"></div></div>
+<div id="progress-label">38%</div>
+<div class="page-wrapper">
+<div class="chat-message"><div class="px-2"><h1>PROJECT 22: Insert a New Interval into Sorted Intervals</h1>
+<h2>🎯 Merge Intervals → Three-Region Split → Before/Overlap/After Logic</h2>
+<hr>
+<h2>🧩 THE HYPOTHETICAL PROBLEM</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ You are given a list of NON-OVERLAPPING intervals
+</span>→ The intervals are ALREADY SORTED by start time
+→ You are given ONE NEW interval to insert
+→ Insert the new interval, MERGE any overlapping intervals
+→ Return the resulting list of non-overlapping sorted intervals
+
+Example 1:
+  Existing: [[1,3], [6,9]]
+  New:      [2,5]
+  
+  Timeline:
+  1   2   3   4   5   6   7   8   9
+  [=======]               [===========]
+      [===========]
+  
+  [2,5] overlaps with [1,3] → merge → [1,5]
+  [1,5] does NOT overlap with [6,9]
+  
+  Output: [[1,5], [6,9]]
+
+Example 2:
+  Existing: [[1,2], [3,5], [6,7], [8,10], [12,16]]
+  New:      [4,8]
+  
+  Timeline:
+  1  2  3  4  5  6  7  8  9  10  11  12  13  14  15  16
+  [===]  [=====]  [===]  [======]       [==============]
+           [============]
+  
+  [4,8] overlaps with [3,5], [6,7], [8,10]
+  Merge all: [3,10]
+  Keep [1,2] before, [12,16] after
+  
+  Output: [[1,2], [3,10], [12,16]]
+
+Example 3:
+  Existing: [[1,5]]
+  New:      [6,8]
+  
+  No overlap → just insert after
+  Output: [[1,5], [6,8]]
+
+Example 4:
+  Existing: [[1,5]]
+  New:      [0,0]
+  
+  No overlap → insert before
+  Output: [[0,0], [1,5]]
+
+Example 5:
+  Existing: []
+  New:      [5,7]
+  
+  Empty list → just add
+  Output: [[5,7]]</code></pre></div>
+<hr>
+<h2>🔍 HOW TO APPROACH IT</h2>
+<h3>Step 1 — Recall Project 14: Merge Intervals</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ Project 14 taught us: sort intervals by start → scan → merge overlaps
+</span>→ Overlap condition: current.start ≤ previous.end
+→ Merge: extend previous.end = max(previous.end, current.end)
+
+→ Project 22 is DIFFERENT in key ways:
+     → Input is ALREADY sorted and non-overlapping
+     → We add ONE new interval → may create overlaps
+     → We need to find WHERE the new interval goes and WHAT it merges with
+
+→ We could add the new interval to the list, re-sort, and run Project 14
+→ That works BUT is O(n log n) → we can do better → O(n)
+→ Since input is already sorted → single pass is possible</code></pre></div>
+<h3>Step 2 — The Three-Region Insight</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ When we insert a new interval [newStart, newEnd] into sorted intervals:
+</span>→ The intervals naturally split into THREE regions:
+
+REGION 1: BEFORE
+  → Intervals that end BEFORE the new interval starts
+  → They have NO overlap with new interval
+  → They go directly into the result unchanged
+  → Condition: existing.end &lt; newStart
+
+REGION 2: OVERLAP
+  → Intervals that overlap with the new interval
+  → They must be MERGED with the new interval
+  → We expand newStart and newEnd to cover all overlapping intervals
+  → Condition: existing.start ≤ newEnd (and we haven't passed it yet)
+
+REGION 3: AFTER
+  → Intervals that start AFTER the merged interval ends
+  → They have NO overlap with the merged interval
+  → They go directly into the result unchanged
+  → We reach this when: existing.start &gt; newEnd (after merging)
+
+Visual:
+  [===] [===] [===]  [=====]  [===] [===] [===]
+  ↑─ BEFORE ─↑       ↑OVERLAP↑     ↑── AFTER ──↑
+                      + new interval</code></pre></div>
+<h3>Step 3 — Visualize With Example 2</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>Existing: [[1,2], [3,5], [6,7], [8,10], [12,16]]
+</span>New:      [4,8]
+
+REGION 1 — BEFORE: intervals ending before newStart=4
+  [1,2]: end=2 &lt; 4 → BEFORE → add to result
+  [3,5]: end=5 ≥ 4 → NOT before → stop
+
+REGION 2 — OVERLAP: intervals starting ≤ newEnd=8
+  [3,5]: start=3 ≤ 8 → OVERLAP
+         Merge: newStart = min(4, 3) = 3
+                newEnd   = max(8, 5) = 8
+                Merged so far: [3, 8]
+  
+  [6,7]: start=6 ≤ 8 → OVERLAP
+         Merge: newStart = min(3, 6) = 3
+                newEnd   = max(8, 7) = 8
+                Merged so far: [3, 8]
+  
+  [8,10]: start=8 ≤ 8 → OVERLAP
+          Merge: newStart = min(3, 8) = 3
+                 newEnd   = max(8, 10) = 10
+                 Merged so far: [3, 10]
+  
+  [12,16]: start=12 &gt; 10 → NOT overlap → stop
+  
+  Add merged interval [3, 10] to result
+
+REGION 3 — AFTER: remaining intervals
+  [12,16]: add to result unchanged
+
+Result: [[1,2], [3,10], [12,16]] ✓</code></pre></div>
+<h3>Step 4 — The Single-Pass Algorithm</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ We scan left to right through the sorted intervals
+</span>→ Three consecutive phases in one pass:
+
+Phase A: Skip past all "before" intervals → add to result
+Phase B: Merge all "overlap" intervals with new interval → add merged to result
+Phase C: Add all "after" intervals → add to result
+
+→ Each interval is processed EXACTLY ONCE
+→ Single pass through the array → O(n) time
+→ No sorting needed → input is already sorted</code></pre></div>
+<hr>
+<h2>🛠️ HOW CAN WE SOLVE IT</h2>
+<h3>The Algorithm — Precise Steps</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>insert(intervals, newInterval):
+</span>
+  1. CREATE result list
+  2. SET i = 0, n = intervals.length
+  3. EXTRACT newStart = newInterval[0], newEnd = newInterval[1]
+
+  ═══ PHASE A: Add all intervals that come BEFORE new interval ═══
+  4. WHILE i &lt; n AND intervals[i][1] &lt; newStart:
+       → result.add(intervals[i])
+       → i++
+     → Key condition: existing.end &lt; newStart → no overlap possible
+
+  ═══ PHASE B: Merge all overlapping intervals ═══
+  5. WHILE i &lt; n AND intervals[i][0] &lt;= newEnd:
+       → newStart = min(newStart, intervals[i][0])
+       → newEnd   = max(newEnd,   intervals[i][1])
+       → i++
+     → Key condition: existing.start ≤ newEnd → overlap exists
+     → We expand the new interval to swallow each overlapping one
+
+  6. result.add([newStart, newEnd])
+     → Add the fully merged interval
+
+  ═══ PHASE C: Add all intervals that come AFTER ═══
+  7. WHILE i &lt; n:
+       → result.add(intervals[i])
+       → i++
+
+  8. RETURN result as array</code></pre></div>
+<h3>Why the Conditions Work</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>PHASE A condition: intervals[i][1] &lt; newStart
+</span>  → "Does this interval END before the new one STARTS?"
+  → If yes → completely before → no overlap → safe to add
+  → If no → potential overlap → move to Phase B
+
+  [===]     [new===...]
+     end &lt; newStart → BEFORE ✓
+
+  [========]
+     [new===...]
+     end ≥ newStart → overlap → stop Phase A
+
+PHASE B condition: intervals[i][0] &lt;= newEnd
+  → "Does this interval START before the new one ENDS?"
+  → If yes → overlap exists → merge
+  → If no → this interval is completely after → move to Phase C
+
+  [new...===]
+              [===]
+     start &gt; newEnd → AFTER → stop Phase B
+
+  [new...===]
+         [===]
+     start ≤ newEnd → OVERLAP → merge
+
+WHY &lt;= (not &lt;) for Phase B?
+  → [1,5] and [5,8] → they TOUCH at point 5
+  → Convention: touching = overlapping → merge into [1,8]
+  → If problem says touching ≠ overlapping → use &lt; instead</code></pre></div>
+<h3>Dry Run — Complete Trace for Example 2</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>Intervals: [[1,2], [3,5], [6,7], [8,10], [12,16]]
+</span>New:       [4,8]
+i = 0, newStart = 4, newEnd = 8
+
+═══ PHASE A: Before ═══
+i=0: [1,2] → end=2 &lt; newStart=4 → BEFORE → add [1,2] → i=1
+i=1: [3,5] → end=5 ≥ newStart=4 → STOP Phase A
+
+result so far: [[1,2]]
+
+═══ PHASE B: Overlap ═══
+i=1: [3,5] → start=3 ≤ newEnd=8 → OVERLAP
+     newStart = min(4, 3) = 3
+     newEnd   = max(8, 5) = 8
+     i=2
+
+i=2: [6,7] → start=6 ≤ newEnd=8 → OVERLAP
+     newStart = min(3, 6) = 3
+     newEnd   = max(8, 7) = 8
+     i=3
+
+i=3: [8,10] → start=8 ≤ newEnd=8 → OVERLAP
+     newStart = min(3, 8) = 3
+     newEnd   = max(8, 10) = 10
+     i=4
+
+i=4: [12,16] → start=12 &gt; newEnd=10 → STOP Phase B
+
+Add merged [3, 10]
+result so far: [[1,2], [3,10]]
+
+═══ PHASE C: After ═══
+i=4: [12,16] → add → i=5
+
+result: [[1,2], [3,10], [12,16]] ✓</code></pre></div>
+<hr>
+<h2>✅ WHAT SHOULD YOU DO</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ ALWAYS process in three distinct phases
+</span>     → Clear separation prevents logic confusion
+     → Each phase has its own loop with its own condition
+     → Easy to reason about correctness
+
+→ ALWAYS use a single index variable across all three phases
+     → i starts at 0, increments through all phases
+     → No need to reset → phases are sequential
+     → i picks up where previous phase left off
+
+→ ALWAYS update BOTH newStart and newEnd during merge phase
+     → newStart = min(newStart, current.start) → may extend left
+     → newEnd = max(newEnd, current.end) → may extend right
+     → The new interval can GROW in both directions
+
+→ ALWAYS add the merged interval BETWEEN Phase B and Phase C
+     → After all overlaps are consumed → add once
+     → NOT inside the Phase B loop → that would add multiple times
+
+→ ALWAYS handle edge cases first in your mind:
+     → Empty intervals list → just return [newInterval]
+     → New interval before all existing → Phase A processes nothing
+     → New interval after all existing → Phase B processes nothing
+     → New interval swallows everything → Phases A and C process nothing</code></pre></div>
+<hr>
+<h2>🚫 WHAT SHOULD YOU NOT DO</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ DO NOT re-sort the entire list after insertion
+</span>     → Input is ALREADY sorted
+     → Adding new interval + re-sorting = O(n log n)
+     → Three-phase scan = O(n) → strictly better
+     → Re-sorting also ignores the problem's structure
+
+→ DO NOT use Project 14's merge approach directly
+     → Project 14 sorts by start then merges
+     → Here, intervals are already sorted and non-overlapping
+     → We only need to handle the ONE new interval
+     → Much simpler than general merge
+
+→ DO NOT merge inside Phase A or Phase C
+     → Phase A intervals are guaranteed non-overlapping with new interval
+     → Phase C intervals are guaranteed non-overlapping with merged interval
+     → Only Phase B does merging
+     → Merging in wrong phase = bugs
+
+→ DO NOT forget to add the merged interval
+     → Common bug: Phase B merges correctly but never adds to result
+     → The merged interval must be explicitly added after Phase B ends
+     → Missing this → result has a "hole" where the merged interval should be
+
+→ DO NOT use two separate result lists and concatenate
+     → One result list is sufficient
+     → Phase A adds to it, then merged interval, then Phase C
+     → Simpler and more memory-efficient
+
+→ DO NOT check overlap with complex multi-condition logic
+     → Phase A: one condition → existing.end &lt; newStart
+     → Phase B: one condition → existing.start &lt;= newEnd
+     → Keep it simple → each phase has exactly ONE check</code></pre></div>
+<hr>
+<h2>🔀 WHEN TO USE THIS PATTERN</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>✓ Input intervals are ALREADY sorted and non-overlapping
+</span>✓ You need to INSERT one or more new intervals
+✓ After insertion, result must be sorted and non-overlapping
+✓ You need O(n) single-pass efficiency
+✓ The three-region decomposition applies:
+     → Some items are clearly before the change
+     → Some items are affected by the change
+     → Some items are clearly after the change
+✓ This "before / affected / after" pattern appears in many problems:
+     → Interval insertion (this project)
+     → Range updates
+     → Calendar booking
+     → Segment operations</code></pre></div>
+<hr>
+<h2>🚫 WHEN NOT TO USE THIS PATTERN</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>✗ Input intervals are NOT sorted
+</span>     → Must sort first → use Project 14's general merge approach
+     → Or sort then apply this technique
+
+✗ Input intervals already have overlaps
+     → Must resolve existing overlaps first (Project 14)
+     → Then insert new interval
+
+✗ Multiple new intervals to insert simultaneously
+     → Inserting one at a time = O(n × k) for k new intervals
+     → Better: merge all intervals together (Project 14)
+     → Or batch insert with sorted merge
+
+✗ Problem asks for something other than merged intervals
+     → Count of overlapping intervals → different technique
+     → Gaps between intervals → different analysis
+     → This technique specifically produces merged interval list
+
+✗ Intervals are in a dynamic data structure (frequent insertions)
+     → Repeated single insertions = O(n) each → O(n²) total
+     → Use interval tree or balanced BST for O(log n) per operation</code></pre></div>
+<hr>
+<h2>⚙️ HOW IT ONLY WORKS — Internal Mechanics</h2>
+<h3>The Three-Phase Invariant</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>After Phase A completes:
+</span>  INVARIANT: All intervals in result have end &lt; newStart
+  → They are completely before the new interval
+  → They cannot overlap with anything that comes later
+  → They are FINAL in the result
+
+After Phase B completes:
+  INVARIANT: [newStart, newEnd] covers ALL intervals that overlap with original new interval
+  → newStart = min of original newStart and all overlapping starts
+  → newEnd = max of original newEnd and all overlapping ends
+  → This merged interval is the TIGHTEST interval containing all overlaps
+  → It is added to result → FINAL
+
+After Phase C completes:
+  INVARIANT: All remaining intervals are added unchanged
+  → They all start after newEnd → no overlap possible
+  → They were already non-overlapping with each other (input guarantee)
+  → They are FINAL in the result
+
+COMBINED: result is sorted and non-overlapping ✓</code></pre></div>
+<h3>Why Phase Transitions are Clean</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>PHASE A → PHASE B transition:
+</span>  Phase A stops when: intervals[i][1] &gt;= newStart
+  → This interval's end reaches into new interval's territory
+  → It MIGHT overlap → Phase B will determine
+  
+  Phase B checks: intervals[i][0] &lt;= newEnd
+  → This is a DIFFERENT condition than Phase A
+  → Phase A checked the END of existing vs START of new
+  → Phase B checks the START of existing vs END of new
+
+  Can Phase B's condition be false immediately?
+  → YES: if intervals[i][0] &gt; newEnd
+  → This means the interval starts after new interval ends
+  → BUT its end ≥ newStart (otherwise Phase A would have taken it)
+  → Wait, that seems contradictory...
+  
+  Actually no. Consider:
+    Existing: [[1,2], [10,12]]
+    New: [5,7]
+    
+    Phase A: [1,2] end=2 &lt; 5 → before → add
+    Phase B: [10,12] start=10 &gt; 7 → NOT overlap → Phase B processes nothing
+    Add merged [5,7]
+    Phase C: [10,12] → add
+    
+    Result: [[1,2], [5,7], [10,12]] ✓
+    
+  → Phase B can process ZERO intervals → new interval fits in a gap
+  → This is perfectly valid → the merged interval = original new interval</code></pre></div>
+<h3>Why Min/Max During Merge</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>Consider:
+</span>  Existing: [[2,6], [7,9]]
+  New: [3,8]
+
+  Phase B:
+    [2,6] overlaps with [3,8]:
+      newStart = min(3, 2) = 2    ← existing EXTENDS LEFT beyond new
+      newEnd   = max(8, 6) = 8    ← new extends right beyond existing
+    
+    [7,9] overlaps with [2,8] (updated):
+      newStart = min(2, 7) = 2    ← no change
+      newEnd   = max(8, 9) = 9    ← existing EXTENDS RIGHT beyond updated
+    
+    Merged: [2, 9]
+
+→ The new interval can grow in BOTH directions
+→ An existing interval might extend LEFT of newStart
+→ Another existing interval might extend RIGHT of newEnd
+→ min/max captures BOTH cases correctly
+→ This is why we update BOTH bounds, not just one</code></pre></div>
+<h3>Time and Space Complexity</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>TIME: O(n)
+</span>→ Each interval is visited EXACTLY ONCE across all three phases
+→ i increments monotonically from 0 to n
+→ No interval is processed twice
+→ Each processing step is O(1)
+→ Total: O(n)
+
+SPACE: O(n)
+→ Result list stores up to n+1 intervals (all originals + new one)
+→ In best case (new interval swallows all): result has 1 interval
+→ In worst case (no overlaps): result has n+1 intervals
+→ No additional data structures beyond result
+
+COMPARISON WITH PROJECT 14:
+  Project 14: O(n log n) time (sorting) + O(n) space
+  Project 22: O(n) time (no sorting needed) + O(n) space
+  → Project 22 is faster because input is pre-sorted</code></pre></div>
+<h3>Relationship Between Overlap Conditions</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>Two intervals [a,b] and [c,d] overlap if and only if:
+</span>  a ≤ d AND c ≤ b
+  (Project 14 taught us this)
+
+For our three-phase approach, we SPLIT this into two checks:
+
+Phase A exit: intervals[i][1] &gt;= newStart
+  → existing.end &gt;= new.start
+  → This is ONE HALF of the overlap condition
+
+Phase B check: intervals[i][0] &lt;= newEnd
+  → existing.start &lt;= new.end (which may be updated)
+  → This is the OTHER HALF of the overlap condition
+
+When BOTH halves are true → overlap exists → merge in Phase B
+When only Phase A half is true but Phase B half is false → gap → no overlap
+
+This split works because intervals are SORTED:
+→ Once we pass Phase A → all remaining intervals have end &gt;= newStart
+→ So we only need to check the Phase B condition
+→ The Phase A condition is implicitly satisfied for all Phase B candidates</code></pre></div>
+<hr>
+<h2>⚠️ COMMON PITFALLS AND FAILURE MODES</h2>
+<h3>Pitfall 1: Off-by-One in Overlap Detection</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>Existing: [[1,3], [5,7]]
+</span>New: [3,5]
+
+Is [1,3] overlapping with [3,5]?
+→ end=3, newStart=3 → 3 &lt; 3? NO → Phase A condition fails → move to Phase B
+
+Phase B: [1,3] start=1 ≤ newEnd=5 → OVERLAP
+→ Merge: newStart = min(3,1) = 1, newEnd = max(5,3) = 5 → [1,5]
+
+[5,7]: start=5 ≤ newEnd=5 → OVERLAP
+→ Merge: newStart = min(1,5) = 1, newEnd = max(5,7) = 7 → [1,7]
+
+Result: [[1,7]]
+
+BUT if Phase A used &lt;=:
+  [1,3]: end=3 &lt;= newStart=3 → BEFORE → add to result → WRONG!
+  → [1,3] and [3,5] DO overlap at point 3
+  → Phase A should use STRICT &lt; not &lt;=
+
+Phase A: existing.end &lt; newStart (STRICT less than)
+Phase B: existing.start &lt;= newEnd (less than OR EQUAL)
+
+→ The asymmetry is intentional:
+  → Phase A uses &lt; → intervals touching at a point go to Phase B
+  → Phase B uses &lt;= → intervals touching at a point are merged
+  → Touching = overlapping in most LeetCode conventions</code></pre></div>
+<h3>Pitfall 2: New Interval Before All Existing</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>Existing: [[3,5], [7,9]]
+</span>New: [0,1]
+
+Phase A: [3,5] end=5 ≥ newStart=0 → STOP immediately → nothing added in Phase A
+Phase B: [3,5] start=3 &gt; newEnd=1 → STOP immediately → nothing merged
+Add merged [0,1]
+Phase C: [3,5], [7,9] → add both
+
+Result: [[0,1], [3,5], [7,9]] ✓
+
+→ Phase A and Phase B can both process ZERO intervals
+→ The algorithm still works correctly
+→ New interval is simply inserted at the beginning</code></pre></div>
+<h3>Pitfall 3: New Interval After All Existing</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>Existing: [[1,3], [5,7]]
+</span>New: [8,10]
+
+Phase A: [1,3] end=3 &lt; 8 → BEFORE → add
+         [5,7] end=7 &lt; 8 → BEFORE → add
+         i reaches end → Phase A processes ALL intervals
+Phase B: i is past the end → nothing to merge
+Add merged [8,10]
+Phase C: nothing remaining
+
+Result: [[1,3], [5,7], [8,10]] ✓
+
+→ All intervals can be in Phase A with nothing in Phase B or C
+→ The merged interval (unchanged) is added at the end</code></pre></div>
+<h3>Pitfall 4: New Interval Swallows Everything</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>Existing: [[2,3], [4,5], [6,7]]
+</span>New: [1,10]
+
+Phase A: [2,3] end=3 ≥ newStart=1 → STOP → nothing in Phase A
+Phase B: [2,3] start=2 ≤ newEnd=10 → merge → [1,10]
+         [4,5] start=4 ≤ 10 → merge → [1,10]
+         [6,7] start=6 ≤ 10 → merge → [1,10]
+         End of array
+Add merged [1,10]
+Phase C: nothing remaining
+
+Result: [[1,10]] ✓
+
+→ Everything absorbed into one merged interval
+→ Algorithm handles this naturally</code></pre></div>
+<h3>Pitfall 5: Forgetting to Add Merged Interval</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>WRONG CODE:
+</span>  // Phase A
+  while (i &lt; n &amp;&amp; intervals[i][1] &lt; newStart) { result.add(intervals[i++]); }
+  // Phase B
+  while (i &lt; n &amp;&amp; intervals[i][0] &lt;= newEnd) {
+      newStart = Math.min(newStart, intervals[i][0]);
+      newEnd = Math.max(newEnd, intervals[i][1]);
+      i++;
+  }
+  // OOPS — forgot to add [newStart, newEnd] to result!
+  // Phase C
+  while (i &lt; n) { result.add(intervals[i++]); }
+
+→ Result is missing the merged interval entirely
+→ ALWAYS add [newStart, newEnd] between Phase B and Phase C
+→ This is the single most common bug in this problem</code></pre></div>
+<h3>Pitfall 6: Returning Wrong Type</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ LeetCode expects int[][] return type
+</span>→ ArrayList&lt;int[]&gt; needs conversion to int[][]
+→ Use: result.toArray(new int[result.size()][])
+→ Or pre-calculate result size (harder but avoids list)</code></pre></div>
+<hr>
+<h2>📈 SCALABILITY CONSIDERATIONS</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ n = 100 → O(100) → instant
+</span>→ n = 100,000 → O(100,000) → &lt; 1ms
+→ n = 10,000,000 → O(10,000,000) → ~50ms
+
+→ The algorithm is STRICTLY O(n) with very small constant factor
+→ Each element: one comparison + possibly one addition to result
+→ No nested loops, no recursion, no extra data structures
+
+→ For REPEATED insertions (insert k intervals one by one):
+     → k × O(n) = O(kn) total
+     → If k is large → consider batch approach:
+          → Combine all intervals + new intervals
+          → Sort by start time
+          → Run Project 14's general merge
+          → O((n+k) log(n+k)) → better when k is large
+
+→ For DYNAMIC interval management (frequent inserts/deletes):
+     → Array-based approach is O(n) per operation
+     → Interval tree or balanced BST → O(log n) per operation
+     → Worth the data structure overhead if operations are frequent</code></pre></div>
+<hr>
+<h2>🔍 INTERPRETABILITY CONSIDERATIONS</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ The three-phase approach maps to human intuition:
+</span>     → "First, take everything that comes before"
+     → "Then, merge everything that overlaps"
+     → "Finally, take everything that comes after"
+     → Clear, sequential, easy to explain
+
+→ Visual timeline makes it very understandable:
+     → Draw intervals on a number line
+     → Draw the new interval
+     → Circle the overlap region
+     → Show the three zones
+
+→ Interview communication:
+     → "Since input is sorted, I can do a single pass with three phases"
+     → "Phase 1: collect non-overlapping intervals before the new one"
+     → "Phase 2: merge all overlapping intervals with the new one"
+     → "Phase 3: collect non-overlapping intervals after"
+     → "Each interval is processed exactly once → O(n)"
+
+→ Code readability:
+     → Three while loops → each with clear purpose
+     → No complex nested conditions
+     → Easy to trace with print statements
+     → The three phases are visually distinct in code</code></pre></div>
+<hr>
+<div class="github-btn-wrap"><a class="github-btn" href="https://github.com/Shakti4640/leetcode-patterns-guide-java/tree/main/project- (22)" target="_blank" rel="noopener"><svg viewBox="0 0 24 24"><path d="M12 .5C5.37.5 0 5.87 0 12.5c0 5.3 3.44 9.8 8.2 11.39.6.11.82-.26.82-.58v-2.03c-3.34.73-4.04-1.61-4.04-1.61-.55-1.39-1.34-1.76-1.34-1.76-1.09-.74.08-.73.08-.73 1.2.09 1.84 1.24 1.84 1.24 1.07 1.83 2.8 1.3 3.49 1 .1-.78.42-1.3.76-1.6-2.67-.3-5.47-1.33-5.47-5.93 0-1.31.47-2.38 1.24-3.22-.14-.3-.54-1.52.1-3.18 0 0 1.01-.32 3.3 1.23a11.5 11.5 0 0 1 3-.4c1.02 0 2.04.13 3 .4 2.28-1.55 3.29-1.23 3.29-1.23.64 1.66.24 2.88.12 3.18.77.84 1.23 1.91 1.23 3.22 0 4.61-2.81 5.63-5.48 5.92.43.37.81 1.1.81 2.22v3.29c0 .32.21.7.82.58C20.56 22.3 24 17.8 24 12.5 24 5.87 18.63.5 12 .5z"/></svg>💻 View Complete Java Code on GitHub</a></div>
+
+<hr>
+<h2>🔑 EXPECTED OUTPUT (Key Sections)</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>═══ TEST 1: Basic Overlap ═══
+</span>  Existing intervals: [[1,3], [6,9]]
+  New interval: [2, 5]
+
+  ═══ PHASE A: Collect intervals BEFORE [2,5] ═══
+  Condition: existing.end &lt; newStart(2)
+    (no intervals before new interval)
+    [1,3] → end=3 ≥ 2 → STOP Phase A
+  Result after Phase A: []
+
+  ═══ PHASE B: Merge OVERLAPPING intervals ═══
+  Condition: existing.start ≤ newEnd
+    [1,3] → start=1 ≤ 5 → OVERLAP
+      Merge: [2,5] + [1,3] → [1,5]
+    [6,9] → start=6 &gt; 5 → STOP Phase B
+  ★ Add merged interval: [1,5]
+  Result after Phase B: [[1,5]]
+
+  ═══ PHASE C: Collect intervals AFTER merged ═══
+    [6,9] → AFTER → add to result
+
+  ★ FINAL RESULT: [[1,5], [6,9]]
+
+═══ TEST 2: Multiple Merges ═══
+  Existing intervals: [[1,2], [3,5], [6,7], [8,10], [12,16]]
+  New interval: [4, 8]
+
+  ═══ PHASE A: Collect intervals BEFORE [4,8] ═══
+    [1,2] → end=2 &lt; 4 → BEFORE → add to result
+    [3,5] → end=5 ≥ 4 → STOP Phase A
+  Result after Phase A: [[1,2]]
+
+  ═══ PHASE B: Merge OVERLAPPING intervals ═══
+    [3,5] → start=3 ≤ 8 → OVERLAP
+      Merge: [4,8] + [3,5] → [3,8]
+    [6,7] → start=6 ≤ 8 → OVERLAP
+      Merge: [3,8] + [6,7] → [3,8]
+    [8,10] → start=8 ≤ 8 → OVERLAP
+      Merge: [3,8] + [8,10] → [3,10]
+    [12,16] → start=12 &gt; 10 → STOP Phase B
+  ★ Add merged interval: [3,10]
+  Result after Phase B: [[1,2], [3,10]]
+
+  ═══ PHASE C: Collect intervals AFTER merged ═══
+    [12,16] → AFTER → add to result
+
+  ★ FINAL RESULT: [[1,2], [3,10], [12,16]]
+
+═══ TEST 5: Insert Into Gap (No Overlap) ═══
+  Existing intervals: [[1,3], [8,10]]
+  New interval: [5, 6]
+
+  ═══ PHASE A: Collect intervals BEFORE [5,6] ═══
+    [1,3] → end=3 &lt; 5 → BEFORE → add to result
+    [8,10] → end=10 ≥ 5 → STOP Phase A
+
+  ═══ PHASE B: Merge OVERLAPPING intervals ═══
+    [8,10] → start=8 &gt; 6 → STOP Phase B
+    (no overlapping intervals — new interval fits in a gap)
+  ★ Add merged interval: [5,6]
+
+  ═══ PHASE C: Collect intervals AFTER merged ═══
+    [8,10] → AFTER → add to result
+
+  ★ FINAL RESULT: [[1,3], [5,6], [8,10]]
+
+═══ TEST 8: Touching Intervals (Boundary) ═══
+  Existing: [[1,3], [5,7]], New: [3,5]
+
+  Phase A: [1,3] end=3 ≥ 3 → STOP (NOT before)
+  Phase B: [1,3] start=1 ≤ 5 → merge → [1,5]
+           [5,7] start=5 ≤ 5 → merge → [1,7]
+  ★ FINAL RESULT: [[1,7]]
+
+═══ TEST 10: Verification — Optimal vs Brute Force ═══
+  Test 1: Optimal=[[1,5], [6,9]] ✓
+  Test 2: Optimal=[[1,2], [3,10], [12,16]] ✓
+  Test 3: Optimal=[[1,5], [6,8]] ✓
+  Test 4: Optimal=[[0,1], [3,5], [7,9]] ✓
+  Test 5: Optimal=[[1,3], [5,6], [8,10]] ✓
+  Test 6: Optimal=[[1,10]] ✓
+  Test 7: Optimal=[[5,7]] ✓
+  Test 8: Optimal=[[1,7]] ✓
+  Test 9: Optimal=[[1,10]] ✓
+  All match: true</code></pre></div>
+<hr>
+<h2>🧠 The Merge Intervals Family — Complete Picture</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>┌──────────────┬────────────────────────┬──────────────────────────────┐
+</span>│ Aspect       │ Project 14             │ Project 22                   │
+│              │ (Merge Overlapping)    │ (Insert New Interval)        │
+├──────────────┼────────────────────────┼──────────────────────────────┤
+│ Input        │ Unsorted, may overlap  │ Sorted, non-overlapping      │
+│              │                        │ + one new interval           │
+│ Sort needed? │ YES → by start time    │ NO → already sorted          │
+│ Strategy     │ Sort + single scan     │ Three-phase single scan      │
+│ Merge logic  │ Extend end of last     │ Expand new interval with     │
+│              │ result interval        │ min/max of all overlaps      │
+│ Time         │ O(n log n)             │ O(n)                         │
+│ Output       │ Merged interval list   │ Merged interval list         │
+│ Key insight  │ Sort makes overlaps    │ Three regions: before /      │
+│              │ adjacent               │ overlap / after              │
+└──────────────┴────────────────────────┴──────────────────────────────┘
+
+FUTURE: Project 46 (Minimum Meeting Rooms)
+→ Count maximum simultaneous overlaps
+→ Uses intervals + min-heap → different question, same family
+
+The progression:
+  Project 14: Merge all overlaps (foundational)
+  Project 22: Insert + merge (surgical precision)
+  Project 46: Count overlaps (measurement, not modification)</code></pre></div>
+<hr>
+<h2>🧠 KEY TAKEAWAY</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>WHAT WE LEARNED:
+</span>→ Pre-sorted non-overlapping intervals enable O(n) insertion
+→ Three-phase decomposition: BEFORE → OVERLAP → AFTER
+→ Each phase has exactly ONE simple condition
+→ Phase A: existing.end &lt; newStart (strictly before)
+→ Phase B: existing.start &lt;= newEnd (overlapping)
+→ The merged interval grows with min(starts) and max(ends)
+→ Single index variable flows through all three phases
+→ Merged interval must be explicitly added between Phase B and C
+
+THE CORE MENTAL MODEL:
+→ "Sorted intervals + new interval = three zones"
+→ "Before zone: add unchanged"
+→ "Overlap zone: merge with new interval"
+→ "After zone: add unchanged"
+→ "One pass, three loops, one result"
+
+PATTERN SIGNATURE:
+→ Sorted non-overlapping intervals ✓
+→ Insert new interval ✓
+→ Maintain sorted non-overlapping property ✓
+→ = THREE-PHASE INTERVAL INSERTION
+
+CONNECTION TO PREVIOUS PROJECTS:
+→ Project 14: Same overlap detection → different goal (merge all vs insert one)
+→ Project 19: Same sort-then-scan skeleton → different domain (scheduling vs merging)
+→ Project 21: Both modify data in-place → different data structure (array vs intervals)</code></pre></div>
+<hr>
+<h2>🌉 BRIDGE TO NEXT PROJECT</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>PROJECT 22 taught us:
+</span>→ Surgical interval manipulation with three-phase approach
+→ Processing sorted data in a single pass with clean phase transitions
+
+PROJECT 23 (Reverse a Sub-portion of a Linked List) returns to:
+→ In-place linked list reversal from Project 16
+→ Project 16: reverse the ENTIRE linked list
+→ Project 23: reverse only positions L to R within the list
+
+→ Key new concept: BOUNDARY STITCHING
+     → Find the node BEFORE the reversal region
+     → Reverse the sub-portion
+     → Stitch the reversed portion back into the list
+     → Three regions again: before / reversed / after
+
+→ The "three-region" thinking from Project 22 carries over:
+     → Project 22: intervals → before / merged / after
+     → Project 23: linked list → before / reversed / after
+     → Same decomposition strategy → different data structure
+
+The broader pattern:
+  Three-region processing appears in:
+  → Interval insertion (Project 22)
+  → Partial linked list reversal (Project 23)
+  → Dutch National Flag / Sort Colors (Project 32)
+  → It's a UNIVERSAL decomposition strategy</code></pre></div>
+<hr>
+<p><strong>Ready for Project 23: Reverse a Sub-portion of a Linked List (In-place Reversal → Positional Reversal → Boundary Stitching)?</strong></p>
+</div>
+</div>
+
+<!-- ========== data-index="15" ========== -->
+<div class="chat-message" data-index="15"></div>
+</div>
+<div class="bottom-nav">
+  <a href="project-21.html" class="nav-btn prev">← Prev</a>
+  <div class="nav-center">
+    <span class="nav-project-label">PROJECT 22 of 60</span>
+    <span class="nav-project-title">Insert a New Interval into Sorted Intervals</span>
+    <span class="kbd-hint">← → arrow keys to navigate</span>
+  </div>
+  <a href="project-23.html" class="nav-btn next">Next →</a>
+  <a href="index.html" class="nav-btn home">🏠 TOC</a>
+</div>
+<div id="progress-track"><div id="progress-fill"></div></div>
+<div id="progress-pct">0%</div>
+<script src="script.js"></script>
+<script>
+document.addEventListener('keydown', function(e) {
+  if (['INPUT','TEXTAREA'].includes(document.activeElement.tagName)) return;
+  if (e.key === 'ArrowRight' && "project-23.html" !== null) window.location = "project-23.html";
+  if (e.key === 'ArrowLeft' && "project-21.html" !== null) window.location = "project-21.html";
+});
+</script>
+</body>
+</html>
