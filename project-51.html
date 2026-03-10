@@ -1,0 +1,942 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PROJECT 51: Edit Distance (Levenshtein Distance)</title>
+<link rel="icon" type="image/png" href="images/favicon.png">
+<link rel="stylesheet" href="styles.css">
+
+</head>
+<body>
+<div id="progress-bar-container"><div id="progress-bar" style="width:85%"></div></div>
+<div id="progress-label">85%</div>
+<div class="page-wrapper">
+<div class="chat-message"><div class="px-2"><h1>PROJECT 51: Edit Distance (Levenshtein Distance)</h1>
+<h2>🎯 Dynamic Programming → Insert/Delete/Replace Transitions → Min-Cost Path in Grid</h2>
+<hr>
+<h2>🧩 THE HYPOTHETICAL PROBLEM</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ You are given TWO strings: word1 and word2
+</span>→ Find the MINIMUM number of operations to convert word1 into word2
+→ Three operations are allowed:
+     → INSERT a character
+     → DELETE a character
+     → REPLACE a character (substitute one character for another)
+→ Each operation costs exactly 1
+
+Example 1:
+  word1 = "horse"
+  word2 = "ros"
+  Output: 3
+  
+  → horse → rorse (replace 'h' with 'r')
+  → rorse → rose  (delete 'r' at index 2)
+  → rose  → ros   (delete 'e' at the end)
+  → 3 operations
+
+Example 2:
+  word1 = "intention"
+  word2 = "execution"
+  Output: 5
+  
+  → intention → exention  (replace 'i' with 'e')
+  → exention  → exection  (replace 'n' with 'c')
+  → exection  → execution (insert 'u')
+  → execution → execution... wait let me redo:
+  
+  → intention → inention  (remove 't')
+  → inention  → enention  (replace 'i' with 'e')
+  → enention  → exention  (replace 'n' with 'x')
+  → exention  → exection  (replace 'n' with 'c')
+  → exection  → execution (insert 'u')
+  → 5 operations
+
+Example 3:
+  word1 = "abc"
+  word2 = "abc"
+  Output: 0
+  
+  → Already identical → no operations needed
+
+Example 4:
+  word1 = ""
+  word2 = "abc"
+  Output: 3
+  
+  → Insert 'a', insert 'b', insert 'c' → 3 insertions
+
+Example 5:
+  word1 = "abc"
+  word2 = ""
+  Output: 3
+  
+  → Delete 'a', delete 'b', delete 'c' → 3 deletions
+
+Example 6:
+  word1 = "kitten"
+  word2 = "sitting"
+  Output: 3
+  
+  → kitten  → sitten  (replace 'k' with 's')
+  → sitten  → sittin  (replace 'e' with 'i')
+  → sittin  → sitting (insert 'g')
+  → 3 operations</code></pre></div>
+<hr>
+<h2>🔍 HOW TO APPROACH IT</h2>
+<h3>Step 1 — Connect to Project 50 (LCS)</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>PROJECT 50 (LCS):
+</span>  → Two strings → find LONGEST COMMON subsequence → MAXIMIZE similarity
+  → Match: dp[i-1][j-1] + 1 → diagonal + 1
+  → No match: max(dp[i-1][j], dp[i][j-1]) → best of skip
+
+THIS Problem (Edit Distance):
+  → Two strings → find MINIMUM operations to transform → MINIMIZE difference
+  → Match: dp[i-1][j-1] + 0 → diagonal + 0 (free — no operation)
+  → No match: 1 + min(dp[i-1][j-1], dp[i-1][j], dp[i][j-1]) → cheapest operation
+
+THE RELATIONSHIP:
+  ┌──────────────────────────┬──────────────────────────────┐
+  │ LCS (Project 50)         │ Edit Distance (This Project) │
+  ├──────────────────────────┼──────────────────────────────┤
+  │ MAXIMIZE common length   │ MINIMIZE transformation cost │
+  │ Match: diagonal + 1      │ Match: diagonal + 0          │
+  │ No match: max(top, left) │ No match: 1 + min(D, T, L)  │
+  │ 2 choices when no match  │ 3 choices when no match      │
+  │ Answer: dp[m][n]         │ Answer: dp[m][n]             │
+  │ Same table structure     │ Same table structure          │
+  └──────────────────────────┴──────────────────────────────┘
+
+→ Same skeleton → different formula → different meaning
+→ If you mastered LCS, Edit Distance is a NATURAL extension</code></pre></div>
+<h3>Step 2 — Understand the Three Operations</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>Consider transforming word1 into word2:
+</span>  word1 = "ABCD" (length m)
+  word2 = "AEFD" (length n)
+
+At any point, we're comparing word1[i-1] with word2[j-1]:
+
+CASE 1: Characters MATCH (word1[i-1] == word2[j-1])
+  → No operation needed → move both pointers
+  → Cost = dp[i-1][j-1] + 0
+  → "These characters already align → proceed to the rest"
+
+CASE 2: Characters DON'T MATCH → Choose the cheapest operation:
+
+  OPERATION A — REPLACE word1[i-1] with word2[j-1]:
+    → Changes word1's character to match word2's character
+    → Both characters are now "handled" → move both pointers
+    → Cost = dp[i-1][j-1] + 1
+    → "Fix this mismatch by replacing → solve the rest"
+    → Comes from DIAGONAL
+
+  OPERATION B — DELETE word1[i-1]:
+    → Remove a character from word1
+    → word1 shrinks by 1 → move word1 pointer only
+    → Cost = dp[i-1][j] + 1
+    → "Skip this character in word1 → solve the rest"
+    → Comes from TOP
+
+  OPERATION C — INSERT a character into word1 (to match word2[j-1]):
+    → Add word2[j-1] to word1 at current position
+    → word2's character is now matched → move word2 pointer only
+    → Cost = dp[i][j-1] + 1
+    → "Insert the needed character → solve the rest"
+    → Comes from LEFT
+
+  dp[i][j] = 1 + min(dp[i-1][j-1], dp[i-1][j], dp[i][j-1])</code></pre></div>
+<h3>Step 3 — Visualize the Three Transitions</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>For cell dp[i][j] when word1[i-1] ≠ word2[j-1]:
+</span>
+  ┌──────────────┬──────────────┐
+  │ dp[i-1][j-1] │  dp[i-1][j]  │
+  │   REPLACE    │    DELETE     │
+  │     ↘        │      ↓       │
+  ├──────────────┼──────────────┤
+  │  dp[i][j-1]  │  dp[i][j]    │
+  │    INSERT    │  = 1 + min(  │
+  │      →       │   ↖, ↑, ←)  │
+  └──────────────┴──────────────┘
+
+DIAGONAL (↖ + 1): REPLACE → fix mismatch, advance both
+TOP      (↑ + 1): DELETE  → remove from word1, advance word1 only
+LEFT     (← + 1): INSERT  → add to word1, advance word2 only
+
+For cell dp[i][j] when word1[i-1] == word2[j-1]:
+
+  ┌──────────────┬──────────────┐
+  │ dp[i-1][j-1] │              │
+  │   FREE PASS  │              │
+  │     ↘        │              │
+  ├──────────────┼──────────────┤
+  │              │  dp[i][j]    │
+  │              │  = ↖ + 0     │
+  └──────────────┴──────────────┘
+
+→ Characters match → no cost → take diagonal directly</code></pre></div>
+<h3>Step 4 — Define the Full Recurrence</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>STATE:
+</span>  dp[i][j] = minimum operations to convert word1[0..i-1] into word2[0..j-1]
+
+BASE CASES:
+  dp[0][j] = j for all j
+    → Converting empty string to word2[0..j-1] requires j insertions
+    → "" → "a" = 1 insert, "" → "ab" = 2 inserts, etc.
+
+  dp[i][0] = i for all i
+    → Converting word1[0..i-1] to empty string requires i deletions
+    → "a" → "" = 1 delete, "ab" → "" = 2 deletes, etc.
+
+RECURRENCE:
+  If word1[i-1] == word2[j-1]:
+    dp[i][j] = dp[i-1][j-1]                    → match → free
+
+  If word1[i-1] != word2[j-1]:
+    dp[i][j] = 1 + min(
+      dp[i-1][j-1],   → REPLACE
+      dp[i-1][j],      → DELETE
+      dp[i][j-1]       → INSERT
+    )
+
+ANSWER:
+  dp[m][n] = minimum operations to convert all of word1 into all of word2</code></pre></div>
+<h3>Step 5 — Walk Through a Complete Example</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>word1 = "horse" (m=5)
+</span>word2 = "ros"   (n=3)
+
+BASE CASES:
+  dp[0][0]=0  dp[0][1]=1  dp[0][2]=2  dp[0][3]=3
+  dp[1][0]=1  dp[2][0]=2  dp[3][0]=3  dp[4][0]=4  dp[5][0]=5
+
+        ""   r    o    s
+   ""    0   1    2    3
+   h     1   ?    ?    ?
+   o     2   ?    ?    ?
+   r     3   ?    ?    ?
+   s     4   ?    ?    ?
+   e     5   ?    ?    ?
+
+dp[1][1]: h vs r → NO MATCH
+  replace: dp[0][0]+1 = 1
+  delete:  dp[0][1]+1 = 2
+  insert:  dp[1][0]+1 = 2
+  min = 1 (replace)
+
+dp[1][2]: h vs o → NO MATCH
+  replace: dp[0][1]+1 = 2
+  delete:  dp[0][2]+1 = 3
+  insert:  dp[1][1]+1 = 2
+  min = 2
+
+dp[1][3]: h vs s → NO MATCH
+  replace: dp[0][2]+1 = 3
+  delete:  dp[0][3]+1 = 4
+  insert:  dp[1][2]+1 = 3
+  min = 3
+
+        ""   r    o    s
+   ""    0   1    2    3
+   h     1   1    2    3
+   o     2   ?    ?    ?
+
+dp[2][1]: o vs r → NO MATCH
+  replace: dp[1][0]+1 = 2
+  delete:  dp[1][1]+1 = 2
+  insert:  dp[2][0]+1 = 3
+  min = 2
+
+dp[2][2]: o vs o → MATCH!
+  dp[2][2] = dp[1][1] = 1
+
+dp[2][3]: o vs s → NO MATCH
+  replace: dp[1][2]+1 = 3
+  delete:  dp[1][3]+1 = 4
+  insert:  dp[2][2]+1 = 2
+  min = 2
+
+        ""   r    o    s
+   ""    0   1    2    3
+   h     1   1    2    3
+   o     2   2    1    2
+   r     3   ?    ?    ?
+
+dp[3][1]: r vs r → MATCH!
+  dp[3][1] = dp[2][0] = 2
+
+dp[3][2]: r vs o → NO MATCH
+  replace: dp[2][1]+1 = 3
+  delete:  dp[2][2]+1 = 2
+  insert:  dp[3][1]+1 = 3
+  min = 2
+
+dp[3][3]: r vs s → NO MATCH
+  replace: dp[2][2]+1 = 2
+  delete:  dp[2][3]+1 = 3
+  insert:  dp[3][2]+1 = 3
+  min = 2
+
+        ""   r    o    s
+   ""    0   1    2    3
+   h     1   1    2    3
+   o     2   2    1    2
+   r     3   2    2    2
+   s     4   ?    ?    ?
+
+dp[4][1]: s vs r → NO MATCH → min(dp[3][0]+1, dp[3][1]+1, dp[4][0]+1) = min(4,3,5) = 3
+dp[4][2]: s vs o → NO MATCH → min(dp[3][1]+1, dp[3][2]+1, dp[4][1]+1) = min(3,3,4) = 3
+dp[4][3]: s vs s → MATCH! → dp[3][2] = 2
+
+        ""   r    o    s
+   ""    0   1    2    3
+   h     1   1    2    3
+   o     2   2    1    2
+   r     3   2    2    2
+   s     4   3    3    2
+   e     5   ?    ?    ?
+
+dp[5][1]: e vs r → NO MATCH → min(dp[4][0]+1, dp[4][1]+1, dp[5][0]+1) = min(5,4,6) = 4
+dp[5][2]: e vs o → NO MATCH → min(dp[4][1]+1, dp[4][2]+1, dp[5][1]+1) = min(4,4,5) = 4
+dp[5][3]: e vs s → NO MATCH → min(dp[4][2]+1, dp[4][3]+1, dp[5][2]+1) = min(4,3,5) = 3
+
+        ""   r    o    s
+   ""    0   1    2    3
+   h     1   1    2    3
+   o     2   2    1    2
+   r     3   2    2    2
+   s     4   3    3    2
+   e     5   4    4    3  ← ANSWER
+
+Edit Distance = dp[5][3] = 3
+  → horse → rorse (replace h→r)
+  → rorse → rose  (delete r)
+  → rose  → ros   (delete e)</code></pre></div>
+<hr>
+<h2>🛠️ HOW CAN WE SOLVE IT</h2>
+<h3>Algorithm — 2D DP Table</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>1. Create dp table of size (m+1) × (n+1)
+</span>2. Initialize base cases:
+     dp[i][0] = i for all i (delete all of word1)
+     dp[0][j] = j for all j (insert all of word2)
+3. FOR i = 1 to m:
+     FOR j = 1 to n:
+       IF word1[i-1] == word2[j-1]:
+         dp[i][j] = dp[i-1][j-1]           // match → free
+       ELSE:
+         dp[i][j] = 1 + min(
+           dp[i-1][j-1],  // replace
+           dp[i-1][j],     // delete
+           dp[i][j-1]      // insert
+         )
+4. RETURN dp[m][n]</code></pre></div>
+<hr>
+<h2>✅ WHAT SHOULD YOU DO</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ ALWAYS initialize base cases correctly
+</span>     → dp[i][0] = i → NOT 0 (unlike LCS where base cases are all 0)
+     → dp[0][j] = j → NOT 0
+     → Converting non-empty to empty (or vice versa) has a COST
+     → LCS base cases are 0 because empty string has 0-length LCS
+     → Edit Distance base cases are non-zero because transforming costs
+
+→ ALWAYS use min() for the three transitions (not max)
+     → LCS MAXIMIZES similarity → uses max
+     → Edit Distance MINIMIZES operations → uses min
+     → Swapping min/max = wrong answer
+
+→ ALWAYS add +1 for the non-match case
+     → Each operation (insert, delete, replace) costs 1
+     → dp[i][j] = 1 + min(three neighbors)
+     → Forgetting the +1 = zero-cost operations = wrong answer
+
+→ ALWAYS handle the match case SEPARATELY
+     → Match: dp[i-1][j-1] + 0 → no operation needed
+     → Do NOT include match in the min() with +1
+     → Some people write: min(dp[i-1][j-1] + (match?0:1), dp[i-1][j]+1, dp[i][j-1]+1)
+     → This is correct but less clear than the if/else structure
+
+→ CONSIDER space optimization (same as LCS — Project 50)
+     → Two-row approach: O(min(m,n)) space
+     → Same rolling-row technique applies
+     → But loses reconstruction ability</code></pre></div>
+<hr>
+<h2>🚫 WHAT SHOULD YOU NOT DO</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ DO NOT initialize base cases to 0
+</span>     → dp[0][0] = 0 is correct (empty to empty = 0 operations)
+     → But dp[3][0] = 3 (delete 3 characters), NOT 0
+     → dp[0][3] = 3 (insert 3 characters), NOT 0
+     → This is the KEY DIFFERENCE from LCS base cases
+
+→ DO NOT use max() instead of min()
+     → LCS: max (maximize similarity)
+     → Edit Distance: min (minimize cost)
+     → This is the single most common confusion
+
+→ DO NOT forget the REPLACE operation (diagonal)
+     → Some people only consider insert and delete
+     → Without replace: dp[i][j] = 1 + min(dp[i-1][j], dp[i][j-1])
+     → This gives WRONG answer (higher cost than necessary)
+     → Replace is often cheaper than delete + insert
+
+→ DO NOT confuse "insert into word1" with "insert into word2"
+     → All operations are on word1 to transform it INTO word2
+     → INSERT adds a character to word1 (matching word2's current char)
+     → DELETE removes a character from word1
+     → REPLACE changes a character in word1 to match word2's current char
+     → word2 is NEVER modified — it's the target
+
+→ DO NOT apply greedy here
+     → Same reason as LCS (Project 50): early choices affect later options
+     → Replacing 'h' with 'r' in "horse" might seem wasteful
+       but it's actually part of the optimal solution
+     → DP considers ALL possibilities systematically</code></pre></div>
+<hr>
+<h2>🔀 WHEN TO USE THIS PATTERN</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>✓ You need to transform one sequence into another
+</span>✓ Allowed operations: insert, delete, replace (or subset)
+✓ Each operation has a cost (uniform or varying)
+✓ You want the MINIMUM total cost of transformation
+
+VARIANTS:
+  → Standard Edit Distance: insert=1, delete=1, replace=1
+  → Weighted Edit Distance: different costs per operation
+  → Insert/Delete only (no replace): equivalent to m + n - 2×LCS
+  → Hamming Distance: replace only, same-length strings
+  → Damerau-Levenshtein: adds TRANSPOSITION (swap adjacent chars)
+
+REAL-WORLD APPLICATIONS:
+  → Spell checking: suggest closest valid words
+  → DNA alignment: measure genetic similarity
+  → Fuzzy string matching: find approximate matches
+  → Auto-correct: rank correction suggestions by edit distance
+  → Diff tools: compute minimum changes between file versions
+  → Plagiarism detection: measure text similarity
+  → OCR post-processing: correct recognition errors
+  → Natural language processing: word similarity metrics</code></pre></div>
+<hr>
+<h2>🚫 WHEN NOT TO USE THIS PATTERN</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>✗ You need exact string matching
+</span>     → Edit distance = 0 means exact match
+     → But for just checking equality: simple comparison is O(n)
+     → Don't build O(m×n) table for equality check
+
+✗ You need to find COMMON elements (not transform)
+     → That's LCS (Project 50) → maximize, not minimize
+     → Different objective, different formula
+
+✗ Strings are very long (m, n &gt; 10,000) and you need exact answer
+     → O(m×n) can be too slow
+     → Approximate algorithms exist for large strings
+     → Ukkonen's algorithm: O(d×min(m,n)) where d = actual edit distance
+     → Better when d is small relative to string lengths
+
+✗ You need the edit distance between one string and MANY others
+     → Computing separately for each pair is expensive
+     → BK-trees or other metric space structures are better
+     → Trie-based approaches can help (connects to Project 58)
+
+✗ Order doesn't matter (bag of characters)
+     → Edit distance preserves order
+     → If order is irrelevant → just compare character frequencies</code></pre></div>
+<hr>
+<h2>⚙️ HOW IT ONLY WORKS — Internal Mechanics</h2>
+<h3>Why Three Operations Are Sufficient</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>CLAIM: Any transformation from word1 to word2 can be achieved
+</span>using only insert, delete, and replace operations.
+
+PROOF:
+  → Any single character can be:
+       → Kept (if it matches) → 0 cost
+       → Changed to another character → 1 replace
+       → Removed → 1 delete
+       → A new character can be added → 1 insert
+  → Any combination of these operations can transform any string
+    to any other string
+  → Therefore: {insert, delete, replace} is a COMPLETE operation set
+
+MINIMUM:
+  → The DP finds the minimum over ALL possible sequences of operations
+  → It doesn't just try one strategy — it considers all combinations
+  → The recurrence ensures optimality via Bellman's principle:
+    "An optimal policy has the property that whatever the initial state
+     and initial decision are, the remaining decisions must constitute
+     an optimal policy with regard to the state resulting from the first decision"</code></pre></div>
+<h3>The Grid-Path Interpretation</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>The DP table can be viewed as a GRID:
+</span>  → Start at dp[0][0] (top-left)
+  → End at dp[m][n] (bottom-right)
+  → Each step in the grid = one character comparison
+
+MOVEMENTS:
+  → DIAGONAL (↘): both pointers advance → match or replace
+  → DOWN (↓): word1 pointer advances → delete from word1
+  → RIGHT (→): word2 pointer advances → insert into word1
+
+COST OF MOVEMENT:
+  → Diagonal + match: 0 cost
+  → Diagonal + mismatch: 1 cost (replace)
+  → Down: 1 cost (delete)
+  → Right: 1 cost (insert)
+
+EDIT DISTANCE = minimum cost path from (0,0) to (m,n) in this grid
+
+This is equivalent to a SHORTEST PATH problem in a grid!
+  → Nodes = grid cells
+  → Edges = movements (diagonal, down, right)
+  → Edge weights = 0 (match) or 1 (operation)
+  → DP computes shortest path layer by layer</code></pre></div>
+<h3>Relationship to LCS — Mathematical Connection</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>For operations INSERT and DELETE only (no replace):
+</span>  Edit Distance (ins/del) = m + n - 2 × LCS(word1, word2)
+
+PROOF:
+  → LCS length = L → characters that DON'T need to change
+  → Characters in word1 NOT in LCS: m - L → must be DELETED
+  → Characters in word2 NOT in LCS: n - L → must be INSERTED
+  → Total operations = (m - L) + (n - L) = m + n - 2L
+
+WITH REPLACE:
+  → Edit Distance ≤ m + n - 2L
+  → Replace can be cheaper: instead of delete + insert (cost 2),
+    replace does it in 1 operation
+  → So full edit distance ≤ insert/delete-only distance
+
+EXAMPLE:
+  word1 = "horse" (m=5), word2 = "ros" (n=3)
+  LCS = "os" (L=2) (as computed in Project 50)
+  
+  Insert/Delete only: 5 + 3 - 2×2 = 4 operations
+  With Replace: 3 operations (replace h→r, delete r, delete e)
+  
+  3 &lt; 4 → replace saved one operation</code></pre></div>
+<h3>Optimal Substructure Proof</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>THEOREM: Edit Distance has optimal substructure.
+</span>
+Let d(i,j) = edit distance of word1[0..i-1] and word2[0..j-1]
+Let S be an optimal sequence of operations transforming word1[0..i-1] to word2[0..j-1]
+
+CASE 1: Last operation in S is REPLACE (or match)
+  → word1[i-1] is aligned with word2[j-1]
+  → The remaining operations must optimally transform word1[0..i-2] to word2[0..j-2]
+  → d(i,j) = d(i-1,j-1) + (word1[i-1]==word2[j-1] ? 0 : 1)
+
+CASE 2: Last operation in S is DELETE word1[i-1]
+  → After deleting, we need to transform word1[0..i-2] to word2[0..j-1]
+  → d(i,j) = d(i-1,j) + 1
+
+CASE 3: Last operation in S is INSERT word2[j-1]
+  → After inserting, word2[j-1] is matched
+  → We need to transform word1[0..i-1] to word2[0..j-2]
+  → d(i,j) = d(i,j-1) + 1
+
+COMBINING: d(i,j) = min over all three cases → the DP recurrence ✓</code></pre></div>
+<h3>Time and Space Complexity</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>TIME:
+</span>  → Fill (m+1) × (n+1) table: O(m × n)
+  → Each cell: O(1) work (comparison + min of 3 values)
+  → TOTAL: O(m × n)
+
+SPACE:
+  → Full table: O(m × n)
+  → Two-row optimization (same as Project 50): O(min(m, n))
+  → Single-row optimization: O(min(m, n))
+  → Reconstruction: requires full O(m × n) table</code></pre></div>
+<hr>
+<h2>⚠️ COMMON PITFALLS AND FAILURE MODES</h2>
+<h3>Pitfall 1: Base Case Initialization</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>LCS (Project 50):
+</span>  dp[0][j] = 0  ← empty string has 0-length LCS
+  dp[i][0] = 0  ← empty string has 0-length LCS
+
+EDIT DISTANCE (this project):
+  dp[0][j] = j  ← converting "" to word2[0..j-1] costs j insertions
+  dp[i][0] = i  ← converting word1[0..i-1] to "" costs i deletions
+
+COMMON MISTAKE:
+  → Copy-pasting LCS code and forgetting to change base cases
+  → dp[0][j] = 0 for edit distance → WRONG
+  → This says "converting empty string to any string costs 0" → clearly wrong</code></pre></div>
+<h3>Pitfall 2: Missing the +0 for Match Case</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>WRONG:
+</span>  if (word1[i-1] == word2[j-1]) {
+      dp[i][j] = dp[i-1][j-1] + 1;  // ← treating match as cost 1
+  }
+
+RIGHT:
+  if (word1[i-1] == word2[j-1]) {
+      dp[i][j] = dp[i-1][j-1];       // ← match is FREE → +0
+  }
+
+→ Match means characters already align → NO operation needed → cost 0
+→ Adding 1 for matches inflates the edit distance</code></pre></div>
+<h3>Pitfall 3: Treating Replace as Delete + Insert</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>WITHOUT REPLACE (only insert and delete):
+</span>  dp[i][j] = 1 + min(dp[i-1][j], dp[i][j-1])
+  → Two choices only → misses the replace shortcut
+
+WITH REPLACE:
+  dp[i][j] = 1 + min(dp[i-1][j-1], dp[i-1][j], dp[i][j-1])
+  → Three choices → replace is often cheaper than delete+insert
+
+EXAMPLE:
+  word1 = "a", word2 = "b"
+  Without replace: delete 'a' + insert 'b' = 2 operations
+  With replace: replace 'a' with 'b' = 1 operation
+  
+→ Always include the diagonal (replace) transition</code></pre></div>
+<h3>Pitfall 4: Space Optimization Diagonal Tracking</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>In LCS (Project 50), we needed to save prev_diagonal for match case
+</span>The SAME issue applies here but is MORE critical because:
+  → Match case: dp[i][j] = dp[i-1][j-1] → diagonal
+  → Replace case: dp[i][j] = dp[i-1][j-1] + 1 → diagonal + 1
+  → BOTH need the diagonal value from previous row
+
+In single-row optimization:
+  → dp[j] gets overwritten as we process left to right
+  → dp[j-1] from previous row (which is dp[i-1][j-1]) is already overwritten
+  → MUST save it before overwriting
+
+  int prevDiagonal = dp[0];  // dp[i-1][0] initially
+  for (int j = 1; j &lt;= n; j++) {
+      int temp = dp[j];      // save dp[i-1][j] before overwrite
+      if (word1[i-1] == word2[j-1]) {
+          dp[j] = prevDiagonal;     // match → diagonal
+      } else {
+          dp[j] = 1 + min(prevDiagonal, dp[j], dp[j-1]);
+      }
+      prevDiagonal = temp;   // saved value becomes diagonal for next j
+  }</code></pre></div>
+<h3>Pitfall 5: Asymmetry Confusion</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ Edit distance is SYMMETRIC: d(word1, word2) = d(word2, word1)
+</span>→ But the operations CHANGE meaning:
+     → d(word1 → word2): insert into word1, delete from word1
+     → d(word2 → word1): insert into word2, delete from word2
+     → Delete from word1 = Insert into word2 (and vice versa)
+→ The COST is the same but the SEQUENCE of operations differs
+→ Reconstruction must be consistent with the direction chosen</code></pre></div>
+<hr>
+<h2>📈 SCALABILITY CONSIDERATIONS</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>m = length of word1, n = length of word2
+</span>
+→ m=100, n=100 → 10,000 cells → instant
+→ m=1000, n=1000 → 1,000,000 cells → instant
+→ m=5000, n=5000 → 25,000,000 cells → fast (~200ms)
+→ m=10,000, n=10,000 → 100,000,000 cells → ~1 second
+→ m=100,000, n=100,000 → 10^10 cells → TOO SLOW
+
+OPTIMIZATIONS FOR LARGE INPUTS:
+  → Ukkonen's algorithm: O(d × min(m,n)) where d = edit distance
+       → If d is small relative to m,n → much faster
+       → Prunes computation to a band around the diagonal
+  → Bit-parallel algorithms: use CPU word-level parallelism
+       → O(m×n/w) where w = word size (64 bits) → ~64x speedup
+  → Approximation algorithms for very large strings
+  → For interview purposes: O(m×n) is always the expected answer
+
+SPACE OPTIMIZATION IS CRITICAL:
+  → m=n=10,000 → full table = 400MB → memory limit exceeded
+  → Two-row: 80KB → fits easily
+  → Always mention space optimization in interviews</code></pre></div>
+<hr>
+<h2>🔍 INTERPRETABILITY CONSIDERATIONS</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>Grid Path — Mental Model:
+</span>  → "Imagine a grid with word1 on the left side and word2 on top"
+  → "You start at top-left (both strings empty)"
+  → "You need to reach bottom-right (both strings fully processed)"
+  → "Each step: go diagonal (match/replace), down (delete), or right (insert)"
+  → "Match is free, everything else costs 1"
+  → "Find the cheapest path from corner to corner"
+
+Reconstruction — Mental Model:
+  → "Start at the answer cell (bottom-right)"
+  → "At each cell, figure out which operation was used"
+  → "If characters match: free diagonal → no operation"
+  → "If min came from diagonal: REPLACE"
+  → "If min came from top: DELETE"
+  → "If min came from left: INSERT"
+  → "Follow the path backward → collect operations"
+
+Interview Explanation:
+  → "I build a 2D DP table where dp[i][j] = min operations for first i and j chars"
+  → "Base cases: dp[i][0] = i deletions, dp[0][j] = j insertions"
+  → "Match: dp[i-1][j-1] → free, no operation"
+  → "Mismatch: 1 + min(replace via diagonal, delete via top, insert via left)"
+  → "Space can be optimized to O(min(m,n)) with rolling rows"
+  → "Time: O(m×n), Space: O(m×n) or O(min(m,n))"</code></pre></div>
+<hr>
+<div class="github-btn-wrap"><a class="github-btn" href="https://github.com/Shakti4640/leetcode-patterns-guide-java/tree/main/project- (51)" target="_blank" rel="noopener"><svg viewBox="0 0 24 24"><path d="M12 .5C5.37.5 0 5.87 0 12.5c0 5.3 3.44 9.8 8.2 11.39.6.11.82-.26.82-.58v-2.03c-3.34.73-4.04-1.61-4.04-1.61-.55-1.39-1.34-1.76-1.34-1.76-1.09-.74.08-.73.08-.73 1.2.09 1.84 1.24 1.84 1.24 1.07 1.83 2.8 1.3 3.49 1 .1-.78.42-1.3.76-1.6-2.67-.3-5.47-1.33-5.47-5.93 0-1.31.47-2.38 1.24-3.22-.14-.3-.54-1.52.1-3.18 0 0 1.01-.32 3.3 1.23a11.5 11.5 0 0 1 3-.4c1.02 0 2.04.13 3 .4 2.28-1.55 3.29-1.23 3.29-1.23.64 1.66.24 2.88.12 3.18.77.84 1.23 1.91 1.23 3.22 0 4.61-2.81 5.63-5.48 5.92.43.37.81 1.1.81 2.22v3.29c0 .32.21.7.82.58C20.56 22.3 24 17.8 24 12.5 24 5.87 18.63.5 12 .5z"/></svg>💻 View Complete Java Code on GitHub</a></div>
+
+<hr>
+<h2>🔑 EXPECTED OUTPUT</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>╔══════════════════════════════════════════════════╗
+</span>║  PROJECT 51: Edit Distance (Levenshtein)         ║
+║  Pattern: 2D DP → Insert/Delete/Replace → MinCost║
+╚══════════════════════════════════════════════════╝
+
+═══ TEST 1: horse → ros ═══
+word1 = "horse" (length 5)
+word2 = "ros" (length 3)
+
+─── DP Table ───
+            ""    r    o    s
+        -------------------------
+  "" |    0    1    2    3  
+   h |    1    1    2    3  
+   o |    2    2   [1]   2  
+   r |    3   [2]   2    2  
+   s |    4    3    3   [2] 
+   e |    5    4    4    3  
+
+Legend: [X] = match (free — no operation needed)
+
+─── Operations ───
+  REPLACE 'h' with 'r'
+  KEEP 'o'
+  DELETE 'r'
+  KEEP 's'
+  DELETE 'e'
+
+═══ Edit Distance = 3 ═══
+
+═══ TEST 3: Identical Strings ═══
+word1 = "abc" (length 3)
+word2 = "abc" (length 3)
+
+─── DP Table ───
+            ""    a    b    c
+        -------------------------
+  "" |    0    1    2    3  
+   a |    1   [0]   1    2  
+   b |    2    1   [0]   1  
+   c |    3    2    1   [0] 
+
+─── Operations ───
+  KEEP 'a'
+  KEEP 'b'
+  KEEP 'c'
+
+═══ Edit Distance = 0 ═══
+
+═══ TEST 4: Empty → Non-Empty ═══
+word1 = "" (length 0)
+word2 = "abc" (length 3)
+
+─── DP Table ───
+            ""    a    b    c
+        -------------------------
+  "" |    0    1    2    3  
+
+─── Operations ───
+  INSERT 'a'
+  INSERT 'b'
+  INSERT 'c'
+
+═══ Edit Distance = 3 ═══
+
+═══ TEST 6: kitten → sitting ═══
+word1 = "kitten" (length 6)
+word2 = "sitting" (length 7)
+
+─── DP Table ───
+            ""    s    i    t    t    i    n    g
+        -----------------------------------------
+  "" |    0    1    2    3    4    5    6    7  
+   k |    1    1    2    3    4    5    6    7  
+   i |    2    2   [1]   2    3    4    5    6  
+   t |    3    3    2   [1]   2    3    4    5  
+   t |    4    4    3    2   [1]   2    3    4  
+   e |    5    5    4    3    2    2    3    4  
+   n |    6    6    5    4    3    3   [2]   3  
+
+─── Operations ───
+  REPLACE 'k' with 's'
+  KEEP 'i'
+  KEEP 't'
+  KEEP 't'
+  REPLACE 'e' with 'i'
+  KEEP 'n'
+  INSERT 'g'
+
+═══ Edit Distance = 3 ═══
+
+═══ TEST 8: Cross-Verification (All Approaches) ═══
+  Test 1:  "horse" → "ros"               → dist=3   ✓
+  Test 2:  "intention" → "execution"      → dist=5   ✓
+  Test 3:  "abc" → "abc"                  → dist=0   ✓
+  Test 4:  "" → "abc"                     → dist=3   ✓
+  Test 5:  "abc" → ""                     → dist=3   ✓
+  Test 6:  "kitten" → "sitting"           → dist=3   ✓
+  Test 7:  "a" → "b"                      → dist=1   ✓
+  Test 8:  "saturday" → "sunday"          → dist=3   ✓
+  Test 9:  "dinitro..." → "acetyl..."     → dist=17  ✓
+  Test 10: "pneumono..." → "pseudo..."    → dist=36  ✓
+
+═══ TEST 9: Edit Distance ↔ LCS Relationship ═══
+  Formula: EditDist(ins/del only) = m + n - 2 × LCS
+
+  "horse" vs "ros":
+    LCS=2  ED(ins/del)=4  m+n-2L=4 ✓  ED(full)=3 (≤ 4: true)
+  "abcde" vs "ace":
+    LCS=3  ED(ins/del)=2  m+n-2L=2 ✓  ED(full)=2 (≤ 2: true)
+  "kitten" vs "sitting":
+    LCS=4  ED(ins/del)=5  m+n-2L=5 ✓  ED(full)=3 (≤ 5: true)
+  "abc" vs "def":
+    LCS=0  ED(ins/del)=6  m+n-2L=6 ✓  ED(full)=3 (≤ 6: true)
+  "ABCBDAB" vs "BDCABA":
+    LCS=4  ED(ins/del)=5  m+n-2L=5 ✓  ED(full)=5 (≤ 5: true)
+
+═══ TEST 10: Spell Checker Application ═══
+  "aple" → Suggestions:
+    apple (distance=1)
+    ape (distance=2)
+    able (distance=2)
+    maple (distance=2)
+  "oragne" → Suggestions:
+    orange (distance=2)
+    range (distance=2)
+  "tabel" → Suggestions:
+    table (distance=2)
+    cable (distance=2)
+
+═══ TEST 11: Weighted Edit Distance ═══
+  "abc" → "axc"
+  Standard (1,1,1):          1
+  Expensive replace (1,1,3): 2
+  Expensive insert (5,1,1):  1
+  Cheap insert (1,5,5):      2
+
+═══ TEST 12: Performance Benchmark ═══
+  n=100  → dist=73   → 0 ms
+  n=500  → dist=387  → 2 ms
+  n=1000 → dist=775  → 6 ms
+  n=2000 → dist=1553 → 18 ms
+  n=5000 → dist=3889 → 90 ms</code></pre></div>
+<hr>
+<h2>🧠 COMPARISON: LCS vs Edit Distance — Side by Side</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>┌─────────────────────┬─────────────────────────┬──────────────────────────┐
+</span>│ Aspect              │ LCS (Project 50)        │ Edit Distance (Proj 51)  │
+├─────────────────────┼─────────────────────────┼──────────────────────────┤
+│ Question            │ How SIMILAR are they?   │ How DIFFERENT are they?  │
+│ Objective           │ MAXIMIZE common length  │ MINIMIZE operation count │
+│ Base cases          │ dp[0][j]=0, dp[i][0]=0  │ dp[0][j]=j, dp[i][0]=i  │
+│ Match transition    │ dp[i-1][j-1] + 1        │ dp[i-1][j-1] + 0        │
+│ No-match choices    │ 2 (top, left)           │ 3 (diagonal, top, left)  │
+│ No-match aggregator │ max(top, left)          │ 1 + min(diag, top, left) │
+│ Optimization dir    │ Maximize                │ Minimize                 │
+│ Space optimization  │ Two-row / single-row    │ Two-row / single-row     │
+│ Time complexity     │ O(m × n)                │ O(m × n)                 │
+│ Space complexity    │ O(m × n) or O(min(m,n)) │ O(m × n) or O(min(m,n)) │
+│ Relationship        │ L = LCS length          │ d ≤ m + n - 2L          │
+└─────────────────────┴─────────────────────────┴──────────────────────────┘
+
+THE DUALITY:
+  → LCS finds what's SHARED → maximizes overlap
+  → Edit Distance finds what's CHANGED → minimizes work
+  → They are two perspectives on the SAME underlying alignment
+  → An alignment that maximizes matches also minimizes mismatches
+  → This is why the table structure is identical</code></pre></div>
+<hr>
+<h2>🧠 THE COMPLETE DP EVOLUTION (Projects 43–51)</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>┌──────────┬──────────────┬────────────────┬───────────────────┬─────────────┐
+</span>│ Project  │ Dimensions   │ Optimization   │ Key Transition    │ Complexity  │
+├──────────┼──────────────┼────────────────┼───────────────────┼─────────────┤
+│ 43 Stairs│ 1D           │ Count paths    │ dp[i-1] + dp[i-2] │ O(n)        │
+│ 44 Knap  │ 2D (item×cap)│ Max value      │ include or skip   │ O(n×W)      │
+│ 45 LIS   │ 1D           │ Max length     │ dp[j]+1 if valid  │ O(n²)/nlogn │
+│ 50 LCS   │ 2D (str×str) │ Max match      │ diag+1 or max(T,L)│ O(m×n)      │
+│ 51 Edit  │ 2D (str×str) │ Min cost       │ +0 or 1+min(D,T,L)│ O(m×n)      │
+└──────────┴──────────────┴────────────────┴───────────────────┴─────────────┘
+
+MASTERY CHECKLIST:
+  ✓ 1D single-sequence DP (stairs, LIS)
+  ✓ 2D item-capacity DP (knapsack)
+  ✓ 2D string-string DP — maximize (LCS)
+  ✓ 2D string-string DP — minimize (Edit Distance)
+  → NEXT: 1D string-partitioning DP (Word Break — Project 52)</code></pre></div>
+<hr>
+<h2>🧠 KEY TAKEAWAY</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>WHAT WE LEARNED:
+</span>→ Edit Distance is the MINIMIZATION counterpart to LCS
+→ Same 2D table, same dependency pattern (diagonal, top, left)
+→ THREE operations: replace (diagonal+1), delete (top+1), insert (left+1)
+→ Match is FREE (diagonal+0) — the only difference from non-match
+→ Base cases are NON-ZERO: dp[i][0]=i, dp[0][j]=j (transformation has cost)
+→ Relationship: EditDist(ins/del) = m + n - 2×LCS
+→ Replace operation makes full EditDist ≤ ins/del-only EditDist
+
+THE CORE MENTAL MODEL:
+→ "Two strings, one grid, find cheapest path corner to corner"
+→ "Match = free diagonal step"
+→ "Mismatch = pay 1 for replace (diagonal), delete (down), or insert (right)"
+→ "DP finds the cheapest combination automatically"
+
+PATTERN SIGNATURE:
+→ Transform one sequence into another ✓
+→ Insert / Delete / Replace operations ✓
+→ Minimize total operations ✓
+→ = 2D DP WITH THREE TRANSITIONS + MIN AGGREGATION
+
+THE LCS ↔ EDIT DISTANCE DUALITY:
+  → Same table structure → same code skeleton
+  → LCS: match adds value → max aggregation → base cases = 0
+  → Edit: mismatch adds cost → min aggregation → base cases = i, j
+  → Two sides of the same coin
+  → Master one → the other is a formula swap</code></pre></div>
+<hr>
+<h2>🌉 BRIDGE TO NEXT PROJECT</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>PROJECT 51 taught us:
+</span>→ 2D DP for string TRANSFORMATION
+→ Three operations with uniform cost
+→ Minimize total operations to convert one string to another
+→ Grid-path interpretation: cheapest route from corner to corner
+
+PROJECT 52 (Word Break — Can String Be Segmented?) will ask:
+→ What if instead of transforming ONE string into ANOTHER,
+  we need to PARTITION one string into VALID WORDS?
+→ "Given string s and dictionary wordDict,
+   can s be segmented into space-separated dictionary words?"
+→ s = "leetcode", wordDict = ["leet", "code"] → true ("leet code")
+→ s = "catsandog", wordDict = ["cats","dog","sand","and","cat"] → false
+
+→ This shifts from 2D DP (two strings) to 1D DP (one string + dictionary)
+→ dp[i] = "can s[0..i-1] be segmented into dictionary words?"
+→ For each i, check all possible last words: does s[j..i-1] exist in dictionary?
+→ If dp[j] is true AND s[j..i-1] is a valid word → dp[i] = true
+
+The progression:
+  Project 50: 2D DP → two strings → maximize common (LCS)
+  Project 51: 2D DP → two strings → minimize transformation (Edit Distance)
+  Project 52: 1D DP → one string + dictionary → partition feasibility (Word Break)
+
+→ From COMPARING two sequences to DECOMPOSING one sequence
+→ From 2D tables back to 1D tables
+→ But with STRING OPERATIONS (substring checks) instead of simple arithmetic
+→ The dictionary lookup connects DP to HASH SETS
+→ And later to TRIES (Project 58) for efficient prefix matching</code></pre></div>
+<hr>
+<p><strong>Ready for Project 52: Word Break — Can String Be Segmented? (Dynamic Programming → String Partitioning → Dictionary-Driven DP Transitions)?</strong></p>
+</div>
+</div>
+
+<!-- ========== data-index="23" ========== -->
+<div class="chat-message" data-index="23"></div>
+</div>
+<div class="bottom-nav">
+  <a href="project-50.html" class="nav-btn prev">← Prev</a>
+  <div class="nav-center">
+    <span class="nav-project-label">PROJECT 51 of 60</span>
+    <span class="nav-project-title">Edit Distance (Levenshtein Distance)</span>
+    <span class="kbd-hint">← → arrow keys to navigate</span>
+  </div>
+  <a href="project-52.html" class="nav-btn next">Next →</a>
+  <a href="index.html" class="nav-btn home">🏠 TOC</a>
+</div>
+<div id="progress-track"><div id="progress-fill"></div></div>
+<div id="progress-pct">0%</div>
+<script src="script.js"></script>
+<script>
+document.addEventListener('keydown', function(e) {
+  if (['INPUT','TEXTAREA'].includes(document.activeElement.tagName)) return;
+  if (e.key === 'ArrowRight' && "project-52.html" !== null) window.location = "project-52.html";
+  if (e.key === 'ArrowLeft' && "project-50.html" !== null) window.location = "project-50.html";
+});
+</script>
+</body>
+</html>

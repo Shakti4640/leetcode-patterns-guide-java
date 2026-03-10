@@ -1,0 +1,802 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PROJECT 58: Implement Trie (Prefix Tree)</title>
+<link rel="icon" type="image/png" href="images/favicon.png">
+<link rel="stylesheet" href="styles.css">
+
+</head>
+<body>
+<div id="progress-bar-container"><div id="progress-bar" style="width:97%"></div></div>
+<div id="progress-label">97%</div>
+<div class="page-wrapper">
+<div class="chat-message"><div class="px-2"><h1>PROJECT 58: Implement Trie (Prefix Tree)</h1>
+<h2>🎯 Trie → Node-per-Character Structure → Insert/Search/StartsWith Operations</h2>
+<hr>
+<h2>🔗 DEPENDENCY CHAIN</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>Project 17 → Tree BFS → Queue-based processing → Tree fundamentals
+</span>Project 18 → Tree DFS → Recursive traversal → Path-based thinking
+Project 27 → Serialize/Deserialize Binary Tree → Tree reconstruction
+Project 48 → Union Find → Parent-based structure → Component awareness
+Project 57 → Union Find on Strings → String-keyed grouping
+             ↓
+Project 58 → THIS PROJECT
+             → Trie: a TREE where each edge = one character
+             → Shared prefixes = shared paths
+             → Insert / Search / StartsWith in O(L) time
+             → Foundation for string-based search problems
+             ↓
+Project 59 → Word Search II → Trie-guided DFS on grid → Backtracking + pruning</code></pre></div>
+<hr>
+<h2>🧩 THE HYPOTHETICAL PROBLEM</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ Design a data structure that supports these operations efficiently:
+</span>     → insert(word): Add a word to the structure
+     → search(word): Return true if the EXACT word exists
+     → startsWith(prefix): Return true if ANY word starts with this prefix
+
+→ All inputs consist of lowercase English letters (a-z)
+→ All operations should run in O(L) time where L = word/prefix length
+
+Example:
+  Trie trie = new Trie();
+  trie.insert("apple");
+  trie.search("apple");    → true  (exact match)
+  trie.search("app");      → false (exists as prefix, not complete word)
+  trie.startsWith("app");  → true  (prefix of "apple")
+  trie.insert("app");
+  trie.search("app");      → true  (now "app" is also a complete word)
+
+Why can't we just use a HashSet?
+  → HashSet does search() in O(1) average → faster for exact search
+  → But startsWith() requires checking ALL words → O(N × L) worst case
+  → Trie does startsWith() in O(L) → much faster for prefix queries
+  → Trie also enables autocomplete, spell-checking, pattern matching</code></pre></div>
+<hr>
+<h2>🔍 HOW TO APPROACH IT</h2>
+<h3>Step 1 — Understand What a Trie Looks Like</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>After inserting: "apple", "app", "ape", "bat", "ball"
+</span>
+The Trie looks like:
+
+              ROOT
+             /    \
+            a      b
+            |      |
+            p      a
+           / \     |  \
+          p   e    t   l
+          |        ●   |
+          l             l
+          |             |
+          e             ●
+          ●
+
+● = "end of word" marker
+
+Key observations:
+→ "apple" and "app" share the path: ROOT → a → p → p
+→ "apple" and "ape" share the path: ROOT → a → p
+→ "bat" and "ball" share the path: ROOT → b → a
+→ Shared prefixes = shared nodes = memory efficiency
+→ Each NODE has up to 26 children (one per letter a-z)
+→ Each EDGE represents one character</code></pre></div>
+<h3>Step 2 — The TrieNode Structure</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>Each node in the Trie contains:
+</span>  1. children: an array/map of child nodes (one per possible character)
+  2. isEndOfWord: boolean flag marking if a complete word ends here
+
+Why children array of size 26?
+→ Only lowercase a-z → 26 possible characters
+→ children[0] = child for 'a', children[1] = child for 'b', etc.
+→ Index = character - 'a'
+→ null means no child for that character
+
+Why isEndOfWord flag?
+→ "app" and "apple" share the path a → p → p
+→ The node after the second 'p' must know:
+     → "app" ends here → isEndOfWord = true
+     → But there's also a child 'l' leading to "apple"
+→ Without the flag, we can't distinguish:
+     → "app" was inserted (word exists)
+     → "app" is just a prefix of "apple" (word doesn't exist)</code></pre></div>
+<h3>Step 3 — How Insert Works</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>insert("apple"):
+</span>
+Start at ROOT
+  Character 'a': children['a'-'a'] = children[0]
+    → null? Create new TrieNode → move to it
+  Character 'p': children['p'-'a'] = children[15]
+    → null? Create new TrieNode → move to it
+  Character 'p': children[15]
+    → null? Create new TrieNode → move to it
+  Character 'l': children['l'-'a'] = children[11]
+    → null? Create new TrieNode → move to it
+  Character 'e': children['e'-'a'] = children[4]
+    → null? Create new TrieNode → move to it
+  End of word → mark current node: isEndOfWord = true
+
+After insert("apple"), insert("app"):
+
+insert("app"):
+  'a' → exists → move to it
+  'p' → exists → move to it
+  'p' → exists → move to it
+  End of word → mark isEndOfWord = true
+
+The second insert REUSES existing nodes
+→ No new nodes created
+→ Only the flag changes
+→ This is the POWER of Trie: shared prefix = shared storage</code></pre></div>
+<h3>Step 4 — How Search Works</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>search("apple"):
+</span>  Start at ROOT
+  'a' → children[0] exists? YES → move to it
+  'p' → children[15] exists? YES → move to it
+  'p' → children[15] exists? YES → move to it
+  'l' → children[11] exists? YES → move to it
+  'e' → children[4] exists? YES → move to it
+  End of word → check isEndOfWord → TRUE → return true ✓
+
+search("app"):
+  'a' → exists → move
+  'p' → exists → move
+  'p' → exists → move
+  End of word → check isEndOfWord → depends:
+    → If "app" was inserted → TRUE
+    → If only "apple" was inserted → FALSE
+
+search("apx"):
+  'a' → exists → move
+  'p' → exists → move
+  'x' → children['x'-'a'] = null → DOESN'T EXIST → return false
+  → We "fell off" the Trie → word not found</code></pre></div>
+<h3>Step 5 — How StartsWith Works</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>startsWith("app"):
+</span>  Start at ROOT
+  'a' → exists → move
+  'p' → exists → move
+  'p' → exists → move
+  Reached end of prefix → ALL characters found → return true ✓
+  → We DON'T check isEndOfWord
+  → Just reaching the end of the prefix is enough
+  → Because SOME word must continue from here
+
+startsWith("apx"):
+  'a' → exists → move
+  'p' → exists → move
+  'x' → null → DOESN'T EXIST → return false
+  → No word in the Trie starts with "apx"
+
+KEY DIFFERENCE between search and startsWith:
+  search("app"):      traverse "app" → check isEndOfWord
+  startsWith("app"):  traverse "app" → return true (reached the end)
+  
+  Both traverse the same path
+  → search needs isEndOfWord = true (exact word must exist)
+  → startsWith just needs the path to exist (any word with this prefix)</code></pre></div>
+<hr>
+<h2>🛠️ HOW CAN WE SOLVE IT</h2>
+<h3>The Node Design</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>class TrieNode:
+</span>  children: TrieNode[26]    → one slot per lowercase letter
+  isEndOfWord: boolean       → true if a complete word ends here
+
+Why array[26] instead of HashMap?
+  → Fixed alphabet size (26 lowercase letters)
+  → Array access is O(1) with constant factor
+  → HashMap has overhead (hashing, boxing, etc.)
+  → For lowercase-only: array is faster and simpler
+  → For Unicode/large alphabets: HashMap is better
+
+Index mapping:
+  'a' → index 0
+  'b' → index 1
+  ...
+  'z' → index 25
+  Formula: index = character - 'a'</code></pre></div>
+<h3>The Three Operations — Pseudocode</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>INSERT(word):
+</span>  node = root
+  for each character c in word:
+    index = c - 'a'
+    if node.children[index] is null:
+      node.children[index] = new TrieNode()
+    node = node.children[index]
+  node.isEndOfWord = true
+
+SEARCH(word):
+  node = root
+  for each character c in word:
+    index = c - 'a'
+    if node.children[index] is null:
+      return false    → word doesn't exist
+    node = node.children[index]
+  return node.isEndOfWord    → true only if complete word ends here
+
+STARTS_WITH(prefix):
+  node = root
+  for each character c in prefix:
+    index = c - 'a'
+    if node.children[index] is null:
+      return false    → no word starts with this prefix
+    node = node.children[index]
+  return true    → reached end of prefix → some word has this prefix</code></pre></div>
+<hr>
+<h2>✅ WHAT SHOULD YOU DO</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ ALWAYS separate the TrieNode class from the Trie class
+</span>     → TrieNode: data container (children array + isEndOfWord flag)
+     → Trie: operations (insert, search, startsWith) starting from root
+     → Clean separation of concerns
+
+→ ALWAYS initialize root as an empty TrieNode
+     → Root represents the "empty prefix"
+     → Root has no character of its own
+     → All words start their traversal from root
+     → Root's isEndOfWord is typically false (unless "" is inserted)
+
+→ ALWAYS use character - 'a' for index mapping
+     → Clean, constant-time conversion
+     → Works for lowercase a-z
+     → For other character sets → adjust the formula
+
+→ ALWAYS create new nodes ONLY when needed (during insert)
+     → Don't preallocate the entire tree
+     → Most children slots remain null
+     → This is LAZY initialization → memory efficient
+
+→ ALWAYS extract a common helper method for traversal
+     → search() and startsWith() share the same traversal logic
+     → Extract a "findNode(prefix)" helper that returns the node
+     → search() = findNode(word) != null AND findNode(word).isEndOfWord
+     → startsWith() = findNode(prefix) != null
+     → DRY principle — Don't Repeat Yourself
+
+→ ALWAYS think about what ADDITIONAL operations you might need
+     → delete(word): mark isEndOfWord as false (or prune unused nodes)
+     → countWordsWithPrefix(prefix): count words under a prefix
+     → getAllWordsWithPrefix(prefix): autocomplete functionality
+     → The basic Trie supports all of these with minor extensions</code></pre></div>
+<hr>
+<h2>🚫 WHAT SHOULD YOU NOT DO</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ DO NOT use HashMap&lt;Character, TrieNode&gt; for lowercase-only problems
+</span>     → Array[26] is faster and uses less memory for fixed alphabet
+     → HashMap adds boxing overhead (char → Character)
+     → HashMap adds hashing overhead
+     → Use HashMap ONLY for large/dynamic alphabets (Unicode, etc.)
+
+→ DO NOT forget the isEndOfWord flag
+     → Without it: search("app") returns true even if only "apple" was inserted
+     → The flag distinguishes "this is a complete word" from "this is just a prefix"
+     → This is the SINGLE MOST COMMON mistake with Tries
+
+→ DO NOT confuse search() with startsWith()
+     → search: exact word must exist → check isEndOfWord
+     → startsWith: any word with this prefix → just check path exists
+     → They share traversal logic but differ in the final check
+
+→ DO NOT create a node for the character BEFORE checking if it exists
+     → During search/startsWith: if children[index] is null → return false
+     → During insert: if children[index] is null → create new node
+     → Mixing these up causes either crashes or phantom nodes
+
+→ DO NOT store the character in the node itself
+     → The character is encoded in the EDGE (parent → child relationship)
+     → children[3] means the edge carries character 'd' (index 3 + 'a')
+     → Storing it in the node is redundant (wastes memory)
+     → Some implementations do store it for debugging — that's OK
+
+→ DO NOT assume the root node represents a character
+     → Root is the "empty string" node
+     → Root's children represent the FIRST character of words
+     → Root itself has no character</code></pre></div>
+<hr>
+<h2>🔀 WHEN TO USE THIS PATTERN</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>✓ You need PREFIX-BASED operations (startsWith, autocomplete)
+</span>✓ You have a DICTIONARY of words and need fast lookup
+✓ You need to search for PATTERNS with wildcards
+✓ You need to find ALL words matching a prefix efficiently
+✓ You're doing DFS/BFS on a grid looking for MULTIPLE words simultaneously
+
+SIGNATURE PROBLEMS:
+→ Implement Trie ← THIS
+→ Word Search II (Project 59) → Trie-guided grid DFS
+→ Autocomplete System → startsWith + ranked results
+→ Replace Words → find shortest prefix in dictionary
+→ Design Search Autocomplete → Trie + frequency tracking
+→ Word Squares → Trie-guided backtracking
+→ Palindrome Pairs → reverse Trie matching
+
+TRIE vs HASHSET:
+┌────────────────────┬───────────┬───────────┐
+│ Operation          │ HashSet   │ Trie      │
+├────────────────────┼───────────┼───────────┤
+│ insert(word)       │ O(L)      │ O(L)      │
+│ search(word)       │ O(L) avg  │ O(L)      │
+│ startsWith(prefix) │ O(N × L)  │ O(L)      │
+│ delete(word)       │ O(L)      │ O(L)      │
+│ autocomplete       │ O(N × L)  │ O(L + K)  │
+│ Space              │ O(N × L)  │ O(N × L)  │
+└────────────────────┴───────────┴───────────┘
+  N = number of words, L = avg word length, K = results count
+
+→ Trie wins decisively on PREFIX operations
+→ HashSet is simpler for exact-match-only problems</code></pre></div>
+<hr>
+<h2>🚫 WHEN NOT TO USE THIS PATTERN</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>✗ You only need exact word lookup (no prefix operations)
+</span>     → HashSet is simpler and often faster
+     → Trie is overkill for pure existence checks
+
+✗ The alphabet is very large (e.g., full Unicode)
+     → Array[26] doesn't work → need HashMap per node
+     → Each node's HashMap has overhead
+     → Memory consumption explodes
+     → Consider other structures (ternary search tree, etc.)
+
+✗ Words are very long and share few prefixes
+     → Trie's advantage is shared prefixes
+     → If words share no prefixes → Trie degrades to array of strings
+     → No memory savings, just added complexity
+
+✗ You need sorted iteration over all words
+     → Trie CAN do this (DFS traversal gives sorted order)
+     → But a TreeSet/sorted array is simpler for this specific need
+
+✗ Dynamic deletion is frequent
+     → Trie deletion is tricky (need to prune empty branches)
+     → If you're constantly adding and removing → HashSet is simpler
+     → Trie excels at BUILD ONCE, QUERY MANY times</code></pre></div>
+<hr>
+<h2>⚙️ HOW IT ONLY WORKS — Internal Mechanics</h2>
+<h3>The Character-Per-Edge Model</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>Traditional tree: each NODE stores a value
+</span>  → Binary tree node: { value: 5, left: ..., right: ... }
+
+Trie: each EDGE stores a character, each NODE stores metadata
+  → TrieNode: { children[26], isEndOfWord }
+  → The "value" of a node is the PATH from root to that node
+
+Example: inserting "cat"
+  
+  ROOT ──(c)──→ Node1 ──(a)──→ Node2 ──(t)──→ Node3 [isEnd=true]
+  
+  The word "cat" is NOT stored in any single node
+  It's stored as the PATH: root → c → a → t
+  Each node represents a PREFIX:
+    ROOT = ""
+    Node1 = "c"
+    Node2 = "ca"
+    Node3 = "cat" (marked as end of word)
+
+This is why it's called a PREFIX tree:
+  → Every node represents a prefix
+  → The path from root to any node spells out that prefix
+  → Words that share prefixes share paths</code></pre></div>
+<h3>Why Array[26] Works for Lowercase</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>Each TrieNode has: TrieNode[] children = new TrieNode[26]
+</span>
+Memory per node: 26 pointers + 1 boolean ≈ 26 × 8 + 1 = 209 bytes (64-bit)
+
+For a Trie with 1000 nodes:
+  → 209 × 1000 ≈ 209 KB
+  → Very manageable
+
+But MOST children slots are null:
+  → Average English word has ~5 characters
+  → Average node has 2-3 non-null children
+  → So 23-24 out of 26 slots are wasted per node
+  → This is the SPACE TRADE-OFF for O(1) child access
+
+Alternative: HashMap&lt;Character, TrieNode&gt;
+  → No wasted slots
+  → But HashMap overhead per entry: ~50-100 bytes
+  → For 3 children: HashMap ≈ 150-300 bytes vs Array ≈ 209 bytes
+  → HashMap actually uses MORE memory for small child counts!
+  → Array wins for alphabets ≤ ~50 characters</code></pre></div>
+<h3>Why Insert is O(L)</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>insert("apple") — L = 5 characters
+</span>
+Step 1: index = 'a' - 'a' = 0  → check/create children[0]  → O(1)
+Step 2: index = 'p' - 'a' = 15 → check/create children[15] → O(1)
+Step 3: index = 'p' - 'a' = 15 → check/create children[15] → O(1)
+Step 4: index = 'l' - 'a' = 11 → check/create children[11] → O(1)
+Step 5: index = 'e' - 'a' = 4  → check/create children[4]  → O(1)
+Step 6: set isEndOfWord = true → O(1)
+
+Total: L steps × O(1) per step = O(L)
+
+→ No comparison with other words needed
+→ No sorting, no hashing, no balancing
+→ Pure character-by-character traversal
+→ Independent of how many words are already in the Trie</code></pre></div>
+<h3>Why Trie Enables Efficient Prefix Queries</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>HashSet approach to startsWith("app"):
+</span>  → Iterate over ALL N words in the set
+  → Check if each word starts with "app"
+  → O(N × L) worst case
+
+Trie approach to startsWith("app"):
+  → Follow the path: root → a → p → p
+  → If we reach the end → return true
+  → 3 steps regardless of how many words exist
+  → O(L) where L = prefix length
+
+WHY?
+→ Trie ORGANIZES words by prefix
+→ All words starting with "app" are in the subtree under the "app" node
+→ We don't need to check other words
+→ The Trie structure PRUNES the search space automatically
+→ This is the same principle as binary search (Project 9):
+     → Organized data enables elimination of irrelevant elements
+     → Binary search eliminates half → Trie eliminates all non-matching prefixes</code></pre></div>
+<h3>The Relationship Between Trie and Other Tree Structures</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>Binary Tree (Projects 17-18):
+</span>  → Each node has ≤ 2 children
+  → Stores values in nodes
+  → Used for searching, sorting, hierarchical data
+
+Binary Search Tree:
+  → Binary tree with ordering invariant
+  → Left &lt; parent &lt; right
+  → O(log n) search
+
+Trie (This project):
+  → Each node has ≤ 26 children (or alphabet size)
+  → Stores characters on EDGES, metadata on NODES
+  → Used for STRING operations
+  → O(L) search where L = string length
+  → No comparison between words needed
+
+The progression:
+  Binary Tree → general hierarchical storage
+  BST → ordered storage with efficient search
+  Trie → string storage with efficient prefix operations
+  
+  Each specializes the tree structure for a different use case</code></pre></div>
+<hr>
+<h2>⚠️ COMMON PITFALLS AND FAILURE MODES</h2>
+<h3>Pitfall 1: Forgetting isEndOfWord Check in search()</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>Words inserted: "apple"
+</span>
+search("app"):
+  Traverse: root → a → p → p → arrives at a valid node
+  
+WRONG: return true (node exists!)
+RIGHT: return node.isEndOfWord (false — "app" was never inserted)
+
+"app" is a PREFIX of "apple" but not a WORD itself
+→ The node exists (because "apple" passes through it)
+→ But isEndOfWord is false (no word ends here)
+→ search() must check this flag
+→ startsWith() does NOT check this flag</code></pre></div>
+<h3>Pitfall 2: Off-by-One in Index Calculation</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>WRONG: int index = c;           // ASCII value, not 0-25 range
+</span>WRONG: int index = c - 'A';     // uppercase offset, not lowercase
+RIGHT: int index = c - 'a';     // correct for lowercase a-z
+
+If input can include uppercase:
+  → Convert to lowercase first: c = Character.toLowerCase(c)
+  → Or use separate ranges for upper and lower</code></pre></div>
+<h3>Pitfall 3: Not Creating Root Node</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>WRONG:
+</span>  class Trie {
+      TrieNode root;  // null!
+      void insert(String word) {
+          TrieNode node = root;  // NullPointerException!
+          ...
+      }
+  }
+
+RIGHT:
+  class Trie {
+      TrieNode root;
+      Trie() {
+          root = new TrieNode();  // Initialize empty root!
+      }
+      ...
+  }</code></pre></div>
+<h3>Pitfall 4: Modifying Trie During Search</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>search() and startsWith() should be READ-ONLY operations
+</span>→ They should NOT create new nodes
+→ They should NOT modify isEndOfWord
+
+WRONG (in search):
+  if (node.children[index] == null) {
+      node.children[index] = new TrieNode();  // DON'T create during search!
+  }
+
+RIGHT (in search):
+  if (node.children[index] == null) {
+      return false;  // Path doesn't exist → word not found
+  }</code></pre></div>
+<h3>Pitfall 5: Memory Leak with Unused Nodes</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>If you implement delete():
+</span>  → Setting isEndOfWord = false is NOT enough
+  → The nodes along the path may now be useless
+  → Example: insert("apple"), then delete("apple")
+     → All 5 nodes are now useless (no word passes through them)
+     → They should be removed to free memory
+  
+  → But if "app" was also inserted:
+     → Only nodes for 'l' and 'e' should be removed
+     → Nodes for 'a', 'p', 'p' are still needed
+  
+  → Proper deletion requires checking if a node has any children
+     or isEndOfWord after unmarking
+  → This is complex → many implementations skip it
+  → For interview problems → lazy deletion (just unmark) is usually fine</code></pre></div>
+<hr>
+<h2>📈 SCALABILITY CONSIDERATIONS</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>TIME COMPLEXITY:
+</span>→ insert(word):       O(L) where L = word length
+→ search(word):       O(L) where L = word length
+→ startsWith(prefix): O(L) where L = prefix length
+→ ALL operations are independent of N (number of words stored)
+→ This is the key advantage over HashSet for prefix operations
+
+SPACE COMPLEXITY:
+→ Worst case: O(N × L × ALPHABET_SIZE) where N = words, L = avg length
+     → Every word shares no prefix → maximum nodes
+     → Each node has array of 26 pointers
+→ Best case: O(L × ALPHABET_SIZE) where all words share one prefix
+     → Example: "a", "aa", "aaa", "aaaa" → only L nodes
+→ Practical case: somewhere in between
+     → English words share many prefixes (un-, re-, pre-, etc.)
+     → Significant memory savings over storing full strings
+
+MEMORY OPTIMIZATION OPTIONS:
+→ Array[26] per node: fast but wastes space for sparse nodes
+→ HashMap per node: space-efficient but slower
+→ Compressed Trie (Radix Tree): merge single-child chains
+     → "apple" with no branching → single node "apple"
+     → Saves nodes but complicates implementation
+→ Ternary Search Tree: binary search within each node's children
+     → Middle ground between Trie and BST
+
+PRACTICAL LIMITS:
+→ 10,000 words × avg 10 chars → ~100,000 nodes → ~20 MB → fine
+→ 1,000,000 words × avg 10 chars → ~10M nodes → ~2 GB → tight
+→ For very large dictionaries → consider compressed tries or other structures</code></pre></div>
+<hr>
+<h2>🔍 INTERPRETABILITY CONSIDERATIONS</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ Trie is VISUALLY intuitive:
+</span>     → Draw it as a tree with characters on edges
+     → Shared prefixes are visually obvious
+     → End-of-word markers show where complete words are
+
+→ For interviews:
+     → Draw the Trie for a small example (3-4 words)
+     → Trace insert step by step
+     → Show how search and startsWith differ
+     → Mention the space-time tradeoff vs HashSet
+
+→ The Trie is a BUILDING BLOCK:
+     → This project: basic insert/search/startsWith
+     → Project 59: Trie-guided DFS for word search
+     → Autocomplete systems: Trie + frequency counting
+     → Spell checkers: Trie + edit distance
+     → IP routing: binary Trie for longest prefix match
+
+→ Common interview follow-ups:
+     → "How would you implement delete?"
+     → "How would you find all words with a given prefix?"
+     → "How would you support wildcard search (e.g., 'a.ple')?"
+     → "How would you count words with a given prefix?"
+     → Being ready for these shows depth</code></pre></div>
+<hr>
+<div class="github-btn-wrap"><a class="github-btn" href="https://github.com/Shakti4640/leetcode-patterns-guide-java/tree/main/project- (58)" target="_blank" rel="noopener"><svg viewBox="0 0 24 24"><path d="M12 .5C5.37.5 0 5.87 0 12.5c0 5.3 3.44 9.8 8.2 11.39.6.11.82-.26.82-.58v-2.03c-3.34.73-4.04-1.61-4.04-1.61-.55-1.39-1.34-1.76-1.34-1.76-1.09-.74.08-.73.08-.73 1.2.09 1.84 1.24 1.84 1.24 1.07 1.83 2.8 1.3 3.49 1 .1-.78.42-1.3.76-1.6-2.67-.3-5.47-1.33-5.47-5.93 0-1.31.47-2.38 1.24-3.22-.14-.3-.54-1.52.1-3.18 0 0 1.01-.32 3.3 1.23a11.5 11.5 0 0 1 3-.4c1.02 0 2.04.13 3 .4 2.28-1.55 3.29-1.23 3.29-1.23.64 1.66.24 2.88.12 3.18.77.84 1.23 1.91 1.23 3.22 0 4.61-2.81 5.63-5.48 5.92.43.37.81 1.1.81 2.22v3.29c0 .32.21.7.82.58C20.56 22.3 24 17.8 24 12.5 24 5.87 18.63.5 12 .5z"/></svg>💻 View Complete Java Code on GitHub</a></div>
+
+<hr>
+<h2>🔑 EXPECTED OUTPUT</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>╔══════════════════════════════════════════════════════╗
+</span>║  PROJECT 58: Implement Trie (Prefix Tree)            ║
+║  Pattern: Node-per-Character → Insert/Search/Prefix  ║
+╚══════════════════════════════════════════════════════╝
+
+═══ TEST 1: Basic Insert/Search/StartsWith ═══
+  insert("apple"):
+    'a' (index 0) → CREATE new node → path: "a"
+    'p' (index 15) → CREATE new node → path: "ap"
+    'p' (index 15) → CREATE new node → path: "app"
+    'l' (index 11) → CREATE new node → path: "appl"
+    'e' (index 4) → CREATE new node → path: "apple"
+    → Mark END OF WORD at "apple" ✓
+
+  insert("app"):
+    'a' (index 0) → EXISTS → path: "a"
+    'p' (index 15) → EXISTS → path: "ap"
+    'p' (index 15) → EXISTS → path: "app"
+    → Mark END OF WORD at "app" ✓
+
+  insert("ape"):
+    'a' (index 0) → EXISTS → path: "a"
+    'p' (index 15) → EXISTS → path: "ap"
+    'e' (index 4) → CREATE new node → path: "ape"
+    → Mark END OF WORD at "ape" ✓
+
+  Trie Structure:
+  └── ROOT
+      ├── a [5]
+      │   └── p [5]
+      │       ├── e ● [1]
+      │       └── p ● [3]
+      │           └── l [1]
+      │               └── e ● [1]
+      └── b [2]
+          └── a [2]
+              ├── l [1]
+              │   └── l ● [1]
+              └── t ● [1]
+
+  search("apple"): path exists + isEndOfWord=true → true ✓
+  search("app"): path exists + isEndOfWord=true → true ✓
+  search("ap"): path exists but isEndOfWord=false → false
+  search("bat"): path exists + isEndOfWord=true → true ✓
+  search("bad"): 'd' → NOT FOUND → false
+  search("xyz"): 'x' → NOT FOUND → false
+
+  startsWith("app"): path exists → true ✓
+  startsWith("ap"): path exists → true ✓
+  startsWith("ba"): path exists → true ✓
+  startsWith("c"): 'c' → NOT FOUND → false
+  startsWith("appl"): path exists → true ✓
+
+═══ TEST 2: All Words &amp; Autocomplete ═══
+  All words: [ape, app, apple, ball, bat]
+  Autocomplete 'ap': [ape, app, apple]
+  Autocomplete 'ba': [ball, bat]
+  Autocomplete 'c':  []
+
+═══ TEST 4: Wildcard Search (. = any char) ═══
+  Words: [bad, bat, dad, mad, pad]
+  search('.ad'): true      (matches bad, dad, mad, pad)
+  search('b..'): true      (matches bad, bat)
+  search('b.d'): true      (matches bad)
+  search('b.t'): true      (matches bat)
+  search('...'): true      (matches any 3-letter word)
+  search('....'): false    (no 4-letter words)
+
+═══ TEST 6: Longest Common Prefix ═══
+  Words: [flight, flow, flower]
+  LCP: "fl"
+  Words: [car, dog, racecar]
+  LCP: ""
+  Words: [inter, internal, internet, interview]
+  LCP: "inter"
+
+═══ TEST 9: Performance Test ═══
+  Insert 100000 words:
+    Trie:    ~80 ms
+    HashSet: ~50 ms
+  Search 100000 words:
+    Trie:    ~60 ms
+    HashSet: ~30 ms
+  StartsWith 100000 prefixes:
+    Trie:    ~40 ms
+    HashSet: ~5000 ms ← MUCH SLOWER
+    Speedup: ~125x</code></pre></div>
+<hr>
+<h2>🧠 KEY TAKEAWAY</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>WHAT WE LEARNED:
+</span>→ Trie = tree where each edge represents one character
+→ Shared prefixes share nodes → memory efficient for related strings
+→ Three core operations:
+     insert(word):       O(L) → create nodes along the path
+     search(word):       O(L) → traverse + check isEndOfWord
+     startsWith(prefix): O(L) → traverse only (no end check)
+→ The isEndOfWord flag is CRITICAL — distinguishes words from prefixes
+→ Trie dominates HashSet for PREFIX operations
+
+THE TRIE MENTAL MODEL:
+→ Think of it as a HIGHWAY SYSTEM for words
+→ Words that share a beginning share the same road
+→ At each fork, you choose which character to follow
+→ End-of-word markers are like DESTINATION signs
+→ You can check "does this road exist?" without traveling all roads
+
+TRIE vs OTHER DATA STRUCTURES:
+
+┌──────────────────┬──────────┬─────────────┬─────────────┐
+│ Operation        │ Array    │ HashSet     │ Trie        │
+├──────────────────┼──────────┼─────────────┼─────────────┤
+│ Insert           │ O(1)*    │ O(L) avg    │ O(L)        │
+│ Exact Search     │ O(N×L)   │ O(L) avg    │ O(L)        │
+│ Prefix Search    │ O(N×L)   │ O(N×L)      │ O(L)        │
+│ Autocomplete     │ O(N×L)   │ O(N×L)      │ O(L+K)      │
+│ Sorted Iteration │ O(NlogN) │ O(NlogN)    │ O(N) free!  │
+│ Wildcard Search  │ O(N×L)   │ O(N×L)      │ O(26^d × L) │
+└──────────────────┴──────────┴─────────────┴─────────────┘
+  N=words, L=length, K=result size, d=wildcards
+
+→ Trie wins for PREFIX and PATTERN operations
+→ HashSet wins for pure EXACT match (simpler, less memory)
+→ Choose based on what operations you need
+
+THE EXTENDED OPERATIONS UNLOCK REAL-WORLD APPLICATIONS:
+→ autocomplete() → search engine suggestions
+→ searchWithWildcard() → regex-like pattern matching
+→ longestCommonPrefix() → file system path compression
+→ countWordsWithPrefix() → frequency analysis
+→ delete() → dynamic dictionary management
+
+RELATIONSHIP TO PREVIOUS DATA STRUCTURES:
+  Binary Tree (Project 17): general tree traversal
+  → Trie is a SPECIALIZED tree for strings
+  
+  Union Find (Project 48, 57): grouping by equality
+  → Trie groups by PREFIX (structural, not equality)
+  
+  HashMap: O(1) lookup by exact key
+  → Trie: O(L) lookup by key with PREFIX bonus</code></pre></div>
+<hr>
+<h2>🌉 BRIDGE TO NEXT PROJECT</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>PROJECT 58 taught us:
+</span>→ Basic Trie structure → insert, search, startsWith
+→ Node-per-character design → children array + isEndOfWord
+→ Extended operations → autocomplete, wildcard, counting
+→ When Trie beats HashSet (prefix operations)
+
+PROJECT 59 (Word Search II) will COMBINE Trie with grid DFS:
+→ Given: a 2D grid of characters + a list of words
+→ Find: ALL words from the list that exist in the grid
+→ Words can be formed by adjacent cells (up/down/left/right)
+
+Why Trie is essential for Word Search II:
+→ Naive approach: for each word, do DFS on grid → O(words × 4^L × grid)
+→ Trie approach: do ONE DFS guided by the Trie → O(4^L × grid)
+→ The Trie PRUNES paths that can't lead to any word
+→ If current path doesn't match any prefix in Trie → stop exploring
+
+The combination:
+  Project 58: Trie as standalone data structure
+  Project 59: Trie as a GUIDE for DFS exploration
+
+This is the pattern:
+  → Build Trie from word list
+  → DFS on grid, following Trie edges
+  → At each grid cell, check: does Trie have this character?
+  → If yes → continue DFS along Trie path
+  → If no → prune this branch (backtrack)
+  → If isEndOfWord → found a word! Add to results
+
+Project 59 also brings back:
+  → Backtracking (Projects 28, 29, 42)
+  → Grid traversal (new twist on BFS/DFS)
+  → Visited marking (prevent revisiting cells in same path)
+  → Multiple pattern concepts fused into one problem
+
+The remaining arc:
+  Project 59: Word Search II → Trie + grid DFS (Trie arc finale)
+  Project 60: Task Scheduler → Greedy synthesis (grand finale)</code></pre></div>
+<hr>
+<p><strong>Ready for Project 59: Word Search II (Trie → Trie-Guided DFS on Grid → Backtracking + Prefix Pruning)?</strong></p>
+<p>→ Please confirm and I will continue.</p></div>
+</div>
+
+<!-- ========== data-index="17" ========== -->
+<div class="chat-message" data-index="17"></div>
+</div>
+<div class="bottom-nav">
+  <a href="project-57.html" class="nav-btn prev">← Prev</a>
+  <div class="nav-center">
+    <span class="nav-project-label">PROJECT 58 of 60</span>
+    <span class="nav-project-title">Implement Trie (Prefix Tree)</span>
+    <span class="kbd-hint">← → arrow keys to navigate</span>
+  </div>
+  <a href="project-59.html" class="nav-btn next">Next →</a>
+  <a href="index.html" class="nav-btn home">🏠 TOC</a>
+</div>
+<div id="progress-track"><div id="progress-fill"></div></div>
+<div id="progress-pct">0%</div>
+<script src="script.js"></script>
+<script>
+document.addEventListener('keydown', function(e) {
+  if (['INPUT','TEXTAREA'].includes(document.activeElement.tagName)) return;
+  if (e.key === 'ArrowRight' && "project-59.html" !== null) window.location = "project-59.html";
+  if (e.key === 'ArrowLeft' && "project-57.html" !== null) window.location = "project-57.html";
+});
+</script>
+</body>
+</html>

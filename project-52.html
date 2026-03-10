@@ -1,0 +1,921 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PROJECT 52: Word Break — Can String Be Segmented?</title>
+<link rel="icon" type="image/png" href="images/favicon.png">
+<link rel="stylesheet" href="styles.css">
+
+</head>
+<body>
+<div id="progress-bar-container"><div id="progress-bar" style="width:87%"></div></div>
+<div id="progress-label">87%</div>
+<div class="page-wrapper">
+<div class="chat-message"><div class="px-2"><h1>PROJECT 52: Word Break — Can String Be Segmented?</h1>
+<h2>🎯 Dynamic Programming → String Partitioning → Dictionary-Driven DP Transitions</h2>
+<hr>
+<h2>🧩 THE HYPOTHETICAL PROBLEM</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ You are given a STRING s
+</span>→ You are given a DICTIONARY of words (list of strings)
+→ Determine if s can be segmented into a space-separated sequence
+  of one or more dictionary words
+→ The SAME dictionary word may be reused multiple times
+→ Return TRUE or FALSE
+
+Example 1:
+  s = "leetcode"
+  wordDict = ["leet", "code"]
+  Output: true
+  
+  → "leetcode" = "leet" + "code"
+  → Both "leet" and "code" are in the dictionary ✓
+
+Example 2:
+  s = "applepenapple"
+  wordDict = ["apple", "pen"]
+  Output: true
+  
+  → "applepenapple" = "apple" + "pen" + "apple"
+  → "apple" is reused → allowed ✓
+
+Example 3:
+  s = "catsandog"
+  wordDict = ["cats", "dog", "sand", "and", "cat"]
+  Output: false
+  
+  → "cats" + "andog" → "andog" not in dict
+  → "cat" + "sandog" → "sandog" not in dict
+  → "cat" + "sand" + "og" → "og" not in dict
+  → "cats" + "and" + "og" → "og" not in dict
+  → No valid segmentation exists
+
+Example 4:
+  s = "aaaaaaa"
+  wordDict = ["aaa", "aaaa"]
+  Output: true
+  
+  → "aaaa" + "aaa" = 7 characters ✓
+
+Example 5:
+  s = "bb"
+  wordDict = ["a", "b", "bbb", "bbbb"]
+  Output: true
+  
+  → "b" + "b" ✓
+
+Example 6:
+  s = "goalspecial"
+  wordDict = ["go", "goal", "goals", "special"]
+  Output: true
+  
+  → "goal" + "special" ✓
+  → Note: "go" matches the start but leaves "alspecial" which can't be segmented
+  → Choosing "goal" over "go" is critical → greedy fails</code></pre></div>
+<hr>
+<h2>🔍 HOW TO APPROACH IT</h2>
+<h3>Step 1 — Why Greedy Fails (Again)</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>s = "goalspecial"
+</span>wordDict = ["go", "goal", "goals", "special"]
+
+GREEDY (match longest first):
+  → "goals" matches s[0..4] → remaining "pecial" → NOT in dict → FAIL
+  → Backtrack? Greedy doesn't backtrack
+
+GREEDY (match shortest first):
+  → "go" matches s[0..1] → remaining "alspecial" → can't segment → FAIL
+
+CORRECT:
+  → "goal" matches s[0..3] → remaining "special" → IN dict → TRUE ✓
+
+→ Neither longest-first nor shortest-first greedy works
+→ The CHOICE of which word to match affects ALL subsequent segmentation
+→ We need to explore ALL possibilities → DP or recursion with memoization
+
+SAME LESSON AS:
+  → Project 50 (LCS): greedy matching misses better alignments
+  → Project 51 (Edit Distance): greedy operations miss cheaper paths
+  → Project 52 (Word Break): greedy word choice blocks valid segmentations</code></pre></div>
+<h3>Step 2 — Recognize the Problem Structure</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>OBSERVATION:
+</span>  → If s[0..j-1] can be segmented (dp[j] = true)
+  → AND s[j..i-1] is a word in the dictionary
+  → THEN s[0..i-1] can be segmented (dp[i] = true)
+
+THIS IS:
+  → A PARTITIONING problem
+  → We're partitioning string s into consecutive pieces
+  → Each piece must be a dictionary word
+  → We need to check if a COMPLETE partition exists
+
+DP STATE:
+  → dp[i] = can s[0..i-1] be segmented into dictionary words?
+  → dp[0] = true → empty string is trivially "segmented" (base case)
+  → dp[n] = our answer → can the entire string be segmented?
+
+THIS IS 1D DP (not 2D):
+  → Unlike LCS/Edit Distance which compare TWO strings
+  → Here we have ONE string being decomposed
+  → The dictionary is a LOOKUP resource, not a second sequence
+  → Similar dimension to Climbing Stairs (Project 43) but with string operations</code></pre></div>
+<h3>Step 3 — Connect to Previous DP Knowledge</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>Project 43 (Climbing Stairs):
+</span>  → dp[i] = number of ways to reach step i
+  → dp[i] = dp[i-1] + dp[i-2]
+  → Fixed transitions: step 1 or step 2 back
+
+Project 44 (0/1 Knapsack):
+  → dp[i][w] = max value with first i items and capacity w
+  → Fixed items, fixed capacity increments
+
+Project 50 (LCS) / Project 51 (Edit Distance):
+  → dp[i][j] = comparing two string prefixes
+  → Fixed transitions: diagonal, top, left
+
+THIS Problem (Word Break):
+  → dp[i] = can s[0..i-1] be segmented?
+  → VARIABLE transitions: for EACH j &lt; i, check if s[j..i-1] is a word
+  → The number of transitions depends on dictionary words
+  → This is like Climbing Stairs but with VARIABLE step sizes
+  → Step sizes = lengths of dictionary words that match at position j
+
+ANALOGY:
+  Climbing Stairs: can you reach step n using steps of size 1 or 2?
+  Word Break: can you reach position n using "steps" that are dictionary words?</code></pre></div>
+<h3>Step 4 — Define the Recurrence</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>STATE:
+</span>  dp[i] = true if s[0..i-1] can be segmented into dictionary words
+  dp[i] = false otherwise
+
+BASE CASE:
+  dp[0] = true → empty prefix is trivially segmentable
+
+RECURRENCE:
+  dp[i] = true if there EXISTS any j (0 ≤ j &lt; i) such that:
+    → dp[j] == true (s[0..j-1] is segmentable)
+    → AND s[j..i-1] is a word in the dictionary
+
+  In other words:
+  dp[i] = OR over all j from 0 to i-1 of (dp[j] AND s.substring(j,i) in dict)
+
+ANSWER:
+  dp[n] where n = s.length()</code></pre></div>
+<h3>Step 5 — Visualize the Process</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>s = "leetcode" (n=8)
+</span>wordDict = {"leet", "code"} → stored in a HashSet for O(1) lookup
+
+dp[0] = true (base case — empty string)
+
+dp[1]: check all j &lt; 1
+  j=0: dp[0]=true AND s[0..0]="l" in dict? NO
+  dp[1] = false
+
+dp[2]: check all j &lt; 2
+  j=0: dp[0]=true AND s[0..1]="le" in dict? NO
+  j=1: dp[1]=false → skip
+  dp[2] = false
+
+dp[3]: check all j &lt; 3
+  j=0: dp[0]=true AND s[0..2]="lee" in dict? NO
+  j=1: dp[1]=false → skip
+  j=2: dp[2]=false → skip
+  dp[3] = false
+
+dp[4]: check all j &lt; 4
+  j=0: dp[0]=true AND s[0..3]="leet" in dict? YES! ✓
+  dp[4] = true
+
+dp[5]: check all j &lt; 5
+  j=0: dp[0]=true AND s[0..4]="leetc" in dict? NO
+  j=1-3: dp[1-3]=false → skip
+  j=4: dp[4]=true AND s[4..4]="c" in dict? NO
+  dp[5] = false
+
+dp[6]: similar checks → all fail → dp[6] = false
+
+dp[7]: similar checks → all fail → dp[7] = false
+
+dp[8]: check all j &lt; 8
+  j=0: dp[0]=true AND s[0..7]="leetcode" in dict? NO
+  j=1-3: dp[1-3]=false → skip
+  j=4: dp[4]=true AND s[4..7]="code" in dict? YES! ✓
+  dp[8] = true
+
+ANSWER: dp[8] = true → "leetcode" = "leet" + "code" ✓</code></pre></div>
+<h3>Step 6 — Two Implementation Strategies</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>STRATEGY A — Check all splits (j from 0 to i-1):
+</span>  for each i from 1 to n:
+    for each j from 0 to i-1:
+      if dp[j] AND s[j..i-1] in dict:
+        dp[i] = true; break;
+
+  → For each i, we try ALL possible split points
+  → Substring check: O(i-j) per check (or O(1) with hashing)
+  → Time: O(n² × L) where L = average substring length
+
+STRATEGY B — Check all dictionary words at each position:
+  for each i from 1 to n:
+    for each word in dictionary:
+      int len = word.length()
+      if i &gt;= len AND dp[i-len] AND s[i-len..i-1] == word:
+        dp[i] = true; break;
+
+  → For each i, we try ALL dictionary words
+  → Check if the word fits ending at position i
+  → Time: O(n × W × L) where W = dict size, L = max word length
+
+WHICH IS BETTER?
+  → Strategy A: better when dictionary is large but string is short
+  → Strategy B: better when string is long but dictionary is small
+  → Both are valid → choose based on constraints
+  → We implement both</code></pre></div>
+<hr>
+<h2>🛠️ HOW CAN WE SOLVE IT</h2>
+<h3>Algorithm — Bottom-Up DP</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>1. Convert dictionary to a HashSet for O(1) lookups
+</span>2. Create boolean array dp of size n+1
+3. dp[0] = true (empty string base case)
+4. FOR i = 1 to n:
+     FOR j = 0 to i-1:
+       IF dp[j] == true AND s.substring(j, i) is in dictionary:
+         dp[i] = true
+         BREAK (no need to check more j values)
+5. RETURN dp[n]</code></pre></div>
+<h3>Optimization — Limit j Range by Max Word Length</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ If the longest word in dictionary has length maxLen
+</span>→ Then s[j..i-1] can only be a dictionary word if i-j ≤ maxLen
+→ So j only needs to range from max(0, i-maxLen) to i-1
+→ This PRUNES the inner loop significantly
+
+OPTIMIZED:
+  int maxLen = max word length in dictionary
+  FOR i = 1 to n:
+    FOR j = max(0, i-maxLen) to i-1:
+      IF dp[j] AND s.substring(j, i) in dict:
+        dp[i] = true; break;
+
+→ Inner loop runs at most maxLen iterations instead of i
+→ Time: O(n × maxLen × maxLen) for substring creation
+→ Much better when maxLen &lt;&lt; n</code></pre></div>
+<hr>
+<h2>✅ WHAT SHOULD YOU DO</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ ALWAYS convert dictionary to a HashSet
+</span>     → List lookup: O(W) per check where W = dictionary size
+     → HashSet lookup: O(L) per check where L = word length (for hashing)
+     → Massive speedup for large dictionaries
+
+→ ALWAYS set dp[0] = true
+     → Empty string is the starting point
+     → Without this, no word can match starting at index 0
+     → dp[0]=false → dp[i]=false for all i → always returns false → WRONG
+
+→ ALWAYS break early when dp[i] becomes true
+     → Once we find ONE valid segmentation ending at i, that's enough
+     → No need to check other j values for the same i
+     → This is a boolean problem: one valid path suffices
+
+→ CONSIDER limiting the inner loop by max word length
+     → If maxLen = 10 and n = 1000 → inner loop is 10 instead of up to 1000
+     → Dramatic speedup for long strings with short dictionary words
+
+→ CONSIDER both directions for the inner loop
+     → Forward: j from 0 to i-1 → checks longer prefixes first
+     → Backward: j from i-1 down to 0 → checks shorter words first
+     → Backward often finds matches faster (short words are more common)
+     → With maxLen pruning: backward from i-1 to max(0, i-maxLen)</code></pre></div>
+<hr>
+<h2>🚫 WHAT SHOULD YOU NOT DO</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ DO NOT use greedy word matching
+</span>     → Matching the longest word first can fail (goalspecial example)
+     → Matching the shortest word first can also fail
+     → Must consider ALL possibilities → DP is required
+
+→ DO NOT forget dp[0] = true
+     → This is the ANCHOR that makes everything work
+     → dp[4] = true because dp[0]=true AND "leet" in dict
+     → Without dp[0]=true, the chain never starts
+
+→ DO NOT use a List for dictionary lookups
+     → list.contains(word) is O(W) where W = dictionary size
+     → set.contains(word) is O(L) where L = word length
+     → For large dictionaries → orders of magnitude difference
+
+→ DO NOT create substrings unnecessarily
+     → s.substring(j, i) creates a new String object in Java
+     → For very long strings → excessive memory allocation and GC pressure
+     → Alternative: use s.startsWith(word, j) or character-by-character comparison
+     → Or precompute hash values for O(1) substring comparison
+
+→ DO NOT use naive recursion without memoization
+     → Recursive approach: "can s[i..n-1] be segmented?"
+     → Without memoization: exponential time
+       → s = "aaaa...a", dict = ["a", "aa", "aaa", ...]
+       → Each position has multiple choices → branching tree
+     → With memoization: O(n²) → same as bottom-up DP
+
+→ DO NOT confuse this with subsequence problems
+     → Word Break: CONTIGUOUS substrings must match dictionary words
+     → LCS (Project 50): non-contiguous subsequences
+     → The partition must cover the ENTIRE string with no gaps
+     → Every character must belong to exactly one word</code></pre></div>
+<hr>
+<h2>🔀 WHEN TO USE THIS PATTERN</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>✓ You need to determine if a sequence can be PARTITIONED into valid pieces
+</span>✓ Each piece must satisfy some MEMBERSHIP criterion (in a set/dictionary)
+✓ Pieces are CONTIGUOUS (substrings, not subsequences)
+✓ Pieces must COVER the entire sequence (no gaps, no overlaps)
+✓ The same piece can be reused (or not, depending on variant)
+
+VARIANTS:
+  → Word Break I: can the string be segmented? (boolean — this project)
+  → Word Break II: return ALL valid segmentations (backtracking + DP)
+  → Palindrome Partitioning: segment into palindromes
+  → Minimum Cost Partitioning: segment with minimum total cost
+  → Rod Cutting: partition a rod into pieces for maximum profit
+
+REAL-WORLD ANALOGS:
+  → Natural Language Processing: word segmentation for languages without spaces
+     → Chinese, Japanese, Thai → no spaces between words
+     → Must determine where word boundaries are
+  → DNA analysis: finding gene patterns in sequences
+  → URL parsing: segmenting concatenated words in URLs
+     → "expertsexchange" → "experts exchange" or... other segmentations
+  → Compound word detection: "basketball" → "basket" + "ball"
+  → Text decompression: reconstructing original text from compressed form</code></pre></div>
+<hr>
+<h2>🚫 WHEN NOT TO USE THIS PATTERN</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>✗ Pieces can be non-contiguous (subsequences)
+</span>     → That's LCS-style problems (Project 50) → 2D DP
+     → Word Break requires contiguous substrings
+
+✗ You need to TRANSFORM the string (not partition it)
+     → That's Edit Distance (Project 51) → 2D DP
+     → Word Break doesn't modify characters
+
+✗ The dictionary changes dynamically
+     → Rebuilding HashSet is expensive if dictionary changes often
+     → For dynamic dictionaries → Trie (Project 58) is better
+     → Trie supports efficient prefix matching and dynamic updates
+
+✗ You need to find the LONGEST dictionary word in the string
+     → That's a different problem → simple iteration over dictionary
+     → Word Break asks about COMPLETE partitioning, not single word matching
+
+✗ Pieces can overlap
+     → Word Break assumes non-overlapping, contiguous, complete coverage
+     → Overlapping patterns → different technique (suffix trees, Aho-Corasick)</code></pre></div>
+<hr>
+<h2>⚙️ HOW IT ONLY WORKS — Internal Mechanics</h2>
+<h3>The Partition Chain Invariant</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>INVARIANT:
+</span>  dp[i] = true means there exists a sequence of positions
+  0 = p₀ &lt; p₁ &lt; p₂ &lt; ... &lt; pₖ = i
+  such that s[pⱼ..pⱼ₊₁-1] is a dictionary word for all j
+
+PROOF BY INDUCTION:
+
+Base: dp[0] = true → trivially, the empty string is segmented (k=0)
+
+Inductive: If dp[i] = true, it was set because:
+  → dp[j] = true for some j &lt; i
+  → AND s[j..i-1] is a dictionary word
+  → By induction, dp[j] has a valid partition: 0 = p₀ &lt; ... &lt; pₘ = j
+  → Appending i: 0 = p₀ &lt; ... &lt; pₘ = j &lt; pₘ₊₁ = i
+  → s[j..i-1] is a valid word → the extended partition is valid ✓
+
+CONSEQUENCE:
+  → dp[n] = true guarantees a COMPLETE valid segmentation exists
+  → dp[n] = false guarantees NO valid segmentation exists
+  → The DP correctly captures ALL possible partition chains</code></pre></div>
+<h3>Why the Dictionary as HashSet is Critical</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>WITHOUT HashSet (using List):
+</span>  → For each (i, j) pair: check if s[j..i-1] is in dictionary
+  → List.contains() compares with EVERY word: O(W) per check
+  → Total: O(n² × W × L) where L = comparison cost
+  → For n=1000, W=1000, L=10: 10 billion operations → TOO SLOW
+
+WITH HashSet:
+  → HashSet.contains() computes hash and checks bucket: O(L) average
+  → Total: O(n² × L) 
+  → For n=1000, L=10: 10 million operations → fast
+
+WITH HashSet + maxLen pruning:
+  → Inner loop limited to maxLen iterations
+  → Total: O(n × maxLen × L)
+  → For n=1000, maxLen=20, L=20: 400,000 operations → instant</code></pre></div>
+<h3>The Relationship to BFS/DFS on a Graph</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>ALTERNATIVE VIEW: Word Break as a Graph Problem
+</span>
+→ Nodes: positions 0, 1, 2, ..., n in the string
+→ Edge from j to i: exists if s[j..i-1] is a dictionary word
+→ Question: is there a PATH from node 0 to node n?
+
+EXAMPLE:
+  s = "leetcode", dict = {"leet", "code"}
+  
+  Edges:
+    0 → 4 (s[0..3] = "leet" ✓)
+    4 → 8 (s[4..7] = "code" ✓)
+  
+  Path: 0 → 4 → 8 → EXISTS → return true
+
+THIS IS EXACTLY what the DP computes:
+  → dp[i] = true if node i is REACHABLE from node 0
+  → The DP is essentially BFS/DFS on this implicit graph
+  → But structured as DP for cleaner implementation
+
+CONNECTION TO PROJECT 49 (Jump Game):
+  → Jump Game: from index i, can jump to i+1..i+nums[i]
+  → Word Break: from position j, can "jump" to j+len(word) if word matches
+  → Both are reachability problems on implicit graphs
+  → Jump Game used greedy (contiguous reachable set)
+  → Word Break can't use greedy (reachable set is NOT contiguous)
+  → Word Break needs full DP</code></pre></div>
+<h3>Why Greedy Fails — Formal Argument</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>CLAIM: No greedy strategy (longest-first, shortest-first, etc.) 
+</span>       is guaranteed to find a valid segmentation.
+
+COUNTEREXAMPLE for longest-first:
+  s = "aab", dict = {"a", "aab"}
+  → Longest match at position 0: "aab" (length 3) → covers entire string → TRUE
+  → But what about: s = "aaab", dict = {"a", "aab"}
+  → Longest match at 0: "aab" (length 3) → remaining "b" → NOT in dict → FAIL
+  → But correct: "a" + "aab" → TRUE
+  → Longest-first FAILS
+
+COUNTEREXAMPLE for shortest-first:
+  s = "goalspecial", dict = {"go", "goal", "special"}
+  → Shortest match at 0: "go" (length 2) → remaining "alspecial" → can't segment
+  → Correct: "goal" (length 4) + "special" → TRUE
+  → Shortest-first FAILS
+
+ROOT CAUSE:
+  → The choice at position 0 affects what's available at later positions
+  → No local criterion can guarantee global optimality
+  → Must consider ALL possibilities → DP is necessary</code></pre></div>
+<h3>Time Complexity Analysis</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>BASIC DP (Strategy A):
+</span>  → Outer loop: n iterations
+  → Inner loop: up to i iterations (0 to i-1)
+  → Substring creation: O(i-j) per check
+  → HashSet lookup: O(i-j) for hashing
+  → Total: O(n³) worst case (sum of i² for substring creation)
+
+OPTIMIZED with maxLen pruning:
+  → Outer loop: n iterations
+  → Inner loop: at most maxLen iterations
+  → Substring creation: O(maxLen) per check
+  → HashSet lookup: O(maxLen)
+  → Total: O(n × maxLen²)
+  → If maxLen is constant → O(n) → linear!
+
+STRATEGY B (iterate over dictionary):
+  → Outer loop: n iterations
+  → Inner loop: W dictionary words
+  → String comparison: O(L) per word
+  → Total: O(n × W × L)</code></pre></div>
+<h3>Space Complexity</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ dp array: O(n)
+</span>→ HashSet of dictionary: O(W × L) where W = words, L = average length
+→ TOTAL: O(n + W × L)
+→ Much less than 2D DP problems (LCS, Edit Distance)</code></pre></div>
+<hr>
+<h2>⚠️ COMMON PITFALLS AND FAILURE MODES</h2>
+<h3>Pitfall 1: Forgetting dp[0] = true</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>s = "leet", dict = {"leet"}
+</span>
+WITHOUT dp[0] = true:
+  dp[1]: j=0 → dp[0]=false → skip → dp[1]=false
+  dp[2]: all false → dp[2]=false
+  dp[3]: all false → dp[3]=false
+  dp[4]: j=0 → dp[0]=false → skip → dp[4]=false
+  ANSWER: false → WRONG!
+
+WITH dp[0] = true:
+  dp[4]: j=0 → dp[0]=true AND "leet" in dict → dp[4]=true
+  ANSWER: true → CORRECT ✓
+
+→ dp[0]=true is the SEED that starts the chain
+→ Without it, nothing can ever become true</code></pre></div>
+<h3>Pitfall 2: Substring Index Off-by-One</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>In Java: s.substring(j, i) returns characters from index j to i-1 (inclusive)
+</span>  → s = "leetcode"
+  → s.substring(0, 4) = "leet" (indices 0,1,2,3)
+  → s.substring(4, 8) = "code" (indices 4,5,6,7)
+
+COMMON MISTAKE:
+  → s.substring(j, i-1) → misses last character
+  → s.substring(j, i+1) → includes extra character
+  → Always verify with a concrete example</code></pre></div>
+<h3>Pitfall 3: TLE on Long Strings with Repeated Characters</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>s = "aaaa...a" (n = 10000)
+</span>dict = ["a", "aa", "aaa", ..., "a×100"]
+
+→ Every position has multiple valid words
+→ Without maxLen optimization: inner loop runs up to i for each i
+→ O(n²) substring checks → can be slow for n &gt; 10000
+
+FIX: Use maxLen to limit inner loop
+  → maxLen = 100 → inner loop is at most 100 iterations
+  → O(n × 100) = O(n) → fast
+
+FIX: Use Trie instead of HashSet (connects to Project 58)
+  → Trie can check ALL matching prefixes in one traversal
+  → Avoids creating multiple substrings</code></pre></div>
+<h3>Pitfall 4: Not Breaking Early When dp[i] = true</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>WRONG (inefficient):
+</span>  for (int j = 0; j &lt; i; j++) {
+      if (dp[j] &amp;&amp; dict.contains(s.substring(j, i))) {
+          dp[i] = true;
+          // continues checking other j values → wasted work
+      }
+  }
+
+RIGHT (efficient):
+  for (int j = 0; j &lt; i; j++) {
+      if (dp[j] &amp;&amp; dict.contains(s.substring(j, i))) {
+          dp[i] = true;
+          break;  // ← found one valid segmentation → stop
+      }
+  }
+
+→ Boolean problem: one valid path is sufficient
+→ Break saves significant time in practice</code></pre></div>
+<h3>Pitfall 5: Dictionary Words Longer Than String</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>s = "ab", dict = {"abc", "a", "b"}
+</span>
+→ "abc" has length 3 &gt; length of s (2) → can never match
+→ Should be harmlessly skipped in the inner loop
+→ Strategy A: j ranges from 0 to i-1 → substring is at most length i ≤ n → safe
+→ Strategy B: check word.length() ≤ n before processing → optimization</code></pre></div>
+<hr>
+<h2>📈 SCALABILITY CONSIDERATIONS</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>n = string length, W = dictionary size, L = max word length
+</span>
+BASIC DP: O(n² × L)
+  → n=300 → 300² × 20 ≈ 1.8M → instant
+  → n=1000 → 1M × 20 ≈ 20M → fast
+  → n=10,000 → 100M × 20 ≈ 2B → slow
+  → n=100,000 → too slow
+
+OPTIMIZED DP (maxLen pruning): O(n × L²)
+  → n=10,000, L=20 → 10K × 400 = 4M → instant
+  → n=100,000, L=20 → 100K × 400 = 40M → fast
+  → n=1,000,000, L=20 → 1M × 400 = 400M → manageable
+
+TRIE-BASED (Project 58 preview): O(n × L)
+  → Even better for large dictionaries
+  → Single traversal per position checks all matching prefixes
+  → n=1,000,000, L=20 → 20M → fast
+
+FOR INTERVIEW:
+  → Basic DP with HashSet + maxLen pruning is sufficient
+  → Mention Trie optimization for bonus points
+  → LeetCode constraints: n ≤ 300, W ≤ 1000, L ≤ 20
+  → Basic DP easily handles these</code></pre></div>
+<hr>
+<h2>🔍 INTERPRETABILITY CONSIDERATIONS</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>Stepping Stone — Mental Model:
+</span>  → "Imagine the string as a river with stepping stones"
+  → "Position 0 is the start bank, position n is the end bank"
+  → "A stepping stone exists at position i if some dictionary word
+     starts at a reachable position j and ends at position i"
+  → "Can you cross the river by hopping from stone to stone?"
+  → "dp[i] = can you reach stepping stone at position i?"
+
+Word Segmentation — Mental Model:
+  → "Imagine reading a string without spaces"
+  → "You have a dictionary to look up words"
+  → "At each position, try all dictionary words that could start here"
+  → "If a word matches and the preceding part is valid → this position is valid"
+  → "Can you parse the entire string into valid words?"
+
+Interview Explanation:
+  → "I use a 1D DP array where dp[i] = can s[0..i-1] be segmented"
+  → "dp[0] = true as the base case (empty string)"
+  → "For each position i, I check all possible last words"
+  → "If dp[j] is true and s[j..i-1] is in the dictionary, dp[i] = true"
+  → "I use a HashSet for O(1) dictionary lookups"
+  → "I limit the inner loop by max word length for efficiency"
+  → "Time: O(n × maxLen²), Space: O(n)"</code></pre></div>
+<hr>
+<div class="github-btn-wrap"><a class="github-btn" href="https://github.com/Shakti4640/leetcode-patterns-guide-java/tree/main/project- (52)" target="_blank" rel="noopener"><svg viewBox="0 0 24 24"><path d="M12 .5C5.37.5 0 5.87 0 12.5c0 5.3 3.44 9.8 8.2 11.39.6.11.82-.26.82-.58v-2.03c-3.34.73-4.04-1.61-4.04-1.61-.55-1.39-1.34-1.76-1.34-1.76-1.09-.74.08-.73.08-.73 1.2.09 1.84 1.24 1.84 1.24 1.07 1.83 2.8 1.3 3.49 1 .1-.78.42-1.3.76-1.6-2.67-.3-5.47-1.33-5.47-5.93 0-1.31.47-2.38 1.24-3.22-.14-.3-.54-1.52.1-3.18 0 0 1.01-.32 3.3 1.23a11.5 11.5 0 0 1 3-.4c1.02 0 2.04.13 3 .4 2.28-1.55 3.29-1.23 3.29-1.23.64 1.66.24 2.88.12 3.18.77.84 1.23 1.91 1.23 3.22 0 4.61-2.81 5.63-5.48 5.92.43.37.81 1.1.81 2.22v3.29c0 .32.21.7.82.58C20.56 22.3 24 17.8 24 12.5 24 5.87 18.63.5 12 .5z"/></svg>💻 View Complete Java Code on GitHub</a></div>
+
+<hr>
+<h2>🔑 EXPECTED OUTPUT</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>╔═══════════════════════════════════════════════════╗
+</span>║  PROJECT 52: Word Break — String Segmentation     ║
+║  Pattern: 1D DP → Dictionary-Driven Transitions   ║
+╚═══════════════════════════════════════════════════╝
+
+═══ TEST 1: leetcode ═══
+String: "leetcode" (length 8)
+Dictionary: [leet, code]
+
+Index:  0  1  2  3  4  5  6  7  
+Char:   l  e  e  t  c  o  d  e  
+
+dp[0] = true (base case — empty string)
+
+Computing dp[1] — s[0..0] = "l":
+  j=0: dp[0]=true → s[0..0]="l" in dict? no
+  → No valid split found
+  dp[1] = false
+
+Computing dp[2] — s[0..1] = "le":
+  j=0: dp[0]=true → s[0..1]="le" in dict? no
+  → No valid split found
+  dp[2] = false
+
+Computing dp[3] — s[0..2] = "lee":
+  j=0: dp[0]=true → s[0..2]="lee" in dict? no
+  → No valid split found
+  dp[3] = false
+
+Computing dp[4] — s[0..3] = "leet":
+  j=0: dp[0]=true → s[0..3]="leet" in dict? YES ✓
+  dp[4] = true
+
+Computing dp[5] — s[0..4] = "leetc":
+  j=0: dp[0]=true → s[0..4]="leetc" in dict? no
+  j=4: dp[4]=true → s[4..4]="c" in dict? no
+  → No valid split found
+  dp[5] = false
+
+Computing dp[6] — s[0..5] = "leetco":
+  j=0: dp[0]=true → s[0..5]="leetco" in dict? no
+  j=4: dp[4]=true → s[4..5]="co" in dict? no
+  → No valid split found
+  dp[6] = false
+
+Computing dp[7] — s[0..6] = "leetcod":
+  j=0: dp[0]=true → s[0..6]="leetcod" in dict? no
+  j=4: dp[4]=true → s[4..6]="cod" in dict? no
+  → No valid split found
+  dp[7] = false
+
+Computing dp[8] — s[0..7] = "leetcode":
+  j=0: dp[0]=true → s[0..7]="leetcode" in dict? no
+  j=4: dp[4]=true → s[4..7]="code" in dict? YES ✓
+  dp[8] = true
+
+Final dp: [T, F, F, F, T, F, F, F, T]
+One valid segmentation: leet + code
+
+═══ ANSWER: true ═══
+
+═══ TEST 3: catsandog (impossible) ═══
+String: "catsandog" (length 9)
+Dictionary: [cats, dog, sand, and, cat]
+
+Computing dp[3] — s[0..2] = "cat":
+  j=0: dp[0]=true → s[0..2]="cat" in dict? YES ✓
+  dp[3] = true
+
+Computing dp[4] — s[0..3] = "cats":
+  j=0: dp[0]=true → s[0..3]="cats" in dict? YES ✓
+  dp[4] = true
+
+Computing dp[6] — s[0..5] = "catsan":
+  j=3: dp[3]=true → s[3..5]="san" in dict? no
+  j=4: dp[4]=true → s[4..5]="an" in dict? no
+  dp[6] = false
+
+Computing dp[7] — s[0..6] = "catsand":
+  j=3: dp[3]=true → s[3..6]="sand" in dict? YES ✓
+  dp[7] = true
+
+Computing dp[8] — s[0..7] = "catsando":
+  j=3: dp[3]=true → s[3..7]="sando" in dict? no
+  j=4: dp[4]=true → s[4..7]="ando" in dict? no
+  j=7: dp[7]=true → s[7..7]="o" in dict? no
+  dp[8] = false
+
+Computing dp[9] — s[0..8] = "catsandog":
+  j=3: dp[3]=true → s[3..8]="sandog" in dict? no
+  j=4: dp[4]=true → s[4..8]="andog" in dict? no
+  j=7: dp[7]=true → s[7..8]="og" in dict? no
+  dp[9] = false
+
+Final dp: [T, F, F, T, T, F, F, T, F, F]
+
+═══ ANSWER: false ═══
+
+═══ TEST 4: goalspecial (greedy fails) ═══
+Computing dp[2] — "go":
+  j=0: dp[0]=true → "go" in dict? YES ✓  dp[2] = true
+
+Computing dp[4] — "goal":
+  j=0: dp[0]=true → "goal" in dict? YES ✓  dp[4] = true
+
+Computing dp[5] — "goals":
+  j=0: dp[0]=true → "goals" in dict? YES ✓  dp[5] = true
+
+Computing dp[11] — "goalspecial":
+  j=4: dp[4]=true → "special" in dict? YES ✓  dp[11] = true
+
+Final dp: [T, F, T, F, T, T, F, F, F, F, F, T]
+One valid segmentation: goal + special
+
+═══ ANSWER: true ═══
+
+═══ TEST 8: Cross-Verification (All Approaches) ═══
+  Test 1:  "leetcode"             → true   ✓
+  Test 2:  "applepenapple"        → true   ✓
+  Test 3:  "catsandog"            → false  ✓
+  Test 4:  "goalspecial"          → true   ✓
+  Test 5:  "catsanddog"           → true   ✓
+  Test 6:  "aaaaaaa"              → true   ✓
+  Test 7:  "bb"                   → true   ✓
+  Test 8:  ""                     → true   ✓
+  Test 9:  "a"                    → true   ✓
+  Test 10: "cars"                 → true   ✓
+  Test 11: "abcd"                 → true   ✓
+  Test 12: "aaaaaaaaaaaaaaaaaa..." → false  ✓
+
+═══ TEST 9: Word Break II — All Segmentations ═══
+"catsanddog" → 2 segmentations:
+  → cats and dog
+  → cat sand dog
+
+"pineapplepenapple" → 3 segmentations:
+  → pine apple pen apple
+  → pineapple pen apple
+  → pine applepen apple
+
+═══ TEST 12: Worst Case — TLE Prevention ═══
+  "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaab"
+  Result: false → 45 μs
+  (Every 'a' prefix is segmentable, but 'b' at end blocks everything)</code></pre></div>
+<hr>
+<h2>🧠 COMPARISON: Partitioning DP Problems</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>┌──────────────────────┬──────────────┬──────────────────────┬────────────┐
+</span>│ Problem              │ Partition    │ Validity Check       │ Complexity │
+│                      │ Constraint   │                      │            │
+├──────────────────────┼──────────────┼──────────────────────┼────────────┤
+│ Climbing Stairs (43) │ Fixed sizes  │ Step 1 or 2          │ O(n)       │
+│                      │ (1 or 2)     │                      │            │
+├──────────────────────┼──────────────┼──────────────────────┼────────────┤
+│ Word Break (52)      │ Variable     │ Substring in dict    │ O(n×L²)   │
+│                      │ sizes        │                      │            │
+├──────────────────────┼──────────────┼──────────────────────┼────────────┤
+│ Palindrome Partition │ Variable     │ Substring is         │ O(n²)      │
+│                      │ sizes        │ palindrome           │            │
+├──────────────────────┼──────────────┼──────────────────────┼────────────┤
+│ Rod Cutting          │ Variable     │ Any cut valid,       │ O(n²)      │
+│                      │ sizes        │ maximize profit      │            │
+└──────────────────────┴──────────────┴──────────────────────┴────────────┘
+
+KEY INSIGHT:
+  → All are 1D DP on a single sequence
+  → All ask "can this sequence be split into valid pieces?"
+  → The VALIDITY CRITERION changes → the inner loop check changes
+  → The DP SKELETON remains the same:
+    dp[i] = some aggregation over all j where piece [j..i-1] is valid</code></pre></div>
+<hr>
+<h2>🧠 THE COMPLETE DP JOURNEY (Projects 43–52)</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>┌──────────┬────────┬───────────────┬────────────────────────┬───────────┐
+</span>│ Project  │ Dims   │ Objective     │ Key Innovation         │ Time      │
+├──────────┼────────┼───────────────┼────────────────────────┼───────────┤
+│ 43 Stairs│ 1D     │ Count paths   │ Fixed step sizes       │ O(n)      │
+│ 44 Knap  │ 2D     │ Max value     │ Include/exclude items  │ O(n×W)    │
+│ 45 LIS   │ 1D     │ Max length    │ Element comparison     │ O(n²)     │
+│ 50 LCS   │ 2D     │ Max match     │ Diagonal transition    │ O(m×n)    │
+│ 51 Edit  │ 2D     │ Min cost      │ 3-way min transition   │ O(m×n)    │
+│ 52 Word  │ 1D     │ Boolean       │ Dictionary-driven      │ O(n×L²)   │
+│   Break  │        │ feasibility   │ variable transitions   │           │
+└──────────┴────────┴───────────────┴────────────────────────┴───────────┘
+
+THE EVOLUTION:
+  → Project 43: Fixed transitions (step 1 or 2) → simplest DP
+  → Project 44: Binary choice (include or exclude) → 2D state space
+  → Project 45: Variable lookback (all j &lt; i) → element ordering
+  → Project 50: Two-sequence matching → diagonal = progress
+  → Project 51: Two-sequence transformation → min-cost path in grid
+  → Project 52: Single-sequence partitioning → dictionary as transition guide
+
+MASTERY CHECKLIST:
+  ✓ 1D counting DP (stairs)
+  ✓ 2D item-capacity DP (knapsack)
+  ✓ 1D subsequence DP (LIS)
+  ✓ 2D string-string DP — maximize (LCS)
+  ✓ 2D string-string DP — minimize (Edit Distance)
+  ✓ 1D string-partitioning DP — feasibility (Word Break)
+  → DP MASTERY COMPLETE — ready for advanced patterns</code></pre></div>
+<hr>
+<h2>🧠 COMPARISON: Reachability Problems Across Projects</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>┌──────────────────────┬────────────────────────┬─────────────────────┬─────────┐
+</span>│ Problem              │ "Edges" Defined By     │ Approach            │ Project │
+├──────────────────────┼────────────────────────┼─────────────────────┼─────────┤
+│ Jump Game            │ nums[i] = max jump     │ Greedy (contiguous  │ 49      │
+│                      │ from position i        │ reachable set)      │         │
+├──────────────────────┼────────────────────────┼─────────────────────┼─────────┤
+│ Word Break           │ Dictionary words that  │ DP (non-contiguous  │ 52      │
+│                      │ match at position j    │ reachable set)      │         │
+├──────────────────────┼────────────────────────┼─────────────────────┼─────────┤
+│ Course Schedule      │ Prerequisite edges     │ Topological Sort    │ 47      │
+│                      │ in directed graph      │ (Kahn's BFS)        │         │
+├──────────────────────┼────────────────────────┼─────────────────────┼─────────┤
+│ Connected Components │ Undirected edges       │ Union Find          │ 48      │
+│                      │ between nodes          │                     │         │
+└──────────────────────┴────────────────────────┴─────────────────────┴─────────┘
+
+KEY INSIGHT:
+  → Jump Game: reachable set is CONTIGUOUS → greedy O(n) suffices
+  → Word Break: reachable set has GAPS → must track each position → DP O(n²)
+  → This is WHY greedy fails for Word Break but works for Jump Game
+  → The STRUCTURE of reachability determines the TECHNIQUE</code></pre></div>
+<hr>
+<h2>🧠 KEY TAKEAWAY</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>WHAT WE LEARNED:
+</span>→ String partitioning is a 1D DP problem where transitions are VARIABLE
+→ Dictionary words define which "jumps" are possible from each position
+→ dp[i] = true if ANY split point j makes both dp[j] and s[j..i-1] valid
+→ dp[0] = true is the CRITICAL base case that seeds the entire chain
+→ HashSet gives O(1) dictionary lookups → essential for performance
+→ Max word length pruning limits the inner loop → dramatic speedup
+→ Greedy FAILS because word choice at position j affects all later positions
+→ Word Break is like Jump Game but with non-contiguous reachable positions
+
+THE CORE MENTAL MODEL:
+→ "Can I hop from position 0 to position n?"
+→ "At each position, check: can I land here? (dp[j] = true)"
+→ "If yes, what dictionary words start here? (s[j..i-1] in dict)"
+→ "Each valid word creates a new landing pad at position i"
+→ "If position n is a landing pad → the string can be segmented"
+
+PATTERN SIGNATURE:
+→ Single sequence to partition ✓
+→ Each piece must satisfy a membership criterion ✓
+→ Pieces are contiguous and non-overlapping ✓
+→ Complete coverage required ✓
+→ = 1D DP WITH DICTIONARY-DRIVEN TRANSITIONS
+
+THE GREEDY-DP SPECTRUM (Completed):
+  Project 19: Greedy works → Activity Selection (sort by end time)
+  Project 49: Greedy works → Jump Game (contiguous reachable set)
+  Project 50: Greedy fails → LCS (early match blocks better alignment)
+  Project 51: Greedy fails → Edit Distance (early operation blocks cheaper path)
+  Project 52: Greedy fails → Word Break (early word blocks valid partition)
+  
+  → WHEN greedy works: problem has monotonic/contiguous structure
+  → WHEN greedy fails: choices have non-local consequences → use DP
+  → Recognizing which regime you're in = the KEY interview skill</code></pre></div>
+<hr>
+<h2>🌉 BRIDGE TO NEXT PROJECT</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>PROJECT 52 taught us:
+</span>→ 1D DP on strings with dictionary-driven transitions
+→ HashSet for O(1) membership testing
+→ Variable "step sizes" based on matching dictionary words
+→ The final DP project in our curriculum
+
+PROJECT 53 (Smallest Range Covering Elements from K Lists) will shift to:
+→ K-way Merge → a completely different pattern
+→ Given K sorted lists, find the smallest range [a, b]
+  that includes at least one element from each list
+→ This combines:
+     → Min-heap from Project 40 (Merge K Sorted Lists)
+     → Sliding window concepts from Projects 12, 41
+     → Global max tracking alongside heap-based min
+
+The progression entering PHASE 5:
+  Projects 50-52: DP mastery → string matching, transformation, partitioning
+  Project 53: K-way Merge → multi-source coordination → heap + tracking
+  Project 54: Monotonic Stack → histogram areas → boundary discovery
+  Project 55: Monotonic Stack → trapping rain water → bounded containers
+
+→ From DYNAMIC PROGRAMMING (optimal substructure, overlapping subproblems)
+  to SPECIALIZED DATA STRUCTURES (heaps, stacks, tries, union find)
+→ Phase 5 synthesizes ALL patterns into complex multi-pattern problems
+→ Each remaining project combines 2-3 patterns from earlier phases
+→ This is where MASTERY is demonstrated</code></pre></div>
+<hr>
+<p><strong>Ready for Project 53: Smallest Range Covering Elements from K Lists (K-way Merge → Sliding Min-Max Across K Pointers → Heap + Global Tracking)?</strong></p>
+</div>
+</div>
+
+<!-- ========== data-index="27" ========== -->
+<div class="chat-message" data-index="27"></div>
+</div>
+<div class="bottom-nav">
+  <a href="project-51.html" class="nav-btn prev">← Prev</a>
+  <div class="nav-center">
+    <span class="nav-project-label">PROJECT 52 of 60</span>
+    <span class="nav-project-title">Word Break — Can String Be Segmented?</span>
+    <span class="kbd-hint">← → arrow keys to navigate</span>
+  </div>
+  <a href="project-53.html" class="nav-btn next">Next →</a>
+  <a href="index.html" class="nav-btn home">🏠 TOC</a>
+</div>
+<div id="progress-track"><div id="progress-fill"></div></div>
+<div id="progress-pct">0%</div>
+<script src="script.js"></script>
+<script>
+document.addEventListener('keydown', function(e) {
+  if (['INPUT','TEXTAREA'].includes(document.activeElement.tagName)) return;
+  if (e.key === 'ArrowRight' && "project-53.html" !== null) window.location = "project-53.html";
+  if (e.key === 'ArrowLeft' && "project-51.html" !== null) window.location = "project-51.html";
+});
+</script>
+</body>
+</html>

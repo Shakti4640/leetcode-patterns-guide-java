@@ -1,0 +1,795 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PROJECT 56: Alien Dictionary (Order of Characters)</title>
+<link rel="icon" type="image/png" href="images/favicon.png">
+<link rel="stylesheet" href="styles.css">
+
+</head>
+<body>
+<div id="progress-bar-container"><div id="progress-bar" style="width:93%"></div></div>
+<div id="progress-label">93%</div>
+<div class="page-wrapper">
+<div class="chat-message"><div class="px-2"><h1>PROJECT 56: Alien Dictionary (Order of Characters)</h1>
+<h2>🎯 Topological Sort → Graph Construction from Constraints → BFS Ordering</h2>
+<hr>
+<h2>🔗 DEPENDENCY CHAIN</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>Project 1  → Two Pointers foundation
+</span>Project 9  → Binary Search → comparison-based elimination
+Project 17 → Tree BFS → Queue-based level processing
+Project 19 → Greedy → Activity Selection → Sort-based ordering
+Project 47 → Topological Sort → In-degree counting → Kahn's BFS
+             ↓
+Project 56 → THIS PROJECT
+             → Graph CONSTRUCTION from implicit constraints
+             → Topological Sort on CHARACTERS (not courses)
+             → Edge case handling → invalid inputs, ambiguous orders
+             ↓
+Project 57 → Union Find → Accounts Merge (grouping by relationships)</code></pre></div>
+<hr>
+<h2>🧩 THE HYPOTHETICAL PROBLEM</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ You are given a list of WORDS sorted in lexicographic order
+</span>  according to an ALIEN language's alphabet
+→ Derive the ORDER of characters in the alien alphabet
+→ Return a string of characters in the correct alien order
+→ If the order is invalid (contradiction) → return ""
+→ If multiple valid orderings exist → return ANY one
+
+Example 1:
+  Input: ["wrt", "wrf", "er", "ett", "rftt"]
+  
+  From the sorted order, we can deduce:
+  → "wrt" before "wrf" → comparing char by char → t comes before f
+  → "wrf" before "er"  → w comes before e
+  → "er" before "ett"  → r comes before t
+  → "ett" before "rftt"→ e comes before r
+  
+  Derived edges: t→f, w→e, r→t, e→r
+  
+  Topological sort: w → e → r → t → f
+  
+  Output: "wertf"
+
+Example 2:
+  Input: ["z", "x"]
+  
+  → "z" before "x" → z comes before x
+  
+  Output: "zx"
+
+Example 3:
+  Input: ["z", "x", "z"]
+  
+  → "z" before "x" → z comes before x
+  → "x" before "z" → x comes before z
+  → CONTRADICTION: z before x AND x before z → CYCLE
+  
+  Output: "" (invalid)
+
+Example 4:
+  Input: ["abc", "ab"]
+  
+  → "abc" comes before "ab"?
+  → But "abc" is LONGER than "ab" and shares the same prefix
+  → In any valid lexicographic order, "ab" should come before "abc"
+  → This input is INVALID
+  
+  Output: "" (invalid)</code></pre></div>
+<hr>
+<h2>🔍 HOW TO APPROACH IT</h2>
+<h3>Step 1 — Understand What "Sorted Word List" Tells Us</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ The words are sorted in alien lexicographic order
+</span>→ Just like English dictionary: "apple" &lt; "banana" &lt; "cat"
+→ Comparing two ADJACENT words reveals ONE ordering rule
+
+How to extract a rule from two adjacent words:
+→ Compare character by character from left to right
+→ Find the FIRST position where they differ
+→ The character in word1 comes BEFORE the character in word2
+→ Characters after the first difference tell us NOTHING
+
+Example: "wrt" vs "wrf"
+  w == w → same, continue
+  r == r → same, continue  
+  t != f → FIRST DIFFERENCE → t comes before f → edge: t → f
+  
+Example: "er" vs "ett"
+  e == e → same, continue
+  r != t → FIRST DIFFERENCE → r comes before t → edge: r → t
+  Characters after (tt) are IRRELEVANT</code></pre></div>
+<h3>Step 2 — Map This to a Graph Problem</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ Each unique CHARACTER is a NODE
+</span>→ Each ordering rule is a DIRECTED EDGE
+     → "a comes before b" → edge from a to b
+→ Finding the full character order = TOPOLOGICAL SORT on this graph
+
+THIS IS EXACTLY PROJECT 47 (Course Schedule):
+→ Project 47: courses = nodes, prerequisites = edges
+→ Project 56: characters = nodes, ordering rules = edges
+→ Same algorithm (Kahn's BFS) — different graph CONSTRUCTION
+
+THE KEY DIFFERENCE:
+→ Project 47: graph was GIVEN to you (adjacency list of prerequisites)
+→ Project 56: graph must be BUILT by YOU from comparing adjacent words
+→ The hard part is not the topological sort — it's the graph construction</code></pre></div>
+<h3>Step 3 — The Three Phases</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>Phase 1: EXTRACT all unique characters
+</span>→ Scan all words → collect every character → these are our nodes
+
+Phase 2: BUILD the graph by comparing adjacent word pairs
+→ For each pair (words[i], words[i+1]):
+     → Find first differing character
+     → Add directed edge: words[i][j] → words[i+1][j]
+     → ALSO detect invalid case: longer word before shorter prefix
+
+Phase 3: TOPOLOGICAL SORT using Kahn's BFS (from Project 47)
+→ Compute in-degrees
+→ Start with nodes having in-degree 0
+→ Process BFS → append to result
+→ If result length ≠ number of unique characters → CYCLE → return ""</code></pre></div>
+<h3>Step 4 — Why Not Just Compare ALL Pairs?</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ We only need ADJACENT pairs in the sorted list
+</span>→ Why? Because if words are sorted: w1 &lt; w2 &lt; w3
+→ Then w1 &lt; w3 is already implied by w1 &lt; w2 and w2 &lt; w3
+→ Comparing non-adjacent pairs gives REDUNDANT edges
+→ Redundant edges don't break correctness but waste time
+→ Adjacent pairs give us ALL the MINIMAL constraints needed</code></pre></div>
+<hr>
+<h2>🛠️ HOW CAN WE SOLVE IT</h2>
+<h3>Full Algorithm — Step by Step</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>STEP 1: Collect all unique characters
+</span>→ Iterate through every character in every word
+→ Add to a Set&lt;Character&gt;
+→ These become our graph nodes
+
+STEP 2: Initialize graph structures
+→ adjacencyList: Map&lt;Character, List&lt;Character&gt;&gt;
+→ inDegree: Map&lt;Character, Integer&gt;
+→ Initialize every character with empty adjacency list and in-degree 0
+
+STEP 3: Compare adjacent words to build edges
+→ For i = 0 to words.length - 2:
+     word1 = words[i], word2 = words[i+1]
+     
+     Compare character by character:
+     → Find first index j where word1[j] ≠ word2[j]
+     → Add edge: word1[j] → word2[j]
+     → Increment inDegree[word2[j]]
+     → STOP comparing this pair (only first difference matters)
+     
+     Special case:
+     → If all compared characters are same AND word1 is LONGER
+     → Example: "abc" before "ab" → INVALID
+     → Return ""
+
+STEP 4: Kahn's BFS topological sort (exactly as Project 47)
+→ Queue all characters with in-degree 0
+→ While queue not empty:
+     → Poll character c
+     → Append c to result
+     → For each neighbor of c:
+          → Decrement neighbor's in-degree
+          → If in-degree becomes 0 → add to queue
+     
+→ If result.length() == number of unique characters → return result
+→ Otherwise → cycle exists → return ""</code></pre></div>
+<h3>Detailed Walkthrough</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>Input: ["wrt", "wrf", "er", "ett", "rftt"]
+</span>
+STEP 1: Unique characters = {w, r, t, f, e}
+
+STEP 2: Initialize
+  adjacencyList: {w:[], r:[], t:[], f:[], e:[]}
+  inDegree:      {w:0, r:0, t:0, f:0, e:0}
+
+STEP 3: Compare adjacent pairs
+
+  Pair 1: "wrt" vs "wrf"
+    w==w ✓, r==r ✓, t≠f → edge t→f
+    adjacencyList: {w:[], r:[], t:[f], f:[], e:[]}
+    inDegree:      {w:0, r:0, t:0, f:1, e:0}
+
+  Pair 2: "wrf" vs "er"
+    w≠e → edge w→e
+    adjacencyList: {w:[e], r:[], t:[f], f:[], e:[]}
+    inDegree:      {w:0, r:0, t:0, f:1, e:1}
+
+  Pair 3: "er" vs "ett"
+    e==e ✓, r≠t → edge r→t
+    adjacencyList: {w:[e], r:[t], t:[f], f:[], e:[]}
+    inDegree:      {w:0, r:0, t:1, f:1, e:1}
+
+  Pair 4: "ett" vs "rftt"
+    e≠r → edge e→r
+    adjacencyList: {w:[e], r:[t], t:[f], f:[], e:[r]}
+    inDegree:      {w:0, r:1, t:1, f:1, e:1}
+
+STEP 4: Kahn's BFS
+
+  Graph visualization:
+    w → e → r → t → f
+  
+  In-degrees: {w:0, r:1, t:1, f:1, e:1}
+  
+  Queue initial: [w]  (only w has in-degree 0)
+  
+  Process w: result = "w"
+    → neighbor e: inDegree[e] = 1-1 = 0 → add to queue
+    Queue: [e]
+  
+  Process e: result = "we"
+    → neighbor r: inDegree[r] = 1-1 = 0 → add to queue
+    Queue: [r]
+  
+  Process r: result = "wer"
+    → neighbor t: inDegree[t] = 1-1 = 0 → add to queue
+    Queue: [t]
+  
+  Process t: result = "wert"
+    → neighbor f: inDegree[f] = 1-1 = 0 → add to queue
+    Queue: [f]
+  
+  Process f: result = "wertf"
+    → no neighbors
+    Queue: empty
+  
+  result.length() = 5 == 5 unique characters → VALID
+  
+  Output: "wertf" ✓</code></pre></div>
+<h3>Cycle Detection Walkthrough</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>Input: ["z", "x", "z"]
+</span>
+STEP 1: Unique characters = {z, x}
+
+STEP 3: Compare adjacent pairs
+
+  Pair 1: "z" vs "x"
+    z≠x → edge z→x
+    inDegree: {z:0, x:1}
+
+  Pair 2: "x" vs "z"
+    x≠z → edge x→z
+    inDegree: {z:1, x:1}
+
+STEP 4: Kahn's BFS
+
+  In-degrees: {z:1, x:1}
+  
+  Queue initial: []  (NO character has in-degree 0!)
+  
+  Queue empty immediately → result = ""
+  result.length() = 0 ≠ 2 unique characters → CYCLE DETECTED
+  
+  Output: "" ✓</code></pre></div>
+<hr>
+<h2>✅ WHAT SHOULD YOU DO</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ ALWAYS compare only ADJACENT word pairs
+</span>     → words[i] vs words[i+1] for all i
+     → Non-adjacent pairs add redundant edges
+     → Adjacent pairs capture all minimal ordering constraints
+
+→ ALWAYS stop at the FIRST differing character
+     → Only the first difference gives a valid ordering rule
+     → Characters after the first difference are compared under
+        a DIFFERENT prefix context → no valid deduction possible
+
+→ ALWAYS check the "longer prefix" invalid case
+     → If word1 is a prefix of word2 AND word1 is longer
+     → Example: "abc" before "ab"
+     → This violates lexicographic ordering → return ""
+     → Easy to miss → interviewers specifically test this
+
+→ ALWAYS include ALL unique characters in the result
+     → Some characters may not appear in any edge
+     → They still need to be in the output
+     → They'll have in-degree 0 → processed first in BFS
+     → If multiple characters have in-degree 0 → any order is valid
+
+→ ALWAYS use Map-based structures (not array-based)
+     → Characters may be any lowercase letter (a-z)
+     → Not all 26 letters may be present
+     → Map handles sparse character sets cleanly
+     → (Array of size 26 also works but needs careful indexing)
+
+→ ALWAYS verify result length equals number of unique characters
+     → This is the cycle detection check (same as Project 47)
+     → If cycle exists → some characters never reach in-degree 0
+     → They never enter the queue → result is shorter → invalid</code></pre></div>
+<hr>
+<h2>🚫 WHAT SHOULD YOU NOT DO</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ DO NOT compare all pairs of words
+</span>     → O(n²) pairs instead of O(n) adjacent pairs
+     → Adds redundant edges → doesn't improve correctness
+     → Wastes time and complicates duplicate edge handling
+
+→ DO NOT extract multiple rules from one word pair
+     → Only the FIRST differing character gives a rule
+     → Example: "abc" vs "xyz" → only a→x is valid
+     → b→y and c→z are NOT valid deductions
+     → WHY? Because "a before x" is the reason "abc" &lt; "xyz"
+     → The comparison of b vs y only matters IF a==x
+
+→ DO NOT forget characters that appear in words but not in edges
+     → If character 'q' appears in words but never in a first-difference
+     → It still exists in the alien alphabet
+     → It must appear in the output
+     → It will have in-degree 0 → placed freely
+
+→ DO NOT add duplicate edges
+     → Two different word pairs might give the same rule
+     → Example: "ab" vs "ac" → b→c, and "xb" vs "xc" → b→c (same edge)
+     → Adding duplicate edges inflates in-degree incorrectly
+     → Use a Set to track existing edges OR check before adding
+
+→ DO NOT use DFS-based topological sort without careful cycle detection
+     → DFS topo sort works but cycle detection requires coloring (white/gray/black)
+     → BFS (Kahn's) detects cycles naturally via result length check
+     → For this problem, Kahn's BFS is cleaner (same as Project 47)
+
+→ DO NOT assume all 26 letters are present
+     → Only characters that appear in the input words exist
+     → Building a graph with 26 nodes when only 5 are used → wastes space
+     → And you'd need to figure out which characters to include in output</code></pre></div>
+<hr>
+<h2>🔀 WHEN TO USE THIS PATTERN</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>✓ You need to determine an ORDER or SEQUENCE from pairwise constraints
+</span>✓ The constraints form a DIRECTED relationship (A must come before B)
+✓ The constraints might contain CYCLES (contradictions to detect)
+✓ The constraints are IMPLICIT (need to be extracted from data)
+
+SIGNATURE PROBLEMS:
+→ Alien Dictionary ← THIS
+→ Course Schedule II (return the ordering) → Project 47 variant
+→ Sequence Reconstruction (verify unique topological order)
+→ Minimum Height Trees → reverse topological peeling
+→ Any problem with "given partial ordering, find total ordering"
+
+THE PATTERN HAS TWO PARTS:
+  Part 1: GRAPH CONSTRUCTION → problem-specific → different every time
+  Part 2: TOPOLOGICAL SORT → standard algorithm → same every time
+
+Mastering this pattern means:
+→ You already KNOW the topological sort (Project 47)
+→ You need to practice the GRAPH CONSTRUCTION from different inputs
+→ Alien Dictionary is the gold standard for this skill</code></pre></div>
+<hr>
+<h2>🚫 WHEN NOT TO USE THIS PATTERN</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>✗ The ordering is BIDIRECTIONAL (A relates to B AND B relates to A)
+</span>     → Topological sort requires DIRECTED ACYCLIC graph
+     → Bidirectional relationships → use Union Find (Project 57)
+
+✗ You need the SHORTEST/LONGEST path, not just an ordering
+     → Topological sort gives A valid ordering
+     → Not the optimal path → use DP on DAG or Dijkstra
+
+✗ The graph is UNDIRECTED
+     → Topological sort is meaningless on undirected graphs
+     → Use BFS/DFS for traversal, Union Find for components
+
+✗ You need ALL possible orderings
+     → Topological sort (Kahn's) gives ONE valid ordering
+     → Finding ALL valid orderings is exponential
+     → Different problem entirely
+
+✗ The constraints don't form a DAG (guaranteed to have cycles)
+     → If cycles are expected and valid → different problem structure
+     → Topological sort explicitly REJECTS cycles</code></pre></div>
+<hr>
+<h2>⚙️ HOW IT ONLY WORKS — Internal Mechanics</h2>
+<h3>Why Adjacent Word Comparison is Sufficient</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>Given sorted words: w1 &lt; w2 &lt; w3 &lt; ... &lt; wn
+</span>
+Comparing w1 vs w2 gives edge: a → b
+Comparing w2 vs w3 gives edge: c → d
+...
+
+Do we need to compare w1 vs w3?
+→ We know w1 &lt; w2 and w2 &lt; w3
+→ So w1 &lt; w3 is already implied by TRANSITIVITY
+→ Any edge from w1 vs w3 is either:
+     → The SAME as an edge we already have (redundant)
+     → IMPLIED by the chain of edges (redundant)
+→ Adjacent comparisons capture ALL necessary constraints
+
+Mathematical proof:
+→ The sorted list defines a total ordering on words
+→ Adjacent differences give the GENERATORS of this ordering
+→ All other relationships are compositions of generators
+→ In graph terms: transitive closure = same reachability</code></pre></div>
+<h3>Why Only the First Difference Matters</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>Compare "abc" vs "axz"
+</span>
+Position 0: a == a → same → continue
+Position 1: b ≠ x → FIRST DIFFERENCE → b comes before x
+
+Can we also say c comes before z?
+→ NO! Here's why:
+→ The reason "abc" &lt; "axz" is because b &lt; x (in alien order)
+→ The characters at position 2 (c and z) are NEVER compared
+→ In lexicographic ordering, you stop at the first difference
+→ Characters after that are irrelevant to the ordering decision
+
+Counterexample showing why position 2 is meaningless:
+→ Alien order might be: z comes before c
+→ "abc" &lt; "axz" is still valid because b &lt; x
+→ So we CANNOT deduce c &lt; z from this comparison</code></pre></div>
+<h3>Why the "Longer Prefix" Case is Invalid</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>If word1 = "abc" and word2 = "ab":
+</span>→ Compare: a==a, b==b, then word2 is exhausted
+→ word1 has remaining characters, word2 does not
+→ In ANY lexicographic ordering, the shorter prefix comes first
+→ "ab" should come before "abc"
+→ But we're told "abc" comes before "ab"
+→ CONTRADICTION → the input is invalid
+
+This is like saying "apple" comes before "app" in English
+→ That's wrong → "app" &lt; "apple" always
+→ The longer string can never come before its own prefix</code></pre></div>
+<h3>Kahn's BFS — Why It Detects Cycles (Recap from Project 47)</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ Characters in a cycle ALL have in-degree ≥ 1
+</span>→ None of them ever reaches in-degree 0
+→ None of them ever enters the BFS queue
+→ They are NEVER added to the result
+→ Result length &lt; number of unique characters
+→ This is our cycle detection signal
+
+Example cycle: a → b → c → a
+→ in-degree: a=1, b=1, c=1
+→ Queue starts empty (assuming no other nodes)
+→ BFS processes nothing → result = ""
+→ 0 ≠ 3 → cycle detected → return ""</code></pre></div>
+<h3>Handling Multiple Valid Orderings</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>If multiple characters have in-degree 0 simultaneously:
+</span>→ BFS processes them in queue order (FIFO)
+→ Different queue orders → different valid results
+→ Problem says "return ANY valid ordering" → all are acceptable
+
+Example: edges a→c, b→c
+→ In-degrees: a=0, b=0, c=2
+→ Queue: [a, b] or [b, a] depending on insertion order
+→ Valid results: "abc" or "bac"
+→ Both are correct
+
+If problem asks "is the ordering UNIQUE?":
+→ Check if the queue ever has MORE than one element simultaneously
+→ If yes → multiple valid orderings exist → not unique
+→ If queue always has exactly one element → ordering is unique</code></pre></div>
+<hr>
+<h2>⚠️ COMMON PITFALLS AND FAILURE MODES</h2>
+<h3>Pitfall 1: Duplicate Edges Inflating In-Degree</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>Input: ["ab", "ac", "bb", "bc"]
+</span>
+Pair 1: "ab" vs "ac" → b≠c → edge b→c → inDegree[c] = 1
+Pair 2: "ac" vs "bb" → a≠b → edge a→b → inDegree[b] = 1
+Pair 3: "bb" vs "bc" → b==b, b≠c → edge b→c → DUPLICATE edge!
+
+If we add the duplicate:
+→ inDegree[c] = 2 (should be 1)
+→ When we process b and decrement c's in-degree by 1
+→ c still has in-degree 1 → never enters queue
+→ FALSE cycle detection!
+
+FIX: Check if edge already exists before adding
+→ Use a Set&lt;String&gt; of edges: "b-&gt;c" already exists → skip
+→ OR use adjacencyList as Set&lt;Character&gt; instead of List&lt;Character&gt;</code></pre></div>
+<h3>Pitfall 2: Forgetting the Prefix Length Check</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>Input: ["abc", "ab"]
+</span>
+Naive comparison:
+→ a==a, b==b → all shared characters match
+→ No differing character found → no edge added
+→ Algorithm proceeds normally → returns some ordering
+→ BUT THE INPUT IS INVALID
+
+Must check: if all shared characters match AND word1.length &gt; word2.length
+→ Return "" immediately
+
+This is a SPECIFIC test case that interviewers love
+→ Easy to forget → instant rejection in interviews</code></pre></div>
+<h3>Pitfall 3: Characters Not in Any Edge</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>Input: ["z", "z"]
+</span>
+Pair 1: "z" vs "z" → identical → no edge
+→ Unique characters: {z}
+→ Graph: no edges
+→ In-degree: {z: 0}
+→ BFS: process z → result = "z"
+→ CORRECT
+
+Input: ["ab", "cd"]
+
+Pair 1: "ab" vs "cd" → a≠c → edge a→c
+→ Unique characters: {a, b, c, d}
+→ Edges: a→c
+→ In-degrees: {a:0, b:0, c:1, d:0}
+→ BFS queue starts with: [a, b, d] (three characters with in-degree 0)
+→ Result includes all 4 characters in some valid order
+→ b and d can go anywhere (no constraints on them)
+
+If you only tracked characters that appeared in edges:
+→ You'd miss b and d → result = "ac" → WRONG (missing characters)
+→ ALWAYS collect ALL characters from ALL words</code></pre></div>
+<h3>Pitfall 4: Single Word Input</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>Input: ["hello"]
+</span>
+→ Only one word → no adjacent pairs to compare
+→ Zero edges in graph
+→ All characters have in-degree 0
+→ Result: any permutation of unique characters {h, e, l, o}
+→ Valid output: "helo" or "ehlo" etc.
+
+Must handle: words.length == 1 → no comparisons → just return unique chars</code></pre></div>
+<h3>Pitfall 5: Empty Words or Empty Input</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>Input: []
+</span>→ No words → no characters → return ""
+
+Input: [""]
+→ One empty word → no characters → return ""
+
+Input: ["", "a"]
+→ Word1 is empty → word2 starts with 'a'
+→ No first difference (word1 exhausted at position 0)
+→ word1 is shorter → valid (empty string comes before everything)
+→ No edge extracted → just return unique characters
+
+Must handle all these edge cases explicitly</code></pre></div>
+<hr>
+<h2>📈 SCALABILITY CONSIDERATIONS</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>Let:
+</span>  N = number of words
+  L = total length of all words combined
+  C = number of unique characters
+
+TIME COMPLEXITY:
+→ Step 1 (collect characters): O(L) → scan all characters
+→ Step 2 (build graph): O(N × max_word_length) → compare adjacent pairs
+     → But total comparisons across all pairs ≤ L
+     → So effectively O(L)
+→ Step 3 (topological sort): O(C + E) where E = number of edges
+     → E ≤ N-1 (one edge per adjacent pair at most)
+     → C ≤ 26 (lowercase English letters)
+     → So O(26 + N) = O(N)
+→ TOTAL: O(L + N) which simplifies to O(L) since L ≥ N
+
+SPACE COMPLEXITY:
+→ Graph adjacency list: O(C + E) = O(26 + N) = O(N)
+→ In-degree map: O(C) = O(26) = O(1)
+→ Queue: O(C) = O(26) = O(1)
+→ TOTAL: O(N) in practice, O(1) if we consider C as constant (≤26)
+
+PRACTICAL PERFORMANCE:
+→ N = 100 words → instant
+→ N = 100,000 words → O(L) ≈ O(1,000,000) → &lt; 100ms
+→ C is bounded by 26 → topological sort is always fast
+→ The bottleneck is graph construction, not the sort</code></pre></div>
+<hr>
+<h2>🔍 INTERPRETABILITY CONSIDERATIONS</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ This problem tests THREE skills simultaneously:
+</span>     1. Graph construction from implicit data
+     2. Edge case handling (prefix, duplicates, single word)
+     3. Topological sort algorithm
+
+→ In interviews, COMMUNICATE your approach in three phases:
+     Phase 1: "I'll extract ordering rules from adjacent word pairs"
+     Phase 2: "I'll build a directed graph from these rules"
+     Phase 3: "I'll run topological sort to get the character order"
+
+→ Draw the graph on the whiteboard:
+     → Show the edges clearly
+     → Write in-degrees next to each node
+     → Trace BFS step by step
+
+→ Explicitly mention edge cases:
+     → "What if a longer word comes before its prefix? → invalid"
+     → "What if there's a cycle? → detected by result length"
+     → "What if multiple orderings are valid? → return any one"
+
+→ The interviewer is testing SYSTEMATIC THINKING:
+     → Can you decompose a complex problem into clear phases?
+     → Can you identify and handle edge cases?
+     → Can you apply a known algorithm (topo sort) in a new context?</code></pre></div>
+<hr>
+<div class="github-btn-wrap"><a class="github-btn" href="https://github.com/Shakti4640/leetcode-patterns-guide-java/tree/main/project- (56)" target="_blank" rel="noopener"><svg viewBox="0 0 24 24"><path d="M12 .5C5.37.5 0 5.87 0 12.5c0 5.3 3.44 9.8 8.2 11.39.6.11.82-.26.82-.58v-2.03c-3.34.73-4.04-1.61-4.04-1.61-.55-1.39-1.34-1.76-1.34-1.76-1.09-.74.08-.73.08-.73 1.2.09 1.84 1.24 1.84 1.24 1.07 1.83 2.8 1.3 3.49 1 .1-.78.42-1.3.76-1.6-2.67-.3-5.47-1.33-5.47-5.93 0-1.31.47-2.38 1.24-3.22-.14-.3-.54-1.52.1-3.18 0 0 1.01-.32 3.3 1.23a11.5 11.5 0 0 1 3-.4c1.02 0 2.04.13 3 .4 2.28-1.55 3.29-1.23 3.29-1.23.64 1.66.24 2.88.12 3.18.77.84 1.23 1.91 1.23 3.22 0 4.61-2.81 5.63-5.48 5.92.43.37.81 1.1.81 2.22v3.29c0 .32.21.7.82.58C20.56 22.3 24 17.8 24 12.5 24 5.87 18.63.5 12 .5z"/></svg>💻 View Complete Java Code on GitHub</a></div>
+
+<hr>
+<h2>🔑 EXPECTED OUTPUT</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>╔══════════════════════════════════════════════════════╗
+</span>║  PROJECT 56: Alien Dictionary                        ║
+║  Pattern: Topological Sort → Graph from Constraints  ║
+╚══════════════════════════════════════════════════════╝
+
+═══ TEST 1: Classic Example ═══
+  Words: 
+    ["wrt", "wrf", "er", "ett", "rftt"]
+
+  ── STEP 1: Unique Characters ──
+    [w, r, t, f, e]
+
+  ── STEP 2: Compare Adjacent Pairs ──
+    "wrt" vs "wrf" → first diff at pos 2: 't'→'f' (NEW edge)
+    "wrf" vs "er"  → first diff at pos 0: 'w'→'e' (NEW edge)
+    "er" vs "ett"  → first diff at pos 1: 'r'→'t' (NEW edge)
+    "ett" vs "rftt"→ first diff at pos 0: 'e'→'r' (NEW edge)
+
+  ── Graph Edges ──
+    't' → [f]
+    'w' → [e]
+    'r' → [t]
+    'e' → [r]
+
+  ── In-Degrees ──
+    'w': 0
+    'r': 1
+    't': 1
+    'f': 1
+    'e': 1
+
+  ── STEP 3: Kahn's BFS ──
+    Initial queue (in-degree 0): [w]
+    Step 1: process 'w' → result so far: "w"
+      decrement 'e' in-degree to 0
+      → 'e' reaches in-degree 0 → enqueue
+    Step 2: process 'e' → result so far: "we"
+      decrement 'r' in-degree to 0
+      → 'r' reaches in-degree 0 → enqueue
+    Step 3: process 'r' → result so far: "wer"
+      decrement 't' in-degree to 0
+      → 't' reaches in-degree 0 → enqueue
+    Step 4: process 't' → result so far: "wert"
+      decrement 'f' in-degree to 0
+      → 'f' reaches in-degree 0 → enqueue
+    Step 5: process 'f' → result so far: "wertf"
+
+  ── RESULT: "wertf" (length 5 == 5 chars) → VALID ✓
+
+═══ TEST 3: Cycle Detection ═══
+  Words: 
+    ["z", "x", "z"]
+
+  ── STEP 2: Compare Adjacent Pairs ──
+    "z" vs "x" → first diff at pos 0: 'z'→'x' (NEW edge)
+    "x" vs "z" → first diff at pos 0: 'x'→'z' (NEW edge)
+
+  ── In-Degrees ──
+    'z': 1
+    'x': 1
+
+  ── STEP 3: Kahn's BFS ──
+    Initial queue (in-degree 0): []
+
+  ── RESULT: "" (length 0 ≠ 2 chars) → CYCLE → return ""
+
+═══ TEST 4: Invalid Prefix — Longer Before Shorter ═══
+  Words: 
+    ["abc", "ab"]
+
+  ── STEP 2: Compare Adjacent Pairs ──
+    "abc" vs "ab" → NO diff, word1 longer → INVALID!
+
+═══ TEST 11: Verification Suite ═══
+  Test 1: [wrt,wrf,er...]       result="wertf"   expected=valid           ✓ PASS
+  Test 2: [z,x]                 result="zx"       expected=valid           ✓ PASS
+  Test 3: [z,x,z]               result=""          expected=cycle           ✓ PASS
+  Test 4: [abc,ab]              result=""          expected=invalid_prefix  ✓ PASS
+  Test 5: [hello]               result="helo"      expected=valid           ✓ PASS
+  Test 6: [ab,cd]               result="abcd"      expected=valid           ✓ PASS
+  Test 7: [ab,ac,bb,bc]         result="abc"       expected=valid           ✓ PASS
+  Test 8: [z,z]                 result="z"         expected=valid           ✓ PASS
+  Test 9: [baa,abcd,abca...]    result="bdac"      expected=valid           ✓ PASS</code></pre></div>
+<hr>
+<h2>🧠 KEY TAKEAWAY</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>WHAT WE LEARNED:
+</span>→ Alien Dictionary = graph construction + topological sort
+→ The HARD PART is building the graph, not sorting it
+→ Compare ADJACENT words only → extract FIRST differing character
+→ Handle edge cases: prefix validity, duplicate edges, cycles
+
+THE TWO-PART PATTERN:
+
+Part 1 — GRAPH CONSTRUCTION (problem-specific):
+→ Different problems encode constraints differently
+→ Alien Dictionary: sorted word list → character ordering
+→ Course Schedule (Project 47): explicit prerequisite pairs
+→ The skill is recognizing WHERE the edges come from
+
+Part 2 — TOPOLOGICAL SORT (standard algorithm):
+→ Kahn's BFS → in-degree counting → queue processing
+→ Cycle detection via result length check
+→ IDENTICAL across all topological sort problems
+→ Learned once in Project 47, reused forever
+
+THE COMPARISON WITH PROJECT 47:
+
+┌───────────────────┬──────────────────┬──────────────────────┐
+│                   │ Project 47       │ Project 56           │
+│                   │ Course Schedule  │ Alien Dictionary     │
+├───────────────────┼──────────────────┼──────────────────────┤
+│ Nodes             │ Courses (ints)   │ Characters (chars)   │
+├───────────────────┼──────────────────┼──────────────────────┤
+│ Edges given?      │ YES (explicit)   │ NO (must extract)    │
+├───────────────────┼──────────────────┼──────────────────────┤
+│ Edge extraction   │ Direct from input│ Compare adjacent     │
+│                   │                  │ words, first diff    │
+├───────────────────┼──────────────────┼──────────────────────┤
+│ Edge cases        │ Cycle detection  │ Cycle + prefix +     │
+│                   │                  │ duplicates + missing │
+├───────────────────┼──────────────────┼──────────────────────┤
+│ Topo sort algo    │ Kahn's BFS       │ Kahn's BFS (same)   │
+├───────────────────┼──────────────────┼──────────────────────┤
+│ Output            │ Can finish? Y/N  │ Character ordering   │
+└───────────────────┴──────────────────┴──────────────────────┘
+
+The progression:
+  Project 47: "Here's a graph, run topo sort"
+  Project 56: "Here's raw data, BUILD a graph, THEN run topo sort"
+
+TOPOLOGICAL SORT ARC IS NOW COMPLETE:
+  Project 47: Learn the algorithm → Kahn's BFS → cycle detection
+  Project 56: Learn the construction → extract edges from data
+  Together: You can now handle ANY topological sort problem</code></pre></div>
+<hr>
+<h2>🌉 BRIDGE TO NEXT PROJECT</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>PROJECT 56 taught us:
+</span>→ Building graphs from implicit constraints
+→ Topological sort on character-based nodes
+→ Edge case handling for graph construction
+→ The Topological Sort pattern is now COMPLETE ✓
+
+PROJECT 57 (Accounts Merge) will shift to a different graph pattern:
+→ Instead of ORDERING (directed edges) → GROUPING (undirected connections)
+→ Given: list of accounts, each with name + emails
+→ Two accounts belong to the same person if they share an email
+→ MERGE all accounts that belong to the same person
+
+This is a UNION FIND problem (builds on Project 48):
+→ Project 48: basic Union Find → number of connected components
+→ Project 57: Union Find on STRINGS → merge by common emails
+
+The connection:
+→ Project 56: directed graph → ordering → topological sort
+→ Project 57: undirected graph → grouping → union find
+→ Both build graphs from data → but different graph types
+→ Directed → ordering problems → topo sort
+→ Undirected → grouping problems → union find
+
+The GRAPH PATTERN family:
+  Topological Sort: "What ORDER should things go in?" (directed)
+  Union Find: "What GROUPS do things belong to?" (undirected)
+  BFS/DFS: "How do I TRAVERSE the structure?" (both)
+
+Each remaining project completes one pattern arc:
+  Project 57: Union Find arc finale
+  Projects 58-59: Trie arc
+  Project 60: Greedy synthesis (grand finale)</code></pre></div>
+<hr>
+<p><strong>Ready for Project 57: Accounts Merge (Union Find → String-Keyed Union → Component Grouping Post-Union)?</strong></p>
+<p>→ Please confirm and I will continue.</p></div>
+</div>
+
+<!-- ========== data-index="13" ========== -->
+<div class="chat-message" data-index="13"></div>
+</div>
+<div class="bottom-nav">
+  <a href="project-55.html" class="nav-btn prev">← Prev</a>
+  <div class="nav-center">
+    <span class="nav-project-label">PROJECT 56 of 60</span>
+    <span class="nav-project-title">Alien Dictionary (Order of Characters)</span>
+    <span class="kbd-hint">← → arrow keys to navigate</span>
+  </div>
+  <a href="project-57.html" class="nav-btn next">Next →</a>
+  <a href="index.html" class="nav-btn home">🏠 TOC</a>
+</div>
+<div id="progress-track"><div id="progress-fill"></div></div>
+<div id="progress-pct">0%</div>
+<script src="script.js"></script>
+<script>
+document.addEventListener('keydown', function(e) {
+  if (['INPUT','TEXTAREA'].includes(document.activeElement.tagName)) return;
+  if (e.key === 'ArrowRight' && "project-57.html" !== null) window.location = "project-57.html";
+  if (e.key === 'ArrowLeft' && "project-55.html" !== null) window.location = "project-55.html";
+});
+</script>
+</body>
+</html>

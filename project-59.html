@@ -1,0 +1,1019 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PROJECT 59: Word Search II (Find All Words on Board)</title>
+<link rel="icon" type="image/png" href="images/favicon.png">
+<link rel="stylesheet" href="styles.css">
+
+</head>
+<body>
+<div id="progress-bar-container"><div id="progress-bar" style="width:98%"></div></div>
+<div id="progress-label">98%</div>
+<div class="page-wrapper">
+<div class="chat-message"><div class="px-2"><h1>PROJECT 59: Word Search II (Find All Words on Board)</h1>
+<h2>🎯 Trie → Trie-Guided DFS on Grid → Backtracking + Prefix Pruning</h2>
+<hr>
+<h2>🔗 DEPENDENCY CHAIN</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>Project 18 → Tree DFS → Recursive traversal → Base case thinking
+</span>Project 26 → All Root-to-Leaf Paths → Path accumulation → Backtracking on return
+Project 28 → Generate All Subsets → Inclusion/exclusion branching
+Project 29 → Generate All Permutations → Swap-based generation
+Project 42 → Combination Sum → Pruning branches → Target reduction
+Project 58 → Implement Trie → Node-per-character → Insert/Search/StartsWith
+             ↓
+Project 59 → THIS PROJECT
+             → Trie as a DFS GUIDE on a 2D character grid
+             → Backtracking with visited marking
+             → Prefix pruning: abandon paths that can't form any word
+             → Multiple patterns fused: Trie + DFS + Backtracking + Grid
+             ↓
+Project 60 → Task Scheduler → Greedy synthesis (grand finale)</code></pre></div>
+<hr>
+<h2>🧩 THE HYPOTHETICAL PROBLEM</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ You are given a 2D grid (board) of characters
+</span>→ You are given a list of WORDS
+→ Find ALL words from the list that can be formed on the board
+→ A word is formed by ADJACENT cells (horizontally or vertically)
+→ The SAME cell cannot be used twice in a single word
+→ Return the list of found words (no duplicates)
+
+Example:
+  Board:                    Words: ["oath", "pea", "eat", "rain"]
+  ┌───┬───┬───┬───┐
+  │ o │ a │ a │ n │
+  ├───┼───┼───┼───┤
+  │ e │ t │ a │ e │
+  ├───┼───┼───┼───┤
+  │ i │ h │ k │ r │
+  ├───┼───┼───┼───┤
+  │ i │ f │ l │ v │
+  └───┴───┴───┴───┘
+
+  "oath":
+    o(0,0) → a(0,1) → t(1,1) → h(2,1) ✓ FOUND
+
+  "pea":
+    No 'p' on board → NOT FOUND
+
+  "eat":
+    e(1,0) → a(0,0)? No, a(0,1)? 
+    e(1,3) → a(1,2) → t(1,1) ✓ FOUND
+
+  "rain":
+    r(2,3) → a(1,2) → i(2,2)? No 'i' at (2,2), k is there
+    → NOT FOUND on this board
+
+  Output: ["oath", "eat"]</code></pre></div>
+<hr>
+<h2>🔍 HOW TO APPROACH IT</h2>
+<h3>Step 1 — Understand the Naive Approach and Why It Fails</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>NAIVE APPROACH:
+</span>→ For EACH word in the word list:
+     → For EACH cell on the board:
+          → Run DFS trying to match the word character by character
+          → If all characters match → word found
+
+Time complexity:
+→ W words × M×N starting cells × 4^L DFS branches per word
+→ Where L = max word length
+→ If W = 30,000 and board is 12×12 and L = 10:
+     → 30,000 × 144 × 4^10 ≈ 30,000 × 144 × 1,048,576
+     → ≈ 4.5 × 10^12 operations → WAY TOO SLOW
+
+THE PROBLEM:
+→ Each word triggers a SEPARATE DFS
+→ Words sharing prefixes ("eat", "ear", "east") trigger redundant work
+→ DFS for "eat" explores the same path as DFS for "ear" up to "ea"
+→ Massive duplication of effort</code></pre></div>
+<h3>Step 2 — The Trie Insight</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>KEY REALIZATION:
+</span>→ Instead of searching for ONE word at a time
+→ Search for ALL words SIMULTANEOUSLY using a Trie
+
+HOW?
+→ Build a Trie from the word list
+→ Start DFS from each cell on the board
+→ At each cell, check: does the Trie have a child for this character?
+     → YES → continue DFS (this path could lead to a word)
+     → NO → PRUNE (no word in our list has this prefix → stop exploring)
+→ If we reach a node where isEndOfWord = true → FOUND a word
+
+WHY IS THIS FASTER?
+→ One DFS explores paths for ALL words simultaneously
+→ Shared prefixes are explored only ONCE
+→ Dead-end prefixes are pruned IMMEDIATELY
+→ Instead of W separate DFS runs → ONE DFS guided by Trie
+
+Time improvement:
+→ M×N starting cells × 4^L DFS per cell (but heavily pruned by Trie)
+→ In practice: Trie prunes &gt;99% of branches
+→ From ~10^12 operations to ~10^6 operations</code></pre></div>
+<h3>Step 3 — The Three Components Working Together</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>COMPONENT 1: TRIE (from Project 58)
+</span>→ Built from the word list
+→ Provides prefix validation: "does any word start with this?"
+→ Provides word detection: "is this a complete word?"
+
+COMPONENT 2: GRID DFS (new in this project)
+→ From each cell, explore all 4 directions
+→ Track visited cells (no reuse in same path)
+→ Build the current path character by character
+
+COMPONENT 3: BACKTRACKING (from Projects 26, 28, 42)
+→ Mark cell as visited BEFORE exploring neighbors
+→ UNMARK cell AFTER exploring (so other paths can use it)
+→ This is the "choose → explore → unchoose" pattern
+
+THE FUSION:
+→ At each DFS step:
+     1. Check if current character has a Trie child → if not, PRUNE
+     2. Move to that Trie child node
+     3. If isEndOfWord → record the word
+     4. Mark grid cell as visited
+     5. Explore all 4 neighbors recursively
+     6. Unmark grid cell (backtrack)</code></pre></div>
+<h3>Step 4 — Visual Walkthrough</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>Board:              Words: ["oath", "oat", "eat"]
+</span>┌───┬───┬───┐
+│ o │ a │ t │      Trie built from words:
+├───┼───┼───┤
+│ e │ a │ h │         ROOT
+├───┼───┼───┤        /    \
+│ x │ y │ z │       e      o
+└───┴───┴───┘       |      |
+                    a      a
+                    |      |
+                    t●     t●
+                           |
+                           h●
+
+DFS from cell (0,0) = 'o':
+  → Trie root has child 'o'? YES → move to Trie node 'o'
+  → Mark (0,0) as visited
+  
+  → Explore neighbor (0,1) = 'a':
+       → Trie 'o' node has child 'a'? YES → move to 'oa'
+       → Mark (0,1) as visited
+       
+       → Explore neighbor (0,2) = 't':
+            → Trie 'oa' node has child 't'? YES → move to 'oat'
+            → isEndOfWord? YES → FOUND "oat"!
+            → Mark (0,2) as visited
+            
+            → Explore neighbor (1,2) = 'h':
+                 → Trie 'oat' node has child 'h'? YES → move to 'oath'
+                 → isEndOfWord? YES → FOUND "oath"!
+                 → No more valid Trie children from here
+                 → Unmark (1,2)
+            
+            → Unmark (0,2)
+       
+       → Explore neighbor (1,1) = 'a':
+            → Trie 'oa' node has child 'a'? NO → PRUNE ✂️
+            → Don't even enter this cell
+       
+       → Unmark (0,1)
+  
+  → Explore neighbor (1,0) = 'e':
+       → Trie 'o' node has child 'e'? NO → PRUNE ✂️
+  
+  → Unmark (0,0)
+
+DFS from cell (1,0) = 'e':
+  → Trie root has child 'e'? YES → move to 'e'
+  → Mark (1,0) as visited
+  
+  → Explore neighbor (0,0) = 'o':
+       → Trie 'e' has child 'o'? NO → PRUNE ✂️
+  
+  → Explore neighbor (1,1) = 'a':
+       → Trie 'e' has child 'a'? YES → move to 'ea'
+       → Mark (1,1) as visited
+       
+       → Explore neighbor (0,1) = 'a':
+            → Trie 'ea' has child 'a'? NO → PRUNE ✂️
+       
+       → Explore neighbor (0,2) ... wait, (0,2) is not adjacent to (1,1)?
+         Actually (1,1) neighbors: (0,1), (2,1), (1,0)visited, (1,2)
+       
+       → Explore neighbor (1,2) = 'h':
+            → Trie 'ea' has child 'h'? NO → PRUNE ✂️
+       
+       → Explore neighbor (0,1) = 'a':
+            → Trie 'ea' has child 'a'? NO → PRUNE ✂️
+       
+       → Hmm, need 't' after 'ea'... 
+         (0,1) = 'a', not 't'. But wait...
+         
+       → Actually let me reconsider the grid neighbors of (1,1):
+         Up: (0,1)='a', Down: (2,1)='y', Left: (1,0)=visited, Right: (1,2)='h'
+         None of these is 't' → "eat" NOT found from this starting path
+
+  ... continue from other cells where 'e' exists...
+  
+  → (Eventually find "eat" through a different path if it exists)
+
+RESULT: ["oat", "oath"] (and "eat" if a valid path exists)</code></pre></div>
+<hr>
+<h2>🛠️ HOW CAN WE SOLVE IT</h2>
+<h3>Full Algorithm</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>STEP 1: Build Trie from word list
+</span>→ For each word: trie.insert(word)
+→ Store the COMPLETE WORD at the end node (for easy retrieval)
+
+STEP 2: For each cell (i, j) on the board
+→ If Trie root has a child matching board[i][j]:
+     → Start DFS from (i, j) with Trie root's child
+
+STEP 3: DFS function — dfs(board, i, j, trieNode, result)
+→ Base cases:
+     → Out of bounds → return
+     → Cell already visited → return
+     → Trie node has no child for board[i][j] → PRUNE → return
+→ Get the Trie child node for current character
+→ If this Trie node marks end of word:
+     → Add the word to result
+     → Set isEndOfWord = false (prevent duplicates)
+→ Mark current cell as visited (board[i][j] = '#')
+→ Explore all 4 neighbors: up, down, left, right
+→ Unmark current cell (restore original character)
+→ OPTIMIZATION: if Trie node has no remaining children → prune node
+
+STEP 4: Return result list</code></pre></div>
+<h3>Critical Optimization — Trie Node Pruning</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>PROBLEM:
+</span>→ After finding "oath", the Trie still has the path o→a→t→h
+→ Future DFS from other cells will still explore this dead path
+→ If "oath" is the ONLY word with prefix "oath"
+→ We're wasting time exploring a path we've already found
+
+SOLUTION: Remove leaf nodes after finding a word
+→ When we find a word at a Trie node:
+     → Mark it found (remove word / set isEndOfWord = false)
+     → If the node has NO children → it's a dead leaf
+     → Remove it from its parent's children array
+     → This "bubbles up": if parent also becomes childless → remove it too
+
+IMPACT:
+→ Each found word REMOVES its unique suffix from the Trie
+→ Shared prefixes remain until ALL words using them are found
+→ The Trie SHRINKS as words are found → DFS gets faster over time
+→ This turns worst-case scenarios from TLE to AC</code></pre></div>
+<h3>Visited Marking — In-Place Trick</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>Instead of using a boolean[][] visited array:
+</span>→ Temporarily replace board[i][j] with a special character '#'
+→ '#' won't match any Trie child → naturally prevents revisiting
+→ After DFS returns → restore the original character
+
+WHY this works:
+→ board[i][j] = '#' → when any neighbor tries to visit this cell:
+     → It checks Trie child for '#' → no Trie node for '#' → PRUNE
+     → Effectively "visited" without extra data structure
+→ O(1) mark and unmark
+→ No extra O(M×N) space for visited array</code></pre></div>
+<hr>
+<h2>✅ WHAT SHOULD YOU DO</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ ALWAYS build the Trie FIRST, then DFS
+</span>     → Trie construction: O(sum of word lengths)
+     → DFS guided by Trie: much faster than word-by-word DFS
+     → This order is non-negotiable
+
+→ ALWAYS store the complete word at the Trie leaf node
+     → When you find a word during DFS, you need to know WHAT word it is
+     → Building the word character by character during DFS is error-prone
+     → Store word as a field in TrieNode → instant retrieval
+     → Example: node.word = "oath" at the 'h' node
+
+→ ALWAYS handle duplicate word findings
+     → The same word might be findable from multiple starting cells
+     → Example: "eat" might start from (0,0) and (2,3)
+     → Use a Set&lt;String&gt; for results, or null-out node.word after finding
+     → Setting node.word = null after first find prevents duplicates
+
+→ ALWAYS use in-place visited marking (board[i][j] = '#')
+     → Saves O(M×N) space
+     → Cleaner code than maintaining separate visited array
+     → Remember to RESTORE the character after backtracking
+
+→ ALWAYS implement Trie node pruning (remove dead leaves)
+     → Without it: TLE on large inputs
+     → With it: significant speedup as words are found
+     → This is the difference between AC and TLE on LeetCode
+
+→ ALWAYS check bounds BEFORE accessing board or Trie
+     → DFS explores 4 directions → some go out of bounds
+     → Check i &gt;= 0, i &lt; rows, j &gt;= 0, j &lt; cols FIRST
+     → Then check if character has Trie child</code></pre></div>
+<hr>
+<h2>🚫 WHAT SHOULD YOU NOT DO</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ DO NOT search for each word separately
+</span>     → Word-by-word DFS: O(W × M × N × 4^L) → too slow
+     → Trie-guided DFS: O(M × N × 4^L) → W is eliminated
+     → The Trie AMORTIZES the search across all words
+
+→ DO NOT forget to backtrack (unmark visited cells)
+     → If you mark cell as visited and never unmark:
+          → Other paths from other starting cells can't use that cell
+          → You'll miss valid words
+     → ALWAYS restore board[i][j] after recursive calls return
+
+→ DO NOT skip Trie pruning for "simplicity"
+     → Without pruning: found words leave dead branches in Trie
+     → DFS keeps exploring these dead branches
+     → On large boards with many words → TLE guaranteed
+     → The pruning optimization is ESSENTIAL, not optional
+
+→ DO NOT use a StringBuilder to build words during DFS
+     → Append on enter, delete on backtrack → error-prone
+     → Off-by-one errors in string building are common
+     → Instead: store complete word at Trie leaf → instant retrieval
+     → Simpler, faster, fewer bugs
+
+→ DO NOT return after finding one word at a cell
+     → A cell might be part of MULTIPLE words
+     → "oat" and "oath" share the prefix "oat"
+     → Finding "oat" should NOT stop the DFS
+     → Continue exploring deeper for "oath"
+
+→ DO NOT forget that diagonal movement is NOT allowed
+     → Only up, down, left, right (4 directions)
+     → NOT 8 directions like some other grid problems
+     → Using 8 directions would find words that don't exist
+     → Read the problem carefully for movement rules
+
+→ DO NOT add duplicates to result
+     → "eat" might be findable starting from (1,0) AND (1,3)
+     → Adding it twice → wrong answer
+     → Null out node.word after first find → prevents re-adding</code></pre></div>
+<hr>
+<h2>🔀 WHEN TO USE THIS PATTERN</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>✓ You need to search for MULTIPLE strings in a structure simultaneously
+</span>✓ The search space has EXPONENTIAL branching (grid DFS, tree paths)
+✓ The strings share PREFIXES that can be exploited for pruning
+✓ Brute force per-string search would be too slow
+
+SIGNATURE PROBLEMS:
+→ Word Search II ← THIS
+→ Boggle Game (find all valid words on a board)
+→ Stream of Characters (match suffixes using reversed Trie)
+→ Word Squares (Trie-guided backtracking)
+→ Concatenated Words (Trie + DP)
+→ Any problem combining "word list" + "search space exploration"
+
+THE GENERAL PATTERN:
+  1. Build Trie from the TARGET strings (what you're looking for)
+  2. Explore the SOURCE space (grid, tree, string) guided by Trie
+  3. At each step: Trie child exists? → continue : prune
+  4. At end-of-word nodes → record the find
+  5. Prune found words from Trie to accelerate remaining search</code></pre></div>
+<hr>
+<h2>🚫 WHEN NOT TO USE THIS PATTERN</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>✗ Only ONE word to search for
+</span>     → Simple DFS/BFS on grid is sufficient
+     → Trie adds unnecessary complexity for single word search
+     → Word Search I (single word) → plain backtracking DFS
+
+✗ Words don't share prefixes
+     → If all words start with different characters
+     → Trie provides minimal pruning benefit
+     → Still works but doesn't gain much over per-word DFS
+
+✗ The grid is very small but word list is huge
+     → Grid exploration is cheap anyway
+     → Trie construction becomes the bottleneck
+     → Consider HashSet-based approach instead
+
+✗ Movement rules are complex (not simple adjacency)
+     → Trie-guided DFS assumes simple branching
+     → If movement depends on previous moves or game state
+     → The DFS structure becomes more complex than standard grid DFS
+
+✗ You need the PATH, not just the word
+     → Trie-guided DFS finds THAT a word exists
+     → To find WHERE (exact cells used) → need path tracking
+     → Adds complexity to the backtracking</code></pre></div>
+<hr>
+<h2>⚙️ HOW IT ONLY WORKS — Internal Mechanics</h2>
+<h3>The Trie as a DFS Compass</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>Without Trie — Blind DFS:
+</span>  → At each cell, try all 4 directions
+  → Each direction tries all 4 directions
+  → 4^L total paths for word of length L
+  → MOST paths are useless (don't match any word)
+  → Like searching a maze without a map
+
+With Trie — Guided DFS:
+  → At each cell, check: does Trie have child for this character?
+  → Only follow directions where Trie says "possible word ahead"
+  → MOST branches are pruned immediately
+  → Like searching a maze WITH a map that highlights valid routes
+
+Example pruning power:
+  Board has 26 possible characters per cell
+  Trie for ["cat", "car", "card"] has:
+    → Root: only child 'c' → 25/26 starting cells pruned immediately
+    → After 'c': only child 'a' → 25/26 neighbors pruned
+    → After 'ca': children 't', 'r' → 24/26 neighbors pruned
+    
+  Without Trie: 26 × 26 × 26 = 17,576 paths explored
+  With Trie: 1 × 1 × 2 = 2 paths explored
+  Pruning factor: 8,788x faster</code></pre></div>
+<h3>Why Backtracking is Essential for Grid DFS</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>Finding "oath" on the board:
+</span>
+  o → a → t → h  ✓
+  
+  But what about finding "oat" starting from the same 'o'?
+  
+  o → a → t  ✓ (found "oat")
+  
+  The cells o, a, t were used for "oath"
+  They MUST be available again for other paths
+  
+  Backtracking ensures:
+  → When we FINISH exploring from cell (i,j)
+  → We UNMARK it as visited
+  → Other DFS paths can reuse it
+  
+  Without backtracking:
+  → Finding "oath" marks o, a, t, h as permanently visited
+  → Can't find "oat" or "eat" or any word using those cells
+  → WRONG ANSWERS
+
+  The backtracking pattern:
+  
+  MARK cell as visited
+    EXPLORE all 4 neighbors (recursive calls)
+  UNMARK cell as visited
+  
+  This is the same "choose → explore → unchoose" from Project 42</code></pre></div>
+<h3>Why Trie Pruning Matters — Quantified</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>Scenario: Board 12×12, Word list has 30,000 words
+</span>
+Without pruning:
+  → Find "cat" → Trie still has path c→a→t
+  → Every future DFS that reaches 'c' still explores c→a→t
+  → "cat" path explored thousands of times after already found
+  → Total wasted explorations: ~10^6
+
+With pruning:
+  → Find "cat" → remove 't' leaf → if 'a' has no other children → remove 'a'
+  → Future DFS reaching 'c' doesn't see c→a→t anymore
+  → Zero wasted explorations for "cat"
+  → Total saved: ~10^6 operations
+
+The pruning cascading effect:
+  Words: ["cat", "car", "card"]
+  
+  After finding "cat":
+    → Remove 't' from 'a's children
+    → 'a' still has child 'r' (for "car", "card") → keep 'a'
+  
+  After finding "car":
+    → Set isEndOfWord=false at 'r' node
+    → 'r' still has child 'd' (for "card") → keep 'r'
+  
+  After finding "card":
+    → Remove 'd' from 'r's children → 'r' is now childless
+    → Remove 'r' from 'a's children → 'a' is now childless
+    → Remove 'a' from 'c's children → 'c' is now childless
+    → Remove 'c' from root's children
+    → Trie is now EMPTY → all future DFS from any cell terminates instantly!</code></pre></div>
+<h3>The Four-Direction Grid DFS Pattern</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>Standard grid DFS directions:
+</span>
+  int[][] dirs = {{-1, 0}, {1, 0}, {0, -1}, {0, 1}};
+  //               up       down     left     right
+
+For each direction:
+  newRow = row + dirs[d][0]
+  newCol = col + dirs[d][1]
+
+Bounds checking:
+  if (newRow &gt;= 0 &amp;&amp; newRow &lt; rows &amp;&amp; newCol &gt;= 0 &amp;&amp; newCol &lt; cols)
+  
+This pattern appears in MANY grid problems:
+  → Number of Islands
+  → Flood Fill
+  → Shortest Path in Grid
+  → Word Search I and II
+  → The 4-direction array is a REUSABLE tool</code></pre></div>
+<h3>Why Storing the Word in TrieNode is Better Than Building It</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>APPROACH A — Build word during DFS:
+</span>  void dfs(board, i, j, node, StringBuilder path, result) {
+      path.append(board[i][j]);    // add character
+      if (node.isEndOfWord) {
+          result.add(path.toString());  // copy string
+      }
+      // ... recurse ...
+      path.deleteCharAt(path.length() - 1);  // remove character
+  }
+
+  PROBLEMS:
+  → StringBuilder operations at every recursive call
+  → toString() creates a copy at every word find
+  → Off-by-one errors in append/delete
+  → More code, more bugs
+
+APPROACH B — Store word at TrieNode:
+  class TrieNode {
+      String word;  // null except at end-of-word nodes
+  }
+  
+  void dfs(board, i, j, node, result) {
+      if (node.word != null) {
+          result.add(node.word);  // instant retrieval
+          node.word = null;       // prevent duplicates
+      }
+      // ... recurse ...
+  }
+
+  ADVANTAGES:
+  → No StringBuilder management
+  → No character-by-character building
+  → No copy at find time (word already exists as String)
+  → Duplicate prevention built-in (null-out after find)
+  → Cleaner, faster, fewer bugs</code></pre></div>
+<hr>
+<h2>⚠️ COMMON PITFALLS AND FAILURE MODES</h2>
+<h3>Pitfall 1: Not Restoring Board After Backtracking</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>WRONG:
+</span>  void dfs(char[][] board, int i, int j, TrieNode node, List&lt;String&gt; result) {
+      board[i][j] = '#';  // mark visited
+      // explore neighbors
+      // FORGOT TO RESTORE!
+  }
+
+RIGHT:
+  void dfs(char[][] board, int i, int j, TrieNode node, List&lt;String&gt; result) {
+      char original = board[i][j];
+      board[i][j] = '#';  // mark visited
+      // explore neighbors
+      board[i][j] = original;  // RESTORE
+  }
+
+Without restoring:
+→ After first DFS from (0,0), many cells are permanently '#'
+→ Subsequent DFS from other cells can't use those cells
+→ Miss valid words → wrong answer</code></pre></div>
+<h3>Pitfall 2: Duplicate Words in Result</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>Word "eat" can be found starting from (1,0) and from (1,3)
+</span>
+WRONG:
+  if (node.isEndOfWord) {
+      result.add(node.word);  // adds "eat" TWICE
+  }
+
+RIGHT (Option A — null out the word):
+  if (node.word != null) {
+      result.add(node.word);
+      node.word = null;  // won't be added again
+  }
+
+RIGHT (Option B — use a Set):
+  Set&lt;String&gt; resultSet = new HashSet&lt;&gt;();
+  // ... in DFS:
+  if (node.isEndOfWord) {
+      resultSet.add(node.word);  // Set prevents duplicates
+  }
+  return new ArrayList&lt;&gt;(resultSet);</code></pre></div>
+<h3>Pitfall 3: Not Continuing DFS After Finding a Word</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>Words: ["oat", "oath"]
+</span>Path so far: o → a → t (found "oat")
+
+WRONG:
+  if (node.word != null) {
+      result.add(node.word);
+      return;  // STOPS HERE — never finds "oath"!
+  }
+
+RIGHT:
+  if (node.word != null) {
+      result.add(node.word);
+      node.word = null;
+      // DON'T return — continue exploring for "oath"
+  }
+  // ... explore neighbors ...
+
+"oat" is a PREFIX of "oath"
+→ Finding "oat" should NOT stop exploration
+→ Must continue to find "oath"</code></pre></div>
+<h3>Pitfall 4: Trie Child Check at Wrong Level</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>The DFS should check Trie child for the CURRENT cell's character
+</span>BEFORE entering the recursive call, not after.
+
+WRONG (check inside recursive call):
+  void dfs(board, i, j, node, result) {
+      // Already moved to this cell — but does Trie even have this char?
+      char c = board[i][j];
+      if (node.children[c - 'a'] == null) return;  // TOO LATE
+      node = node.children[c - 'a'];
+      // ...
+  }
+
+This works but the check placement matters for clarity.
+
+CLEANER approach:
+  // In the calling code:
+  for (int[] dir : dirs) {
+      int ni = i + dir[0], nj = j + dir[1];
+      if (inBounds(ni, nj) &amp;&amp; board[ni][nj] != '#') {
+          int idx = board[ni][nj] - 'a';
+          if (node.children[idx] != null) {  // CHECK BEFORE ENTERING
+              dfs(board, ni, nj, node.children[idx], result);
+          }
+      }
+  }
+
+Checking BEFORE entering the recursive call:
+→ Avoids unnecessary function call overhead
+→ Makes the pruning explicit and clear
+→ Fewer stack frames</code></pre></div>
+<h3>Pitfall 5: Forgetting Edge Cases</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>Edge case 1: Empty word list → return empty list
+</span>Edge case 2: Empty board → return empty list
+Edge case 3: Single cell board, single character word
+  → Board: [["a"]], Words: ["a"] → return ["a"]
+Edge case 4: Word longer than total board cells → impossible → skip
+Edge case 5: Duplicate words in word list
+  → ["eat", "eat"] → Trie stores once → found once → return ["eat"]</code></pre></div>
+<hr>
+<h2>📈 SCALABILITY CONSIDERATIONS</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>VARIABLES:
+</span>  M × N = board dimensions
+  W = number of words
+  L = maximum word length
+  S = sum of all word lengths
+
+TIME COMPLEXITY:
+→ Trie construction: O(S)
+→ DFS: O(M × N × 4^L) worst case
+     → But Trie pruning makes this MUCH better in practice
+     → With pruning: closer to O(M × N × L) for typical inputs
+→ Total: O(S + M × N × 4^L) worst case
+→ Practical: O(S + M × N × L) with good pruning
+
+SPACE COMPLEXITY:
+→ Trie: O(S) for all word characters
+→ Recursion stack: O(L) depth (max word length)
+→ Result list: O(W × L) for all found words
+→ Total: O(S + L)
+
+LEETCODE CONSTRAINTS (typical):
+→ Board: up to 12 × 12 = 144 cells
+→ Words: up to 30,000 words
+→ Word length: up to 10 characters
+→ Without Trie: 30,000 × 144 × 4^10 ≈ impossible
+→ With Trie + pruning: ~1 second → AC
+
+OPTIMIZATION PRIORITY:
+  1. Trie pruning (most impactful)
+  2. In-place visited marking (saves space)
+  3. Store word at node (cleaner code)
+  4. Check Trie child before recursive call (fewer stack frames)</code></pre></div>
+<hr>
+<h2>🔍 INTERPRETABILITY CONSIDERATIONS</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ This problem tests INTEGRATION of multiple patterns:
+</span>     → Trie construction (Project 58)
+     → Grid DFS (new but builds on tree DFS from Project 18)
+     → Backtracking (Projects 26, 28, 42)
+     → Optimization/pruning (new technique)
+
+→ In interviews, explain the approach in layers:
+     Layer 1: "I build a Trie from the word list"
+     Layer 2: "I DFS from each cell, guided by the Trie"
+     Layer 3: "I backtrack to allow cells to be reused across paths"
+     Layer 4: "I prune the Trie as words are found to avoid redundant work"
+
+→ If asked "why not HashSet?":
+     → HashSet can check "is this exact word in the list?"
+     → But it can't check "is this a prefix of any word in the list?"
+     → Without prefix checking → no pruning → explore all 4^L paths
+     → Trie provides O(1) prefix validation at each DFS step
+
+→ If asked "what's the time complexity?":
+     → Worst case: O(M × N × 4^L) — but this almost never happens
+     → Trie pruning reduces it dramatically
+     → Mention that Trie node removal makes it effectively linear
+       in the total number of characters found
+
+→ This is considered a HARD problem on LeetCode (Problem #212)
+     → Combines 4+ patterns into one solution
+     → Requires optimization to pass time limits
+     → Clean code organization is crucial</code></pre></div>
+<hr>
+<div class="github-btn-wrap"><a class="github-btn" href="https://github.com/Shakti4640/leetcode-patterns-guide-java/tree/main/project- (59)" target="_blank" rel="noopener"><svg viewBox="0 0 24 24"><path d="M12 .5C5.37.5 0 5.87 0 12.5c0 5.3 3.44 9.8 8.2 11.39.6.11.82-.26.82-.58v-2.03c-3.34.73-4.04-1.61-4.04-1.61-.55-1.39-1.34-1.76-1.34-1.76-1.09-.74.08-.73.08-.73 1.2.09 1.84 1.24 1.84 1.24 1.07 1.83 2.8 1.3 3.49 1 .1-.78.42-1.3.76-1.6-2.67-.3-5.47-1.33-5.47-5.93 0-1.31.47-2.38 1.24-3.22-.14-.3-.54-1.52.1-3.18 0 0 1.01-.32 3.3 1.23a11.5 11.5 0 0 1 3-.4c1.02 0 2.04.13 3 .4 2.28-1.55 3.29-1.23 3.29-1.23.64 1.66.24 2.88.12 3.18.77.84 1.23 1.91 1.23 3.22 0 4.61-2.81 5.63-5.48 5.92.43.37.81 1.1.81 2.22v3.29c0 .32.21.7.82.58C20.56 22.3 24 17.8 24 12.5 24 5.87 18.63.5 12 .5z"/></svg>💻 View Complete Java Code on GitHub</a></div>
+
+<hr>
+<h2>🔑 EXPECTED OUTPUT</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>╔══════════════════════════════════════════════════════╗
+</span>║  PROJECT 59: Word Search II                          ║
+║  Pattern: Trie-Guided DFS → Backtracking + Pruning   ║
+╚══════════════════════════════════════════════════════╝
+
+═══ TEST 1: Classic Example ═══
+  Initial Board:
+    ┌───┬───┬───┬───┐
+    │ o │ a │ a │ n │
+    ├───┼───┼───┼───┤
+    │ e │ t │ a │ e │
+    ├───┼───┼───┼───┤
+    │ i │ h │ k │ r │
+    ├───┼───┼───┼───┤
+    │ i │ f │ l │ v │
+    └───┴───┴───┴───┘
+  Words to find: 
+    ["oath", "pea", "eat", "rain"]
+
+  Starting DFS from (0,0) = 'o'
+    (0,0)='o' → Trie match → path: "o"
+      (0,1)='a' → Trie match → path: "oa"
+        (0,2)='a' → Trie has no child → PRUNE ✂️
+        (1,1)='t' → Trie match → path: "oat"
+          (2,1)='h' → Trie match → path: "oath"
+            ★ FOUND WORD: "oath" ★
+
+  Starting DFS from (1,3) = 'e'
+    (1,3)='e' → Trie match → path: "e"
+      (1,2)='a' → Trie match → path: "ea"
+        (1,1)='t' → Trie match → path: "eat"
+          ★ FOUND WORD: "eat" ★
+
+  Result: [oath, eat]
+
+═══ TEST 5: Shared Prefixes ═══
+  Starting DFS from (0,0) = 'o'
+    (0,0)='o' → Trie match → path: "o"
+      ★ FOUND WORD: "o" ★
+      (0,1)='a' → Trie match → path: "oa"
+        ★ FOUND WORD: "oa" ★
+        (0,2)='t' → Trie match → path: "oat"
+          ★ FOUND WORD: "oat" ★
+          (1,2)='h' → Trie match → path: "oath"
+            ★ FOUND WORD: "oath" ★
+  Result: [o, oa, oat, oath]
+
+═══ TEST 6: Verification — Optimized vs Naive ═══
+  Test 1: Optimized=[oath, eat] Naive=[oath, eat] ✓ MATCH
+  Test 2: Optimized=[ab, cb, ad, abdc] Naive=[ab, cb, ad, abdc] ✓ MATCH
+  Test 3: Optimized=[a] Naive=[a] ✓ MATCH
+  Test 4: Optimized=[a, aa] Naive=[a, aa] ✓ MATCH
+  Test 5: Optimized=[abcdefg, bcd, aefa] Naive=[abcdefg, bcd, aefa] ✓ MATCH
+
+  ✅ ALL TESTS PASSED
+
+═══ TEST 7: Performance Comparison ═══
+  Board: 10×10, Words: 100, Alphabet: a-e
+  Trie-guided: XX words found → ~5 ms
+  Naive:       XX words found → ~50 ms
+  Speedup: ~10x
+
+═══ TEST 8: Stress Test ═══
+  Board: 12×12, Words: 5000
+  Found: XXX words → ~200 ms</code></pre></div>
+<hr>
+<h2>🧠 KEY TAKEAWAY</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>WHAT WE LEARNED:
+</span>→ Word Search II = Trie + Grid DFS + Backtracking + Pruning
+→ The Trie serves as a COMPASS for DFS — "is this path worth exploring?"
+→ Backtracking ensures cells can be reused across different word paths
+→ Trie pruning shrinks the search space as words are found
+→ Storing complete words at Trie leaves simplifies word retrieval
+
+THE PATTERN FUSION:
+
+┌────────────────────┬──────────────────┬────────────────────────┐
+│ Component          │ Source Project   │ Role in Word Search II │
+├────────────────────┼──────────────────┼────────────────────────┤
+│ Trie construction  │ Project 58       │ Build from word list   │
+│                    │                  │ Provides prefix check  │
+├────────────────────┼──────────────────┼────────────────────────┤
+│ DFS traversal      │ Project 18       │ Explore grid paths     │
+│                    │                  │ Recursive branching    │
+├────────────────────┼──────────────────┼────────────────────────┤
+│ Backtracking       │ Projects 26,42   │ Mark/unmark visited    │
+│                    │                  │ Choose/explore/unchoose│
+├────────────────────┼──────────────────┼────────────────────────┤
+│ Pruning            │ Project 42       │ Trie child = null?     │
+│                    │                  │ Stop exploring dead    │
+│                    │                  │ branches immediately   │
+├────────────────────┼──────────────────┼────────────────────────┤
+│ Grid navigation    │ New in this      │ 4-direction movement   │
+│                    │ project          │ Bounds checking        │
+│                    │                  │ In-place visit marking │
+├────────────────────┼──────────────────┼────────────────────────┤
+│ Trie node removal  │ New optimization │ Shrink Trie as words   │
+│                    │                  │ are found → faster DFS │
+└────────────────────┴──────────────────┴────────────────────────┘
+
+THE TRIE ARC IS NOW COMPLETE:
+
+  Project 58: "I can BUILD a Trie and do insert/search/startsWith"
+  → Standalone data structure → foundation
+
+  Project 59: "I can USE a Trie to GUIDE exploration of another structure"
+  → Trie as a tool within a larger algorithm → mastery
+
+  The progression:
+  → Project 58: Trie = the DESTINATION (build and query it)
+  → Project 59: Trie = the COMPASS (guide DFS through a grid)
+  → This is the pattern for ALL advanced Trie problems:
+       Build Trie from targets → Explore source guided by Trie
+
+WHY THIS PROBLEM IS A MASTERPIECE:
+→ It synthesizes FIVE distinct patterns into one solution
+→ No single pattern is sufficient alone:
+     → Trie alone: can store words but can't search the grid
+     → DFS alone: can explore grid but doesn't know what words to find
+     → Backtracking alone: can try paths but explores too many
+     → Pruning alone: needs a structure to prune against
+     → Grid navigation alone: needs a goal to navigate toward
+→ Only the COMBINATION produces an efficient solution
+→ This is why it's rated HARD on LeetCode
+
+THE OPTIMIZATION HIERARCHY:
+
+  Level 0 — Naive:
+    → Per-word DFS on grid
+    → O(W × M × N × 4^L)
+    → Fails on large inputs
+
+  Level 1 — Trie-guided DFS:
+    → All words searched simultaneously
+    → O(M × N × 4^L) — W is eliminated
+    → Passes most inputs
+
+  Level 2 — Trie-guided DFS + word dedup:
+    → Null out found words to prevent duplicates
+    → Same complexity but correct output
+
+  Level 3 — Trie-guided DFS + leaf pruning:
+    → Remove dead Trie branches after finding words
+    → Trie shrinks over time → DFS gets faster
+    → Passes ALL inputs including worst-case edge cases
+    → This is the ACCEPTED solution
+
+Each level builds on the previous:
+  → You can't do Level 3 without understanding Level 1
+  → The optimizations are LAYERED, not independent
+  → Interview tip: explain Level 1 first, then add optimizations
+
+THE GRID DFS TEMPLATE (Reusable):
+
+  int[][] DIRS = {{-1,0}, {1,0}, {0,-1}, {0,1}};
+  
+  void dfs(char[][] board, int i, int j, ...) {
+      // 1. Bounds check
+      if (outOfBounds(i, j)) return;
+      
+      // 2. Visit check
+      if (board[i][j] == '#') return;
+      
+      // 3. Validity check (problem-specific)
+      if (!isValid(...)) return;
+      
+      // 4. Process current cell
+      process(board[i][j]);
+      
+      // 5. Mark visited
+      char saved = board[i][j];
+      board[i][j] = '#';
+      
+      // 6. Explore neighbors
+      for (int[] dir : DIRS) {
+          dfs(board, i + dir[0], j + dir[1], ...);
+      }
+      
+      // 7. Unmark (backtrack)
+      board[i][j] = saved;
+  }
+
+This template works for:
+  → Word Search I (single word)
+  → Word Search II (multiple words with Trie)
+  → Number of Islands (flood fill variant)
+  → Surrounded Regions
+  → Pacific Atlantic Water Flow
+  → The structure is IDENTICAL — only step 3 and 4 change</code></pre></div>
+<hr>
+<h2>📊 COMPLETE PATTERN ARC STATUS</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>After Project 59, here is where every pattern stands:
+</span>
+COMPLETED ARCS (all projects delivered):
+  ✅ Two Pointers:              Projects 1, 2, 3, 4, 11, 32
+  ✅ Sliding Window:            Projects 5, 6, 12, 13, 33, 34
+  ✅ Fast &amp; Slow Pointers:      Projects 7, 15, 20
+  ✅ Merge Intervals:           Projects 14, 22, 46
+  ✅ Cyclic Sort:               Projects 8, 21
+  ✅ In-place Linked List:      Projects 16, 23
+  ✅ Tree BFS:                  Projects 17, 24, 25
+  ✅ Tree DFS:                  Projects 18, 26, 27
+  ✅ Two Heaps:                 Projects 35, 41
+  ✅ Subsets/Backtracking:      Projects 28, 29, 42
+  ✅ Modified Binary Search:    Projects 9, 30, 31
+  ✅ Bitwise XOR:               Projects 10, 37
+  ✅ Top K Elements:            Projects 38, 39
+  ✅ K-way Merge:               Projects 40, 53
+  ✅ Dynamic Programming:       Projects 43, 44, 45, 50, 51, 52
+  ✅ Topological Sort:          Projects 47, 56
+  ✅ Union Find:                Projects 48, 57
+  ✅ Trie:                      Projects 58, 59
+  ✅ Monotonic Stack:           Projects 36, 54, 55
+  ✅ Greedy:                    Projects 19, 49 → ONE MORE: Project 60
+
+REMAINING:
+  🔲 Project 60: Task Scheduler with Cooldown
+     → Greedy arc FINALE
+     → Grand synthesis of the entire curriculum
+     → Combines: Greedy + Top K + Frequency analysis</code></pre></div>
+<hr>
+<h2>🌉 BRIDGE TO NEXT PROJECT</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>PROJECT 59 taught us:
+</span>→ Trie as a DFS guide for multi-word search
+→ Grid DFS with backtracking and in-place visited marking
+→ Trie pruning for progressive optimization
+→ Pattern fusion: combining 5+ patterns into one solution
+→ The Trie pattern arc is now COMPLETE ✓
+
+PROJECT 60 (Task Scheduler with Cooldown) is the GRAND FINALE:
+→ The last project in the entire 60-project curriculum
+→ It synthesizes GREEDY thinking with frequency analysis
+
+The problem:
+→ Given tasks with frequencies: ["A","A","A","B","B","B"]
+→ Given a cooldown period n between same tasks
+→ Find the MINIMUM time to execute all tasks
+→ Idle slots may be needed if no valid task is available
+
+Why it's the finale:
+→ It brings together patterns from across the curriculum:
+
+  Greedy (Project 19, 49):
+  → "Process the most frequent task first"
+  → Local optimal choice → global optimal result
+  
+  Top K / Heap (Project 38):
+  → "Which task has the highest remaining frequency?"
+  → Max-heap for priority selection
+  
+  Frequency Analysis:
+  → Count occurrences of each task
+  → The most frequent task determines the minimum time
+  → Idle slots fill gaps between mandatory cooldowns
+  
+  Mathematical Insight:
+  → The answer can be computed with a FORMULA
+  → No simulation needed
+  → (maxFreq - 1) × (n + 1) + countOfMaxFreqTasks
+  → Understanding WHY this formula works = mastery
+
+The progression of Greedy across the curriculum:
+  Project 19: Activity Selection → sort by end time → simple greedy
+  Project 49: Jump Game → farthest-reachable → forward scan greedy
+  Project 60: Task Scheduler → frequency-based → mathematical greedy
+  
+  Each greedy problem requires a DIFFERENT insight:
+  → Project 19: "Pick the activity that ends earliest"
+  → Project 49: "Track how far you can reach"
+  → Project 60: "The most frequent task dictates the schedule"
+  → Greedy is not ONE algorithm — it's a FAMILY of insights
+
+Project 60 is the BRIDGE TO WHAT COMES AFTER:
+→ After mastering these 60 projects → 20 patterns
+→ You're ready for:
+     → LeetCode contests (combine patterns under time pressure)
+     → System design (apply patterns at scale)
+     → Advanced algorithms (segment trees, suffix arrays, etc.)
+     → Real-world engineering (these patterns appear everywhere)</code></pre></div>
+<hr>
+<p><strong>Ready for Project 60: Task Scheduler with Cooldown (Greedy → Frequency-Based Slot Filling → Idle Slot Calculation → Grand Finale)?</strong></p>
+<p>→ Please confirm and I will deliver the final project of the curriculum.</p></div>
+</div>
+
+<!-- ========== data-index="21" ========== -->
+<div class="chat-message" data-index="21"></div>
+</div>
+<div class="bottom-nav">
+  <a href="project-58.html" class="nav-btn prev">← Prev</a>
+  <div class="nav-center">
+    <span class="nav-project-label">PROJECT 59 of 60</span>
+    <span class="nav-project-title">Word Search II (Find All Words on Board)</span>
+    <span class="kbd-hint">← → arrow keys to navigate</span>
+  </div>
+  <a href="project-60.html" class="nav-btn next">Next →</a>
+  <a href="index.html" class="nav-btn home">🏠 TOC</a>
+</div>
+<div id="progress-track"><div id="progress-fill"></div></div>
+<div id="progress-pct">0%</div>
+<script src="script.js"></script>
+<script>
+document.addEventListener('keydown', function(e) {
+  if (['INPUT','TEXTAREA'].includes(document.activeElement.tagName)) return;
+  if (e.key === 'ArrowRight' && "project-60.html" !== null) window.location = "project-60.html";
+  if (e.key === 'ArrowLeft' && "project-58.html" !== null) window.location = "project-58.html";
+});
+</script>
+</body>
+</html>

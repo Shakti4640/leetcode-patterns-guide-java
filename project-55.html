@@ -1,0 +1,927 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PROJECT 55: Trapping Rain Water</title>
+<link rel="icon" type="image/png" href="images/favicon.png">
+<link rel="stylesheet" href="styles.css">
+
+</head>
+<body>
+<div id="progress-bar-container"><div id="progress-bar" style="width:92%"></div></div>
+<div id="progress-label">92%</div>
+<div class="page-wrapper">
+<div class="chat-message"><div class="px-2"><h1>PROJECT 55: Trapping Rain Water</h1>
+<h2>🎯 Monotonic Stack → Bounded Container Logic → Stack-Based or Two-Pointer Solution</h2>
+<hr>
+<h2>🔗 DEPENDENCY CHAIN</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>Project 1  → Two Pointers → Left/Right convergence (REUSED here)
+</span>Project 36 → Monotonic Stack → Decreasing stack → Next Greater Element
+Project 54 → Monotonic Stack → Increasing stack → Boundary discovery → Area at pop
+             ↓
+Project 55 → THIS PROJECT
+             → Monotonic DECREASING stack (back to Project 36's flavor)
+             → Valley detection between taller boundaries
+             → Water volume computation at pop time
+             → ALSO solvable via Two Pointers (full circle to Project 1)
+             ↓
+Project 56 → Alien Dictionary (Topological Sort)</code></pre></div>
+<hr>
+<h2>🧩 THE HYPOTHETICAL PROBLEM</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ You are given an array of non-negative integers representing
+</span>  an elevation map where each bar has WIDTH = 1
+→ Compute how much WATER can be trapped BETWEEN the bars after rain
+
+Visual:
+
+Heights: [0, 1, 0, 2, 1, 0, 1, 3, 2, 1, 2, 1]
+
+                              ┌───┐
+              ┌───┐           │   │
+              │   │   ┌───┐   │   ├───┐   ┌───┐
+  ┌───┐       │   ├───┤   │   │   │   ├───┤   ├───┐
+  │   │       │   │░░░│   │   │   │   │░░░│   │   │
+──┤   ├───┐   │   │░░░│   ├───┤   │   │░░░│   │   │
+  │   │░░░│   │   │░░░│   │░░░│   │   │░░░│   │   │
+──┤   │░░░├───┤   │░░░│   │░░░│   │   │░░░│   │   │
+  0   1   0   2   1   0   1   3   2   1   2   1
+
+░ = trapped water
+
+Water trapped:
+  index 2: min(1, 2) - 0 = 1
+  index 4: min(2, 3) - 1 = 1
+  index 5: min(2, 3) - 0 = 2
+  index 6: min(2, 3) - 1 = 1
+  index 9: min(3, 2) - 1 = 1
+  
+  Total = 1 + 1 + 2 + 1 + 1 = 6
+
+Answer: 6</code></pre></div>
+<hr>
+<h2>🔍 HOW TO APPROACH IT</h2>
+<h3>Step 1 — Understand What Traps Water</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ Water can sit on TOP of a bar only if TALLER bars exist on BOTH sides
+</span>→ The water level at position i is determined by:
+     → The tallest bar to the LEFT of i (including i's own height)
+     → The tallest bar to the RIGHT of i (including i's own height)
+     → Water level = min(maxLeft, maxRight)
+     → Water trapped at i = waterLevel - height[i]
+     → If waterLevel ≤ height[i] → no water trapped (bar sticks out)
+
+This is the FUNDAMENTAL INSIGHT:
+     water[i] = max(0, min(maxLeft[i], maxRight[i]) - height[i])</code></pre></div>
+<h3>Step 2 — Contrast with Project 54</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>Project 54 (Largest Rectangle):
+</span>→ Each bar expands until it hits a SHORTER bar
+→ Bounded by NEAREST SMALLER elements
+→ INCREASING stack → pop on SMALLER
+→ Computes AREA of solid rectangle
+
+Project 55 (Trapping Rain Water):
+→ Water fills VALLEYS between TALLER bars
+→ Bounded by NEAREST GREATER elements (walls on both sides)
+→ DECREASING stack → pop on GREATER
+→ Computes VOLUME of water in valley
+
+KEY FLIP:
+  Project 54: "How far does this tall bar extend?" → INCREASING stack
+  Project 55: "How deep is this valley?" → DECREASING stack</code></pre></div>
+<h3>Step 3 — Four Ways to Solve This</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>Approach A: Brute Force → O(n²) time, O(1) space
+</span>→ For each position, scan left and right to find max heights
+→ Simple but slow
+
+Approach B: Prefix Max Arrays → O(n) time, O(n) space
+→ Precompute maxLeft[] and maxRight[] arrays
+→ Then compute water at each position in one pass
+
+Approach C: Monotonic Stack → O(n) time, O(n) space
+→ Use decreasing stack to detect valleys
+→ Compute water layer by layer when popping
+
+Approach D: Two Pointers → O(n) time, O(1) space ← OPTIMAL
+→ Converge from both ends (callback to Project 1!)
+→ Track running maxLeft and maxRight
+→ Process the side with the smaller max
+
+Each approach reveals a DIFFERENT way of thinking
+→ All produce the same answer
+→ I will implement ALL FOUR</code></pre></div>
+<h3>Step 4 — Visualize the Water Formula</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>Heights:    [0, 1, 0, 2, 1, 0, 1, 3, 2, 1, 2, 1]
+</span>Index:       0  1  2  3  4  5  6  7  8  9  10 11
+
+maxLeft[]:  [0, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 3]
+→ maxLeft[i] = max of heights[0..i]
+
+maxRight[]: [3, 3, 3, 3, 3, 3, 3, 3, 2, 2, 2, 1]
+→ maxRight[i] = max of heights[i..n-1]
+
+waterLevel[i] = min(maxLeft[i], maxRight[i]):
+            [0, 1, 1, 2, 2, 2, 2, 3, 2, 2, 2, 1]
+
+water[i] = waterLevel[i] - height[i]:
+            [0, 0, 1, 0, 1, 2, 1, 0, 0, 1, 0, 0]
+
+Total = 0+0+1+0+1+2+1+0+0+1+0+0 = 6 ✓</code></pre></div>
+<hr>
+<h2>🛠️ HOW CAN WE SOLVE IT</h2>
+<h3>Approach A — Brute Force Logic</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>For each index i:
+</span>  1. Scan LEFT from i to 0 → find max height
+  2. Scan RIGHT from i to n-1 → find max height
+  3. Water at i = min(maxLeft, maxRight) - height[i]
+  4. If negative → clamp to 0
+
+Time: O(n) per position × O(n) positions = O(n²)
+Space: O(1)</code></pre></div>
+<h3>Approach B — Prefix Max Arrays Logic</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>1. Build maxLeft[] scanning left to right
+</span>     maxLeft[0] = height[0]
+     maxLeft[i] = max(maxLeft[i-1], height[i])
+
+2. Build maxRight[] scanning right to left
+     maxRight[n-1] = height[n-1]
+     maxRight[i] = max(maxRight[i+1], height[i])
+
+3. For each i:
+     water += min(maxLeft[i], maxRight[i]) - height[i]
+
+Time: O(n)
+Space: O(n) for the two arrays</code></pre></div>
+<h3>Approach C — Monotonic Stack Logic (Layer-by-Layer)</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>KEY DIFFERENCE from Project 54:
+</span>→ Project 54 used INCREASING stack (pop on smaller) for rectangles
+→ Here we use DECREASING stack (pop on taller) for water valleys
+
+The DECREASING stack stores indices of bars in decreasing height order
+→ When a TALLER bar arrives → it forms a RIGHT WALL
+→ The popped element is the VALLEY BOTTOM
+→ The new stack top (after pop) is the LEFT WALL
+→ Water trapped = width × (min(leftWall, rightWall) - valleyBottom)
+
+This computes water LAYER BY LAYER horizontally
+→ Not column by column like prefix approach
+→ Same total — different decomposition
+
+Walkthrough: heights = [0, 1, 0, 2, 1, 0, 1, 3, 2, 1, 2, 1]
+
+Stack stores indices, maintaining DECREASING heights
+
+i=0, h=0: Stack empty → push 0
+  Stack: [0]  heights: [0]
+
+i=1, h=1: h=1 &gt; h[stack.top]=h[0]=0 → POP
+  → bottom = 0 (popped), height = 0
+  → Stack now EMPTY → no left wall → no water trapped
+  → Push 1
+  Stack: [1]  heights: [1]
+
+i=2, h=0: h=0 ≤ h[stack.top]=h[1]=1 → just push
+  Stack: [1, 2]  heights: [1, 0]
+
+i=3, h=2: h=2 &gt; h[stack.top]=h[2]=0 → POP
+  → bottom = index 2, bottomHeight = 0
+  → left wall = stack.top = index 1, leftHeight = 1
+  → right wall = index 3, rightHeight = 2
+  → bounded height = min(1, 2) - 0 = 1
+  → width = 3 - 1 - 1 = 1
+  → water += 1 × 1 = 1
+  
+  h=2 &gt; h[stack.top]=h[1]=1 → POP
+  → bottom = index 1, bottomHeight = 1
+  → Stack now EMPTY → no left wall → no water
+  → Push 3
+  Stack: [3]  heights: [2]
+  Running water = 1
+
+i=4, h=1: h=1 ≤ h[stack.top]=h[3]=2 → push
+  Stack: [3, 4]  heights: [2, 1]
+
+i=5, h=0: h=0 ≤ h[stack.top]=h[4]=1 → push
+  Stack: [3, 4, 5]  heights: [2, 1, 0]
+
+i=6, h=1: h=1 &gt; h[stack.top]=h[5]=0 → POP
+  → bottom = index 5, bottomHeight = 0
+  → left wall = stack.top = index 4, leftHeight = 1
+  → right wall = index 6, rightHeight = 1
+  → bounded height = min(1, 1) - 0 = 1
+  → width = 6 - 4 - 1 = 1
+  → water += 1 × 1 = 1
+  
+  h=1 ≤ h[stack.top]=h[4]=1 → stop (equal, not strictly greater)
+  → Push 6
+  Stack: [3, 4, 6]  heights: [2, 1, 1]
+  Running water = 2
+
+i=7, h=3: h=3 &gt; h[stack.top]=h[6]=1 → POP
+  → bottom = index 6, bottomHeight = 1
+  → left wall = stack.top = index 4, leftHeight = 1
+  → bounded height = min(1, 3) - 1 = 0 → NO water (same level)
+
+  h=3 &gt; h[stack.top]=h[4]=1 → POP
+  → bottom = index 4, bottomHeight = 1
+  → left wall = stack.top = index 3, leftHeight = 2
+  → right wall = index 7, rightHeight = 3
+  → bounded height = min(2, 3) - 1 = 1
+  → width = 7 - 3 - 1 = 3
+  → water += 1 × 3 = 3
+
+  h=3 &gt; h[stack.top]=h[3]=2 → POP
+  → bottom = index 3, bottomHeight = 2
+  → Stack now EMPTY → no left wall → no water
+  → Push 7
+  Stack: [7]  heights: [3]
+  Running water = 2 + 3 = 5
+
+i=8, h=2: push → Stack: [7, 8]
+i=9, h=1: push → Stack: [7, 8, 9]
+
+i=10, h=2: h=2 &gt; h[stack.top]=h[9]=1 → POP
+  → bottom = index 9, bottomHeight = 1
+  → left wall = stack.top = index 8, leftHeight = 2
+  → right wall = index 10, rightHeight = 2
+  → bounded height = min(2, 2) - 1 = 1
+  → width = 10 - 8 - 1 = 1
+  → water += 1 × 1 = 1
+  
+  h=2 ≤ h[stack.top]=h[8]=2 → stop
+  → Push 10
+  Stack: [7, 8, 10]
+  Running water = 5 + 1 = 6
+
+i=11, h=1: push → Stack: [7, 8, 10, 11]
+
+END → remaining elements in stack form a non-increasing sequence
+→ No valleys between them → no additional water
+
+TOTAL = 6 ✓</code></pre></div>
+<h3>Approach D — Two Pointers Logic (Optimal)</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>KEY INSIGHT:
+</span>→ Water at position i = min(maxLeft, maxRight) - height[i]
+→ We don't need to know BOTH maxLeft and maxRight simultaneously
+→ We only need to know the SMALLER of the two
+
+→ If maxLeft &lt; maxRight:
+     → min(maxLeft, maxRight) = maxLeft
+     → Water at left position is determined ENTIRELY by maxLeft
+     → We don't care what maxRight actually is — it's bigger
+     → Process the LEFT pointer
+
+→ If maxRight ≤ maxLeft:
+     → min(maxLeft, maxRight) = maxRight
+     → Water at right position is determined ENTIRELY by maxRight
+     → Process the RIGHT pointer
+
+ALGORITHM:
+  left = 0, right = n-1
+  maxLeft = 0, maxRight = 0
+  
+  while left &lt; right:
+    if height[left] &lt; height[right]:
+      → The right side has a bar ≥ height[right]
+      → So maxRight ≥ height[right] &gt; height[left]
+      → Water at left is bounded by maxLeft
+      maxLeft = max(maxLeft, height[left])
+      water += maxLeft - height[left]
+      left++
+    else:
+      → The left side has a bar ≥ height[left]
+      → So maxLeft ≥ height[left] ≥ height[right]
+      → Water at right is bounded by maxRight
+      maxRight = max(maxRight, height[right])
+      water += maxRight - height[right]
+      right--
+
+Time: O(n)
+Space: O(1) ← OPTIMAL</code></pre></div>
+<h3>Two Pointers Walkthrough</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>Heights: [0, 1, 0, 2, 1, 0, 1, 3, 2, 1, 2, 1]
+</span>         L                                    R
+maxLeft=0, maxRight=0, water=0
+
+Step 1: h[L]=0 &lt; h[R]=1 → process LEFT
+  maxLeft = max(0, 0) = 0
+  water += 0 - 0 = 0       → water=0
+  L=1
+
+Step 2: h[L]=1 ≥ h[R]=1 → process RIGHT
+  maxRight = max(0, 1) = 1
+  water += 1 - 1 = 0       → water=0
+  R=10
+
+Step 3: h[L]=1 &lt; h[R]=2 → process LEFT
+  maxLeft = max(0, 1) = 1
+  water += 1 - 1 = 0       → water=0
+  L=2
+
+Step 4: h[L]=0 &lt; h[R]=2 → process LEFT
+  maxLeft = max(1, 0) = 1
+  water += 1 - 0 = 1       → water=1 ✓
+  L=3
+
+Step 5: h[L]=2 ≥ h[R]=2 → process RIGHT
+  maxRight = max(1, 2) = 2
+  water += 2 - 2 = 0       → water=1
+  R=9
+
+Step 6: h[L]=2 &gt; h[R]=1 → process RIGHT
+  maxRight = max(2, 1) = 2
+  water += 2 - 1 = 1       → water=2
+  R=8
+
+Step 7: h[L]=2 ≥ h[R]=2 → process RIGHT
+  maxRight = max(2, 2) = 2
+  water += 2 - 2 = 0       → water=2
+  R=7
+
+Step 8: h[L]=2 &lt; h[R]=3 → process LEFT
+  maxLeft = max(1, 2) = 2
+  water += 2 - 2 = 0       → water=2
+  L=4
+
+Step 9: h[L]=1 &lt; h[R]=3 → process LEFT
+  maxLeft = max(2, 1) = 2
+  water += 2 - 1 = 1       → water=3
+  L=5
+
+Step 10: h[L]=0 &lt; h[R]=3 → process LEFT
+  maxLeft = max(2, 0) = 2
+  water += 2 - 0 = 2       → water=5
+  L=6
+
+Step 11: h[L]=1 &lt; h[R]=3 → process LEFT
+  maxLeft = max(2, 1) = 2
+  water += 2 - 1 = 1       → water=6
+  L=7
+
+L == R → STOP
+
+TOTAL = 6 ✓</code></pre></div>
+<hr>
+<h2>✅ WHAT SHOULD YOU DO</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ ALWAYS start by understanding the water formula:
+</span>     water[i] = min(maxLeft[i], maxRight[i]) - height[i]
+     This is the FOUNDATION — every approach is a different way to compute this
+
+→ ALWAYS pick the approach based on constraints:
+     → Need O(1) space? → Two Pointers (Approach D)
+     → Need clearest code? → Prefix Arrays (Approach B)
+     → Need to demonstrate stack mastery? → Monotonic Stack (Approach C)
+     → Interview setting? → Explain prefix first, then optimize to two pointers
+
+→ ALWAYS handle edge cases:
+     → Empty array → return 0
+     → Array of length 1 or 2 → cannot trap water → return 0
+     → All bars same height → no valleys → return 0
+     → Strictly ascending or descending → no valleys → return 0
+
+→ ALWAYS verify with the column-by-column mental model:
+     → For each position, ask "how much water sits HERE?"
+     → This catches off-by-one errors in stack or pointer logic</code></pre></div>
+<hr>
+<h2>🚫 WHAT SHOULD YOU NOT DO</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ DO NOT confuse with Project 54 (Largest Rectangle)
+</span>     → Rectangle: INCREASING stack → pop on SMALLER → area of solid bar
+     → Water: DECREASING stack → pop on TALLER → volume of water valley
+     → Using the wrong stack direction = wrong answer
+
+→ DO NOT forget the valley bottom subtraction in stack approach
+     → Water height = min(leftWall, rightWall) - bottomHeight
+     → NOT just min(leftWall, rightWall)
+     → The valley bottom is already occupied by a bar — no water there
+     → Forgetting this DOUBLE-COUNTS the bar height as water
+
+→ DO NOT confuse "height at position" with "water at position"
+     → height[i] is the bar itself
+     → Water sits ON TOP of the bar
+     → Total at position i = height[i] + water[i] = min(maxLeft, maxRight)
+     → We want JUST the water part
+
+→ DO NOT process both pointers simultaneously in two-pointer approach
+     → Process ONLY the side with the smaller height
+     → The other side guarantees a wall exists
+     → Moving both loses the guarantee
+
+→ DO NOT use an INCREASING stack for this problem
+     → Increasing stack finds "Next Smaller" (Project 54)
+     → We need "Next Greater" to find valley WALLS
+     → DECREASING stack finds taller bars that form walls</code></pre></div>
+<hr>
+<h2>🔀 WHEN TO USE THIS PATTERN</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>✓ Problem involves TRAPPING or CONTAINING between boundaries
+</span>✓ Each position's value depends on the MAXIMUM on both sides
+✓ The answer decomposes into per-position contributions
+✓ Data is a 1D elevation map or similar bounded structure
+
+SIGNATURE PROBLEMS:
+→ Trapping Rain Water (1D) ← THIS
+→ Trapping Rain Water II (2D) → BFS + heap extension
+→ Container With Most Water → two pointers variant
+→ Pour Water → simulation variant
+→ Any problem asking "how much fits BETWEEN elements"</code></pre></div>
+<hr>
+<h2>🚫 WHEN NOT TO USE THIS PATTERN</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>✗ Boundaries are not defined by MAX on both sides
+</span>     → If water level depends on something other than max
+     → The min(maxLeft, maxRight) formula doesn't apply
+
+✗ The trapped quantity can "leak" through gaps
+     → This problem assumes bars are solid walls
+     → If bars have holes → different problem entirely
+
+✗ You need the shape of the water, not just the volume
+     → This approach computes total volume efficiently
+     → Recovering which cells have water needs additional work
+
+✗ 2D grid version
+     → 1D techniques don't directly generalize to 2D
+     → 2D Trapping Rain Water uses BFS + min-heap (different approach)</code></pre></div>
+<hr>
+<h2>⚙️ HOW IT ONLY WORKS — Internal Mechanics</h2>
+<h3>The Water Formula — Why min(maxLeft, maxRight)?</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>Think physically:
+</span>→ Water at position i rises until it spills over the SHORTER wall
+→ The left wall is the tallest bar to the left → maxLeft
+→ The right wall is the tallest bar to the right → maxRight
+→ Water rises to the height of the SHORTER of these two walls
+→ Because it would spill over the shorter one
+
+     maxLeft = 5        maxRight = 3
+     ┌───┐                ┌───┐
+     │   │                │   │
+     │   │   water level  │   │
+     │   │ ═══════════════│   │ ← min(5, 3) = 3
+     │   │ ░░░░░░░░░░░░░░│   │
+     │   │ ░░░░░░░░░░░░░░│   │
+     │   │ ░░░░░bar░░░░░░│   │
+     └───┴───────┴────────┴───┘
+
+Water level = 3 (limited by shorter wall)
+Water at bar position = 3 - bar_height</code></pre></div>
+<h3>The Stack Approach — Layer-by-Layer Decomposition</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>The stack approach computes water HORIZONTALLY, layer by layer
+</span>→ Each pop event computes one horizontal slice of water
+
+Example valley:
+     ┌───┐               ┌───┐
+     │   │   ┌───┐       │   │
+     │   │   │   │       │   │
+     │   │   │   │       │   │
+     │   ├───┤   ├───┐   │   │
+     │   │ ░ │   │░░░│   │   │
+     │   │░░░│   │░░░│░░░│   │
+     └───┴───┴───┴───┴───┴───┘
+      h=5 h=2 h=4 h=1 h=2 h=6
+
+Pop 1: bottom=h=1, left=h=4, right=h=2 → wait, let me re-examine...
+
+Actually the stack processes this as:
+  Push 5, 2 → decreasing ✓
+  At 4: pop 2 (bottom=2, left=5, right=4) → water = (min(5,4)-2) × 1 = 2
+  Push 4 → stack: [5, 4]
+  Push 1 → stack: [5, 4, 1]
+  At 2: pop 1 (bottom=1, left=4, right=2) → water = (min(4,2)-1) × 1 = 1
+  2 ≤ 4 → stop, push 2 → stack: [5, 4, 2]
+  At 6: pop 2 (bottom=2, left=4, right=6) → water = (min(4,6)-2) × 2 = 4
+        pop 4 (bottom=4, left=5, right=6) → water = (min(5,6)-4) × 4 = 4
+        pop 5 (bottom=5, stack empty) → no water
+  
+Total = 2 + 1 + 4 + 4 = 11
+
+This is the HORIZONTAL SLICING:
+→ First pop: fills the bottom layer of a narrow valley
+→ Later pops: fill wider layers above
+→ All layers sum to the correct total</code></pre></div>
+<h3>The Two Pointers — Why Processing the Smaller Side Works</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>INVARIANT:
+</span>  At any point, maxLeft tracks the max from the left side up to left pointer
+  maxRight tracks the max from the right side up to right pointer
+
+When height[left] &lt; height[right]:
+  → We KNOW there exists a bar of height ≥ height[right] on the right
+  → So maxRight will eventually be ≥ height[right] &gt; height[left]
+  → Therefore: min(maxLeft, future_maxRight) = maxLeft
+  → We can safely compute water at left using ONLY maxLeft
+  → We don't need to know the exact maxRight
+
+When height[right] ≤ height[left]:
+  → Symmetric argument
+  → min(future_maxLeft, maxRight) = maxRight
+  → Compute water at right using ONLY maxRight
+
+THIS IS WHY O(1) SPACE IS POSSIBLE:
+  → We don't need to precompute both arrays
+  → At each step, we KNOW which side is the bottleneck
+  → Process that side immediately with the information we have</code></pre></div>
+<h3>Why All Four Approaches Give the Same Answer</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>ALL approaches compute the same thing:
+</span>  Total water = Σ max(0, min(maxLeft[i], maxRight[i]) - height[i])
+
+Brute Force: Computes maxLeft[i] and maxRight[i] per position by scanning
+Prefix Arrays: Precomputes maxLeft[] and maxRight[] in advance
+Monotonic Stack: Decomposes the same total into horizontal layers
+Two Pointers: Computes the per-position contribution on the fly
+
+Different decompositions of the SAME sum
+→ Column-by-column (prefix, brute, two-pointer)
+→ Layer-by-layer (stack)
+→ Both sum to the same total</code></pre></div>
+<hr>
+<h2>⚠️ COMMON PITFALLS AND FAILURE MODES</h2>
+<h3>Pitfall 1: Negative Water Values</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ If height[i] &gt; min(maxLeft, maxRight) → bar sticks ABOVE water level
+</span>→ Water at this position = 0, NOT negative
+→ ALWAYS clamp to 0
+
+WRONG: water += min(maxLeft, maxRight) - height[i];
+RIGHT: water += Math.max(0, min(maxLeft, maxRight) - height[i]);
+
+Note: With proper maxLeft/maxRight computation (including position i),
+this situation means maxLeft or maxRight IS height[i],
+so the formula gives 0 naturally.
+But be careful with exclusive vs inclusive boundary definitions.</code></pre></div>
+<h3>Pitfall 2: Stack — Forgetting Bottom Height Subtraction</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>When popping from stack:
+</span>→ Water layer height = min(leftWall, rightWall) - bottomHeight
+→ NOT just min(leftWall, rightWall)
+
+WRONG:
+  int waterHeight = Math.min(leftHeight, rightHeight);
+  water += waterHeight * width;
+
+RIGHT:
+  int waterHeight = Math.min(leftHeight, rightHeight) - bottomHeight;
+  water += waterHeight * width;
+
+Without subtracting bottomHeight:
+→ You count the bar itself as water
+→ You also double-count lower layers already computed</code></pre></div>
+<h3>Pitfall 3: Stack — Empty Stack After Pop</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>After popping the bottom element:
+</span>→ If stack is empty → no left wall exists → no water can be trapped
+→ MUST check stack.isEmpty() before accessing left wall
+
+WRONG:
+  int bottom = stack.pop();
+  int leftWall = heights[stack.peek()];  // CRASH if stack empty
+
+RIGHT:
+  int bottom = stack.pop();
+  if (stack.isEmpty()) continue;  // no left wall → skip
+  int leftWall = heights[stack.peek()];</code></pre></div>
+<h3>Pitfall 4: Two Pointers — Wrong Update Order</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>Must update maxLeft/maxRight BEFORE computing water
+</span>→ Because the current bar itself could be the new max
+→ If current bar IS the max → water = max - height = 0 (correct)
+
+WRONG ORDER:
+  water += maxLeft - height[left];  // maxLeft might be stale
+  maxLeft = Math.max(maxLeft, height[left]);
+
+CORRECT ORDER:
+  maxLeft = Math.max(maxLeft, height[left]);
+  water += maxLeft - height[left];</code></pre></div>
+<h3>Pitfall 5: Confusing This with "Container With Most Water"</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>Trapping Rain Water:
+</span>→ Bars are SOLID walls of given height and width 1
+→ Water fills ALL valleys between bars
+→ Compute TOTAL water across entire histogram
+
+Container With Most Water:
+→ Bars are vertical LINES (no width)
+→ Pick TWO lines that form a container
+→ Compute MAX water for a single container
+→ Different problem, different formula, different approach
+
+Both use two pointers but with DIFFERENT logic</code></pre></div>
+<hr>
+<h2>📈 SCALABILITY CONSIDERATIONS</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>APPROACH COMPARISON:
+</span>┌─────────────────┬──────────┬──────────┬─────────────────────┐
+│ Approach         │ Time     │ Space    │ Best Use Case        │
+├─────────────────┼──────────┼──────────┼─────────────────────┤
+│ Brute Force      │ O(n²)   │ O(1)     │ Understanding only   │
+│ Prefix Arrays    │ O(n)    │ O(n)     │ Clarity, debugging   │
+│ Monotonic Stack  │ O(n)    │ O(n)     │ Stack pattern mastery│
+│ Two Pointers     │ O(n)    │ O(1)     │ Optimal, interviews  │
+└─────────────────┴──────────┴──────────┴─────────────────────┘
+
+PRACTICAL PERFORMANCE:
+→ n = 100 → all approaches work instantly
+→ n = 10,000 → brute force borderline, others instant
+→ n = 100,000 → brute force too slow, O(n) approaches ~1ms
+→ n = 10,000,000 → two pointers best (no allocation overhead)
+
+INTERVIEW RECOMMENDATION:
+→ Explain prefix approach first (shows understanding)
+→ Code two-pointer approach (shows optimization skill)
+→ Mention stack approach exists (shows breadth)</code></pre></div>
+<hr>
+<h2>🔍 INTERPRETABILITY CONSIDERATIONS</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ Prefix Array approach is the MOST intuitive:
+</span>     → "Precompute the tallest bar to the left of each position"
+     → "Precompute the tallest bar to the right of each position"
+     → "Water at each position is limited by the shorter of these two"
+     → Easy to verify by hand, easy to debug
+
+→ Two Pointer approach is the MOST elegant:
+     → "Process the side with the shorter maximum"
+     → "That side's water level is fully determined"
+     → Harder to prove correct but beautiful once understood
+
+→ Stack approach is the MOST complex:
+     → Layer-by-layer horizontal slicing is non-obvious
+     → Requires understanding of what each pop represents
+     → Best for demonstrating stack pattern mastery
+
+→ For interviews: START with prefix explanation, CODE two pointers
+→ For competitive programming: CODE two pointers (fastest to write, optimal)
+→ For learning: IMPLEMENT all four, verify they give same answer</code></pre></div>
+<hr>
+<div class="github-btn-wrap"><a class="github-btn" href="https://github.com/Shakti4640/leetcode-patterns-guide-java/tree/main/project- (55)" target="_blank" rel="noopener"><svg viewBox="0 0 24 24"><path d="M12 .5C5.37.5 0 5.87 0 12.5c0 5.3 3.44 9.8 8.2 11.39.6.11.82-.26.82-.58v-2.03c-3.34.73-4.04-1.61-4.04-1.61-.55-1.39-1.34-1.76-1.34-1.76-1.09-.74.08-.73.08-.73 1.2.09 1.84 1.24 1.84 1.24 1.07 1.83 2.8 1.3 3.49 1 .1-.78.42-1.3.76-1.6-2.67-.3-5.47-1.33-5.47-5.93 0-1.31.47-2.38 1.24-3.22-.14-.3-.54-1.52.1-3.18 0 0 1.01-.32 3.3 1.23a11.5 11.5 0 0 1 3-.4c1.02 0 2.04.13 3 .4 2.28-1.55 3.29-1.23 3.29-1.23.64 1.66.24 2.88.12 3.18.77.84 1.23 1.91 1.23 3.22 0 4.61-2.81 5.63-5.48 5.92.43.37.81 1.1.81 2.22v3.29c0 .32.21.7.82.58C20.56 22.3 24 17.8 24 12.5 24 5.87 18.63.5 12 .5z"/></svg>💻 View Complete Java Code on GitHub</a></div>
+
+<hr>
+<h2>🔑 EXPECTED OUTPUT</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>╔══════════════════════════════════════════════════════╗
+</span>║  PROJECT 55: Trapping Rain Water                     ║
+║  Pattern: Monotonic Stack + Two Pointers             ║
+╚══════════════════════════════════════════════════════╝
+
+═══ TEST 1: Classic Example ═══
+  Visual Histogram (█=bar, ░=water):
+   3 │                █            
+   2 │       █ ░ ░ ░ █ █ ░ █      
+   1 │    █ ░ █ █ ░ █ █ █ █ █ █   
+     └────────────────────────────
+       0  1  2  3  4  5  6  7  8  9 10 11  ← index
+
+┌───────┬────────┬─────────┬──────────┬────────────┬───────┐
+│ Index │ Height │ MaxLeft │ MaxRight │ WaterLevel │ Water │
+├───────┼────────┼─────────┼──────────┼────────────┼───────┤
+│    0  │     0  │     0   │      3   │      0     │    0  │
+│    1  │     1  │     1   │      3   │      1     │    0  │
+│    2  │     0  │     1   │      3   │      1     │    1  │
+│    3  │     2  │     2   │      3   │      2     │    0  │
+│    4  │     1  │     2   │      3   │      2     │    1  │
+│    5  │     0  │     2   │      3   │      2     │    2  │
+│    6  │     1  │     2   │      3   │      2     │    1  │
+│    7  │     3  │     3   │      3   │      3     │    0  │
+│    8  │     2  │     3   │      2   │      2     │    0  │
+│    9  │     1  │     3   │      2   │      2     │    1  │
+│   10  │     2  │     3   │      2   │      2     │    0  │
+│   11  │     1  │     3   │      1   │      1     │    0  │
+└───────┴────────┴─────────┴──────────┴────────────┴───────┘
+Total Water: 6
+
+═══ TEST 3: Monotonic Stack Trace ═══
+  Visual Histogram (█=bar, ░=water):
+   4 │             █
+   3 │ █ ░ ░ ░ █
+   2 │ █ ░ █ ░ █
+   1 │ █ ░ █ ░ █
+     └──────────
+      0  1  2  3  4  ← index
+
+i=0 h=3:
+  Stack: [0(h=3)]
+
+i=1 h=0:
+  Stack: [0(h=3), 1(h=0)]
+
+i=2 h=2:
+  POP idx=1 (bottom h=0) leftWall=idx0(h=3) rightWall=idx2(h=2)
+    waterH=2 w=1 water=2 total=2
+  Stack: [0(h=3), 2(h=2)]
+
+i=3 h=0:
+  Stack: [0(h=3), 2(h=2), 3(h=0)]
+
+i=4 h=4:
+  POP idx=3 (bottom h=0) leftWall=idx2(h=2) rightWall=idx4(h=4)
+    waterH=2 w=1 water=2 total=4
+  POP idx=2 (bottom h=2) leftWall=idx0(h=3) rightWall=idx4(h=4)
+    waterH=1 w=3 water=3 total=7
+  POP idx=0 (bottom h=3) → stack empty → no left wall → skip
+  Stack: [4(h=4)]
+
+Total Water: 7
+
+═══ TEST 6: Single Deep Valley ═══
+  Visual Histogram (█=bar, ░=water):
+   5 │ █ ░ ░ ░ █
+   4 │ █ ░ ░ ░ █
+   3 │ █ ░ ░ ░ █
+   2 │ █ ░ ░ ░ █
+   1 │ █ ░ ░ ░ █
+     └──────────
+      0  1  2  3  4  ← index
+  Water: 15
+
+═══ TEST 10: Verification — All Approaches ═══
+  Test  1: Brute=6   Prefix=6   Stack=6   TwoPtr=6   ✓ PASS
+  Test  2: Brute=9   Prefix=9   Stack=9   TwoPtr=9   ✓ PASS
+  Test  3: Brute=7   Prefix=7   Stack=7   TwoPtr=7   ✓ PASS
+  Test  4: Brute=0   Prefix=0   Stack=0   TwoPtr=0   ✓ PASS
+  Test  5: Brute=0   Prefix=0   Stack=0   TwoPtr=0   ✓ PASS
+  Test  6: Brute=15  Prefix=15  Stack=15  TwoPtr=15  ✓ PASS
+  ...
+
+  ✅ ALL TESTS PASSED
+
+═══ TEST 11: Performance Comparison ═══
+  Brute O(n²):      result=XXXXX  time=~2500 ms
+  Prefix O(n):      result=XXXXX  time=~2 ms
+  Stack O(n):       result=XXXXX  time=~3 ms
+  TwoPtr O(n)/O(1): result=XXXXX  time=~1 ms</code></pre></div>
+<hr>
+<h2>🧠 KEY TAKEAWAY</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>WHAT WE LEARNED:
+</span>→ Trapping Rain Water = per-position water bounded by min(maxLeft, maxRight)
+→ Four approaches, each teaching a different skill:
+     → Brute Force: understand the formula
+     → Prefix Arrays: precomputation technique
+     → Monotonic Stack: layer-by-layer valley processing
+     → Two Pointers: space-optimal convergence
+
+THE STACK COMPARISON ACROSS THREE PROJECTS:
+
+┌──────────────┬──────────────────┬────────────────┬────────────────────────┐
+│ Project      │ Stack Type       │ Pop Trigger    │ What We Compute at Pop │
+├──────────────┼──────────────────┼────────────────┼────────────────────────┤
+│ 36: Next     │ DECREASING       │ Current &gt;      │ Record: next greater   │
+│    Greater   │ (big at bottom)  │ stack top      │ element for popped     │
+│    Element   │                  │                │ index                  │
+├──────────────┼──────────────────┼────────────────┼────────────────────────┤
+│ 54: Largest  │ INCREASING       │ Current &lt;      │ Compute: rectangle     │
+│    Rectangle │ (small at bottom)│ stack top      │ area using left/right  │
+│    Histogram │                  │                │ boundaries             │
+├──────────────┼──────────────────┼────────────────┼────────────────────────┤
+│ 55: Trapping │ DECREASING       │ Current &gt;      │ Compute: water layer   │
+│    Rain Water│ (big at bottom)  │ stack top      │ between left wall,     │
+│              │                  │                │ right wall, over bottom│
+└──────────────┴──────────────────┴────────────────┴────────────────────────┘
+
+KEY DISTINCTION BETWEEN PROJECT 54 AND 55:
+
+Project 54 (Rectangle):
+→ Bar EXPANDS outward until it meets something SHORTER
+→ "How far can this tall thing reach?"
+→ INCREASING stack → pop when SHORTER bar arrives
+→ Popped bar is the HEIGHT of the rectangle
+→ Boundaries are SHORTER bars on both sides
+
+Project 55 (Water):
+→ Valley FILLS upward until it meets something TALLER
+→ "How deep is this low thing?"
+→ DECREASING stack → pop when TALLER bar arrives
+→ Popped bar is the BOTTOM of the valley
+→ Walls are TALLER bars on both sides
+
+THEY ARE MIRROR IMAGES:
+→ Rectangle: tall bar bounded by short bars → area under
+→ Water: short bar bounded by tall bars → volume above
+→ Same stack machinery → opposite direction → opposite geometry
+
+THE TWO-POINTER CALLBACK:
+
+Project 1:  Two pointers → pair sum → move based on sum comparison
+Project 55: Two pointers → water → move based on height comparison
+
+The SAME convergence framework from Project 1 reappears here:
+→ Two pointers at opposite ends
+→ Move inward based on a comparison
+→ Each step makes irreversible progress
+→ O(n) time, O(1) space
+
+But the DECISION LOGIC is different:
+→ Project 1: "sum too big → move right, sum too small → move left"
+→ Project 55: "left height smaller → process left, right height smaller → process right"
+
+This demonstrates that Two Pointers is a UNIVERSAL FRAMEWORK
+→ The skeleton (converge from both ends) stays constant
+→ The decision logic (what to compare, how to act) changes per problem
+→ Mastering the framework means you only need to figure out the decision
+
+THE FOUR-APPROACH HIERARCHY:
+
+Brute Force → "I understand the problem"
+Prefix Arrays → "I can precompute to avoid redundant work"
+Monotonic Stack → "I can process events in smart order"
+Two Pointers → "I can compute on-the-fly with minimal state"
+
+Each approach builds on the UNDERSTANDING of the previous one
+→ You cannot write the two-pointer solution without understanding
+   WHY processing the smaller side is safe
+→ That understanding comes from the prefix array approach
+→ Which comes from understanding the brute force formula
+
+PATTERN SIGNATURE:
+→ "Per-position value depends on max/min from both sides" 
+     → Prefix arrays or Two Pointers
+→ "Valleys between taller boundaries"
+     → Decreasing monotonic stack
+→ "Water/volume between walls"
+     → min(leftWall, rightWall) - bottom
+→ "Optimal space"
+     → Two pointers with running max tracking</code></pre></div>
+<hr>
+<h2>🌉 BRIDGE TO NEXT PROJECT</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>PROJECT 55 taught us:
+</span>→ Four ways to solve the same problem (brute → prefix → stack → two pointers)
+→ Decreasing monotonic stack for valley detection
+→ Water computation: min(leftWall, rightWall) - bottomHeight
+→ Two-pointer optimization for O(1) space
+→ The mirror relationship between "rectangle under bars" and "water over bars"
+
+PROJECT 56 (Alien Dictionary) will shift to a completely different domain:
+→ From ARRAYS and STACKS → to GRAPHS and ORDERING
+→ Given a sorted list of words in an alien language
+→ Derive the ORDER of characters in their alphabet
+→ This is a TOPOLOGICAL SORT problem (builds on Project 47)
+
+The connection between Project 55 and Project 56:
+→ Project 55 is the CULMINATION of the Monotonic Stack pattern
+     → Project 36: basic stack → record at pop
+     → Project 54: boundary discovery → compute area at pop
+     → Project 55: valley detection → compute water at pop + two-pointer fusion
+     → Stack pattern is now COMPLETE
+
+→ Project 56 begins the CULMINATION of the Topological Sort pattern
+     → Project 47: Course Schedule → basic cycle detection via in-degree BFS
+     → Project 56: Alien Dictionary → CONSTRUCT graph from constraints, THEN topo sort
+     → Added complexity: you must BUILD the graph yourself from implicit rules
+
+The progression of the overall curriculum:
+  Monotonic Stack arc:    36 → 54 → 55 (COMPLETE ✓)
+  Topological Sort arc:   47 → 56 (entering finale)
+  Union Find arc:         48 → 57 (upcoming)
+  Trie arc:               58 → 59 (upcoming)
+  Greedy arc:             19 → 49 → 60 (grand finale)
+
+We are now in Phase 5 — the MASTERY phase
+→ Each remaining project synthesizes multiple patterns
+→ Project 56 combines graph construction + BFS + topological ordering
+→ The problems get harder not because the PATTERNS are new
+   but because the PROBLEM-TO-PATTERN MAPPING is less obvious</code></pre></div>
+<hr>
+<h2>📊 COMPLETE PATTERN MASTERY STATUS</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>After Project 55, your Monotonic Stack mastery is COMPLETE:
+</span>
+Level 1 — Project 36: "I can maintain a stack invariant"
+  → Push/pop discipline
+  → Decreasing stack for Next Greater Element
+  → Record answer at pop time
+
+Level 2 — Project 54: "I can discover boundaries and compute at pop time"
+  → Increasing stack for Next Smaller Element
+  → Dual boundary discovery (left from stack, right from trigger)
+  → Width × Height area computation
+  → Sentinel technique for clean drain
+
+Level 3 — Project 55: "I can handle complex geometry with multiple approaches"
+  → Decreasing stack for valley detection
+  → Layer-by-layer horizontal water computation
+  → min(leftWall, rightWall) - bottom formula
+  → Comparison with prefix arrays and two-pointer alternatives
+  → Ability to choose the RIGHT approach for the situation
+
+YOU NOW OWN THE MONOTONIC STACK PATTERN. ✓
+
+Remaining patterns to complete:
+  → Topological Sort (Project 56)
+  → Union Find (Project 57)
+  → Trie (Projects 58, 59)
+  → Greedy synthesis (Project 60)</code></pre></div>
+<hr>
+<p><strong>Ready for Project 56: Alien Dictionary (Topological Sort → Graph Construction from Constraints → BFS Ordering)?</strong></p>
+<p>→ Please confirm and I will continue.</p></div>
+</div>
+
+<!-- ========== data-index="11" ========== -->
+<div class="chat-message" data-index="11"></div>
+</div>
+<div class="bottom-nav">
+  <a href="project-54.html" class="nav-btn prev">← Prev</a>
+  <div class="nav-center">
+    <span class="nav-project-label">PROJECT 55 of 60</span>
+    <span class="nav-project-title">Trapping Rain Water</span>
+    <span class="kbd-hint">← → arrow keys to navigate</span>
+  </div>
+  <a href="project-56.html" class="nav-btn next">Next →</a>
+  <a href="index.html" class="nav-btn home">🏠 TOC</a>
+</div>
+<div id="progress-track"><div id="progress-fill"></div></div>
+<div id="progress-pct">0%</div>
+<script src="script.js"></script>
+<script>
+document.addEventListener('keydown', function(e) {
+  if (['INPUT','TEXTAREA'].includes(document.activeElement.tagName)) return;
+  if (e.key === 'ArrowRight' && "project-56.html" !== null) window.location = "project-56.html";
+  if (e.key === 'ArrowLeft' && "project-54.html" !== null) window.location = "project-54.html";
+});
+</script>
+</body>
+</html>

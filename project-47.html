@@ -1,0 +1,762 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PROJECT 47: Course Schedule — Cycle Detection in DAG</title>
+<link rel="icon" type="image/png" href="images/favicon.png">
+<link rel="stylesheet" href="styles.css">
+
+</head>
+<body>
+<div id="progress-bar-container"><div id="progress-bar" style="width:79%"></div></div>
+<div id="progress-label">79%</div>
+<div class="page-wrapper">
+<div class="chat-message"><div class="px-2"><h1>PROJECT 47: Course Schedule — Cycle Detection in DAG</h1>
+<h2>🎯 Topological Sort → In-Degree Counting → Kahn's BFS Algorithm</h2>
+<hr>
+<h2>🧩 THE HYPOTHETICAL PROBLEM</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ You are given N courses labeled 0 to N-1
+</span>→ You are given a list of PREREQUISITE pairs
+→ prerequisites[i] = [courseA, courseB]
+     → Meaning: to take courseA, you MUST first complete courseB
+     → Directed edge: courseB → courseA
+
+→ QUESTION 1 (Course Schedule I — LeetCode 207):
+     → Can you finish ALL courses?
+     → Return TRUE or FALSE
+     → FALSE if there's a CIRCULAR dependency (cycle)
+
+→ QUESTION 2 (Course Schedule II — LeetCode 210):
+     → Return the ORDER in which to take courses
+     → Return empty array if impossible (cycle exists)
+
+Example 1:
+  numCourses = 4
+  prerequisites = [[1,0], [2,0], [3,1], [3,2]]
+  
+  Meaning:
+    → Course 1 requires Course 0
+    → Course 2 requires Course 0
+    → Course 3 requires Course 1
+    → Course 3 requires Course 2
+  
+  Graph:
+    0 → 1 → 3
+    0 → 2 → 3
+  
+  Valid order: [0, 1, 2, 3] or [0, 2, 1, 3]
+  Answer (can finish?): TRUE
+
+Example 2:
+  numCourses = 2
+  prerequisites = [[1,0], [0,1]]
+  
+  Meaning:
+    → Course 1 requires Course 0
+    → Course 0 requires Course 1
+    → CIRCULAR → impossible
+  
+  Graph:
+    0 → 1 → 0 → 1 → ... (cycle!)
+  
+  Answer (can finish?): FALSE
+
+Example 3:
+  numCourses = 3
+  prerequisites = [[1,0]]
+  
+  Meaning:
+    → Course 1 requires Course 0
+    → Course 2 has NO prerequisites
+  
+  Valid order: [0, 2, 1] or [2, 0, 1] or [0, 1, 2]
+  Answer: TRUE
+
+Example 4:
+  numCourses = 1
+  prerequisites = []
+  
+  → One course, no prerequisites → trivially possible
+  Answer: TRUE</code></pre></div>
+<hr>
+<h2>🔍 HOW TO APPROACH IT</h2>
+<h3>Step 1 — Recognize This is a GRAPH Problem</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ Courses = NODES in a graph
+</span>→ Prerequisites = DIRECTED EDGES
+→ "courseB must come before courseA" = edge from B to A
+→ The entire problem is about ORDERING nodes in a DIRECTED GRAPH
+
+→ This is NOT an interval problem (Project 46)
+→ This is NOT a tree problem (Projects 17, 18)
+→ This is a GENERAL DIRECTED GRAPH problem
+→ Trees have one parent per node → graphs can have MANY
+→ Trees have no cycles → graphs CAN have cycles</code></pre></div>
+<h3>Step 2 — Understand What "Topological Sort" Means</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>DEFINITION:
+</span>  → A topological ordering of a directed graph is a LINEAR ordering
+    of its vertices such that for every directed edge u → v,
+    vertex u comes BEFORE vertex v in the ordering
+
+EXAMPLE:
+  Edges: 0→1, 0→2, 1→3, 2→3
+  
+  Topological orders (multiple valid):
+    [0, 1, 2, 3] ✓  (0 before 1, 0 before 2, 1 before 3, 2 before 3)
+    [0, 2, 1, 3] ✓  (same constraints satisfied)
+    [1, 0, 2, 3] ✗  (1 before 0, but edge says 0 must come before 1)
+
+KEY PROPERTY:
+  → Topological sort exists IF AND ONLY IF the graph has NO CYCLES
+  → A directed graph with no cycles = DAG (Directed Acyclic Graph)
+  → If a cycle exists → no valid ordering → return FALSE / empty array</code></pre></div>
+<h3>Step 3 — Why Cycles Make It Impossible</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>Cycle: A → B → C → A
+</span>
+→ A must come before B (edge A→B)
+→ B must come before C (edge B→C)
+→ C must come before A (edge C→A)
+→ So A must come before B, before C, before A
+→ A must come before ITSELF → IMPOSSIBLE
+→ No linear ordering can satisfy circular dependencies</code></pre></div>
+<h3>Step 4 — Connect to Previous Knowledge</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>Project 17 (Tree BFS):
+</span>  → We processed nodes LEVEL BY LEVEL using a queue
+  → Level 0 first, then level 1, then level 2...
+  → Each level's nodes were "ready" because their parent was processed
+
+THIS Problem:
+  → Same idea but on a GENERAL DIRECTED GRAPH
+  → Instead of "parent processed" → "ALL prerequisites completed"
+  → Instead of "level" → "wave of courses that become available"
+  → Instead of "single root" → "multiple starting nodes" (no prerequisites)
+  
+  → BFS on trees = special case of topological sort on DAGs
+  → Trees guarantee no cycles → topological sort always exists
+  → Graphs might have cycles → must DETECT them
+
+Project 19 (Activity Selection / Greedy):
+  → We processed events in a specific ORDER to make greedy choices
+  → The ORDER was determined by sorting (by end time)
+  
+THIS Problem:
+  → We process courses in a specific ORDER determined by DEPENDENCIES
+  → The ORDER is not from sorting by a value
+  → It's from the STRUCTURE of the dependency graph
+  → Topological sort IS the ordering algorithm</code></pre></div>
+<h3>Step 5 — The Key Concept: In-Degree</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>IN-DEGREE of a node = number of INCOMING edges
+</span>  → How many prerequisites does this course have?
+  → How many courses must be completed before this one?
+
+IN-DEGREE = 0 means:
+  → This course has NO prerequisites
+  → It can be taken IMMEDIATELY
+  → It's a STARTING POINT (like a root in a tree)
+
+THE INSIGHT:
+  → Start with ALL nodes that have in-degree 0
+  → Process them (take those courses)
+  → For each processed node, REMOVE its outgoing edges
+  → This REDUCES the in-degree of its neighbors
+  → Some neighbors may now have in-degree 0 → they become available
+  → Repeat until no more nodes can be processed
+  → If ALL nodes processed → valid ordering exists → return TRUE
+  → If some nodes remain → they're in a cycle → return FALSE</code></pre></div>
+<h3>Step 6 — Visualize Kahn's Algorithm</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>Courses: 0, 1, 2, 3, 4, 5
+</span>Prerequisites: [2,0], [3,0], [4,1], [4,2], [5,3], [5,4]
+
+Graph:
+  0 → 2 → 4 → 5
+  0 → 3 → 5
+  1 → 4
+
+In-degrees:
+  0: 0 (no prerequisites)
+  1: 0 (no prerequisites)
+  2: 1 (needs 0)
+  3: 1 (needs 0)
+  4: 2 (needs 1 and 2)
+  5: 2 (needs 3 and 4)
+
+STEP 1: Enqueue all nodes with in-degree 0
+  Queue: [0, 1]
+
+STEP 2: Process node 0
+  → Remove edges 0→2 and 0→3
+  → in-degree[2] = 1→0 → enqueue 2
+  → in-degree[3] = 1→0 → enqueue 3
+  → Queue: [1, 2, 3]
+  → Order so far: [0]
+
+STEP 3: Process node 1
+  → Remove edge 1→4
+  → in-degree[4] = 2→1 → not 0 yet
+  → Queue: [2, 3]
+  → Order: [0, 1]
+
+STEP 4: Process node 2
+  → Remove edge 2→4
+  → in-degree[4] = 1→0 → enqueue 4
+  → Queue: [3, 4]
+  → Order: [0, 1, 2]
+
+STEP 5: Process node 3
+  → Remove edge 3→5
+  → in-degree[5] = 2→1 → not 0 yet
+  → Queue: [4]
+  → Order: [0, 1, 2, 3]
+
+STEP 6: Process node 4
+  → Remove edge 4→5
+  → in-degree[5] = 1→0 → enqueue 5
+  → Queue: [5]
+  → Order: [0, 1, 2, 3, 4]
+
+STEP 7: Process node 5
+  → No outgoing edges
+  → Queue: []
+  → Order: [0, 1, 2, 3, 4, 5]
+
+ALL 6 nodes processed → valid topological order exists → TRUE</code></pre></div>
+<h3>Step 7 — Visualize Cycle Detection</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>Courses: 0, 1, 2
+</span>Prerequisites: [1,0], [2,1], [0,2]
+
+Graph:
+  0 → 1 → 2 → 0  (CYCLE!)
+
+In-degrees:
+  0: 1 (needs 2)
+  1: 1 (needs 0)
+  2: 1 (needs 1)
+
+STEP 1: Enqueue all nodes with in-degree 0
+  → NONE! Every node has in-degree ≥ 1
+  → Queue: []
+
+STEP 2: Queue is empty → nothing to process
+  → Processed count = 0
+  → Total nodes = 3
+  → 0 ≠ 3 → CYCLE DETECTED → return FALSE
+
+WHY IT WORKS:
+  → In a cycle, every node depends on at least one other node in the cycle
+  → No node in the cycle ever reaches in-degree 0
+  → They are NEVER enqueued
+  → They are NEVER processed
+  → Unprocessed nodes = nodes trapped in cycles</code></pre></div>
+<hr>
+<h2>🛠️ HOW CAN WE SOLVE IT</h2>
+<h3>Kahn's Algorithm — Step by Step</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>1. BUILD the graph:
+</span>     → Adjacency list: for each node, list of nodes it points TO
+     → In-degree array: for each node, count of incoming edges
+
+2. INITIALIZE the queue:
+     → Find all nodes with in-degree 0
+     → Add them to a queue (BFS starting points)
+
+3. BFS PROCESSING:
+     → While queue is not empty:
+          a. Dequeue a node → add to result order
+          b. For each neighbor of this node:
+               → Decrement neighbor's in-degree by 1
+               → If neighbor's in-degree becomes 0 → enqueue it
+          c. Increment processedCount
+
+4. CYCLE CHECK:
+     → If processedCount == numCourses → all courses can be taken → TRUE
+     → If processedCount &lt; numCourses → cycle exists → FALSE
+
+5. RETURN:
+     → For Course Schedule I: return boolean
+     → For Course Schedule II: return the order array (or empty if cycle)</code></pre></div>
+<hr>
+<h2>✅ WHAT SHOULD YOU DO</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ ALWAYS build BOTH the adjacency list AND the in-degree array
+</span>     → Adjacency list: tells you WHERE to go from each node
+     → In-degree array: tells you WHEN a node becomes available
+     → Both are essential — one without the other is incomplete
+
+→ ALWAYS use a QUEUE (FIFO) for Kahn's algorithm
+     → BFS order → processes nodes in "waves" of availability
+     → Could technically use a stack → gives valid topological order too
+     → But queue gives the more intuitive level-by-level processing
+
+→ ALWAYS count processed nodes and compare with total
+     → This is the CYCLE DETECTION mechanism
+     → If count &lt; total → some nodes never reached in-degree 0 → cycle
+
+→ ALWAYS handle disconnected components
+     → Multiple courses with no prerequisites → multiple starting points
+     → All get enqueued initially → all components processed
+     → Kahn's handles this naturally
+
+→ ALWAYS handle edge cases
+     → 0 courses → return true / empty array
+     → No prerequisites → all courses independent → any order works
+     → Self-loop [0, 0] → "course 0 requires course 0" → cycle</code></pre></div>
+<hr>
+<h2>🚫 WHAT SHOULD YOU NOT DO</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ DO NOT confuse edge direction
+</span>     → prerequisites[i] = [a, b] means b → a (b must come before a)
+     → NOT a → b
+     → Getting this backward = wrong graph = wrong answer
+     → READ THE PROBLEM: "to take course a, you must first complete course b"
+     → So the DEPENDENCY flows: b must precede a → edge from b to a
+
+→ DO NOT use DFS without proper state tracking
+     → DFS-based topological sort exists but needs 3-state marking:
+          → UNVISITED, IN_PROGRESS, COMPLETED
+     → If you encounter an IN_PROGRESS node → cycle detected
+     → Missing the IN_PROGRESS state → cycles go undetected
+     → Kahn's BFS is simpler and less error-prone
+
+→ DO NOT try to sort prerequisites by some numeric property
+     → This is NOT an interval sorting problem
+     → The ordering comes from GRAPH STRUCTURE, not numeric values
+     → Project 14 sorts by start time → this problem sorts by TOPOLOGY
+
+→ DO NOT assume the graph is connected
+     → Courses can form multiple disconnected groups
+     → Course 0→1 and Course 2→3 → two separate components
+     → Both must be processed → Kahn's handles this automatically
+
+→ DO NOT modify the in-degree array and then try to reuse it
+     → After Kahn's, in-degree values are modified
+     → If you need original in-degrees later → make a copy first</code></pre></div>
+<hr>
+<h2>🔀 WHEN TO USE TOPOLOGICAL SORT</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>✓ You have DIRECTED dependencies (A must come before B)
+</span>✓ You need to find a VALID ORDERING that respects all dependencies
+✓ You need to DETECT CYCLES in a directed graph
+✓ The problem involves SCHEDULING with prerequisites
+✓ The problem involves BUILD ORDER (compile A before B)
+✓ The problem involves TASK SEQUENCING with constraints
+
+REAL-WORLD ANALOGS:
+  → University course prerequisites
+  → Software build dependencies (Makefile, Gradle)
+  → Package installation order (npm, pip, apt)
+  → Spreadsheet cell dependency evaluation
+  → Job scheduling in pipelines
+  → Compilation order in multi-file projects
+  → Recipe step ordering (chop before fry before serve)</code></pre></div>
+<hr>
+<h2>🚫 WHEN NOT TO USE TOPOLOGICAL SORT</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>✗ Graph is UNDIRECTED
+</span>     → Topological sort is defined only for DIRECTED graphs
+     → Undirected graphs → use BFS/DFS for traversal, Union-Find for components
+
+✗ Graph has no ordering constraint
+     → If you just need to VISIT all nodes → plain BFS/DFS suffices
+     → Topological sort adds unnecessary complexity
+
+✗ You need the SHORTEST PATH
+     → Topological sort gives ORDERING, not shortest path
+     → Use Dijkstra or BFS (unweighted) for shortest paths
+
+✗ Edges are BIDIRECTIONAL dependencies
+     → A depends on B AND B depends on A → always a cycle → impossible
+     → Topological sort would immediately detect this
+
+✗ You need to find STRONGLY CONNECTED COMPONENTS
+     → Topological sort detects cycles exist
+     → To find WHICH nodes are in cycles → use Tarjan's or Kosaraju's algorithm
+     → Different (more advanced) technique</code></pre></div>
+<hr>
+<h2>⚙️ HOW IT ONLY WORKS — Internal Mechanics</h2>
+<h3>The In-Degree Invariant</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>AT EVERY STEP of Kahn's algorithm:
+</span>
+→ Nodes in the queue have in-degree 0 (in the REMAINING graph)
+→ In-degree 0 = all their prerequisites have been PROCESSED
+→ They are SAFE to take now — no unresolved dependencies
+
+WHEN WE PROCESS A NODE:
+→ We "remove" it from the graph conceptually
+→ All edges FROM this node are removed
+→ Neighbors' in-degrees decrease
+→ Some neighbors may reach in-degree 0 → they join the queue
+
+THIS IS IDENTICAL TO:
+→ Peeling off the "outermost layer" of the graph
+→ Like peeling an onion — layer by layer
+→ Each layer = nodes with no remaining dependencies
+→ Process layer → reveal next layer → repeat</code></pre></div>
+<h3>Why This Detects Cycles</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>In a cycle: A → B → C → A
+</span>
+→ in-degree(A) ≥ 1 (C points to A)
+→ in-degree(B) ≥ 1 (A points to B)
+→ in-degree(C) ≥ 1 (B points to C)
+
+→ None of them start with in-degree 0
+→ None of them are ever enqueued
+→ Processing other (non-cycle) nodes doesn't help:
+     → Removing edges FROM non-cycle nodes doesn't affect in-degrees
+       of nodes IN the cycle (because no non-cycle node points into the cycle
+       ... wait, a non-cycle node CAN point into a cycle)
+
+CORRECTION — More precise:
+→ Even if external nodes point INTO the cycle, those edges are
+  in ADDITION to the cycle edges
+→ Removing external edges reduces in-degrees but cycle edges remain
+→ In-degree of cycle nodes never reaches 0 because:
+     → Each cycle node has at least one in-cycle predecessor
+     → That predecessor is also in the cycle → never processed
+     → So that edge is never removed
+     → So in-degree never reaches 0
+
+FORMAL:
+→ In a cycle, node X has predecessor Y (also in cycle)
+→ Y is never processed (same argument applies to Y)
+→ Edge Y→X is never removed
+→ in-degree(X) never reaches 0
+→ X is never enqueued → never processed
+→ processedCount &lt; totalNodes → cycle detected</code></pre></div>
+<h3>Kahn's vs DFS-Based Topological Sort</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>KAHN'S (BFS-based):
+</span>  → Start from nodes with no dependencies
+  → Process outward layer by layer
+  → Naturally produces FORWARD ordering
+  → Cycle detection: processedCount &lt; totalNodes
+  → Easier to implement correctly
+  → Better for "level-by-level" processing
+
+DFS-BASED:
+  → Start from any node, go as deep as possible
+  → When backtracking, add node to result (REVERSE postorder)
+  → Result is in REVERSE → must reverse at end
+  → Cycle detection: encountering IN_PROGRESS node
+  → Three-state marking required (more error-prone)
+  → Better for "path-based" reasoning
+
+FOR INTERVIEWS:
+  → Kahn's BFS is recommended — cleaner, less error-prone
+  → Directly builds on BFS knowledge from Project 17
+  → We implement BOTH for completeness</code></pre></div>
+<h3>Time Complexity Breakdown</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ Building adjacency list: O(E) where E = number of edges (prerequisites)
+</span>→ Computing in-degrees: O(E)
+→ Initial queue population: O(V) where V = number of nodes (courses)
+→ BFS processing:
+     → Each node dequeued exactly once: O(V)
+     → Each edge examined exactly once (when source node processed): O(E)
+→ TOTAL: O(V + E)
+
+→ For this problem: V = numCourses, E = prerequisites.length
+→ O(numCourses + prerequisites.length)</code></pre></div>
+<h3>Space Complexity Breakdown</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ Adjacency list: O(V + E)
+</span>→ In-degree array: O(V)
+→ Queue: at most O(V) nodes
+→ Result array: O(V)
+→ TOTAL: O(V + E)</code></pre></div>
+<hr>
+<h2>⚠️ COMMON PITFALLS AND FAILURE MODES</h2>
+<h3>Pitfall 1: Edge Direction Reversal</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>prerequisites = [[1, 0]]
+</span>→ "To take course 1, complete course 0 first"
+→ Dependency: 0 must come before 1
+→ Edge: 0 → 1
+
+COMMON MISTAKE:
+  → Reading [1, 0] as "edge from 1 to 0"
+  → This reverses the direction
+  → 1 would have in-degree 0 and be processed first
+  → But 1 REQUIRES 0 → should be processed AFTER 0
+
+FIX:
+  → For each [a, b]: edge goes FROM b TO a
+  → adjacencyList[b].add(a)
+  → inDegree[a]++</code></pre></div>
+<h3>Pitfall 2: Self-Loops</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>prerequisites = [[0, 0]]
+</span>→ "Course 0 requires course 0"
+→ This is a self-loop → a cycle of length 1
+→ in-degree[0] = 1 → never reaches 0 → never processed
+→ Kahn's algorithm handles this correctly automatically
+→ No special case needed</code></pre></div>
+<h3>Pitfall 3: Duplicate Prerequisites</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>prerequisites = [[1, 0], [1, 0]]
+</span>→ Same edge listed twice
+→ If you add both: in-degree[1] = 2
+→ When processing node 0: in-degree[1] decremented twice → becomes 0 ✓
+→ OR: in-degree[1] decremented once (if adjacency list has duplicate) → becomes 1 ✗
+
+FIX:
+  → Either deduplicate prerequisites first
+  → OR ensure adjacency list stores duplicates AND in-degree counts duplicates consistently
+  → Standard approach: just add duplicates to adjacency list
+     → If edge 0→1 appears twice, adjacencyList[0] has 1 twice
+     → in-degree[1] = 2
+     → When processing 0, decrement for EACH entry → 2 decrements → 0 ✓</code></pre></div>
+<h3>Pitfall 4: Disconnected Nodes</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>numCourses = 5
+</span>prerequisites = [[1, 0]]
+
+→ Only courses 0 and 1 are connected
+→ Courses 2, 3, 4 are ISOLATED (no prerequisites, no dependents)
+→ in-degree: [0, 1, 0, 0, 0]
+→ Initial queue: [0, 2, 3, 4] → all processed immediately
+→ Then 1 becomes available → processed
+→ Total processed = 5 = numCourses → TRUE ✓
+
+→ Kahn's handles disconnected nodes naturally
+→ They have in-degree 0 → enqueued immediately → processed</code></pre></div>
+<h3>Pitfall 5: Confusing Course Schedule I and II</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>Course Schedule I (LeetCode 207):
+</span>  → Return BOOLEAN: can you finish all courses?
+  → Only need processedCount == numCourses
+
+Course Schedule II (LeetCode 210):
+  → Return the ORDER array
+  → Return empty array if impossible
+  → Need to actually BUILD the order during BFS</code></pre></div>
+<hr>
+<h2>📈 SCALABILITY CONSIDERATIONS</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>V = numCourses, E = number of prerequisites
+</span>
+→ V = 100, E = 200 → O(300) → instant
+→ V = 10,000, E = 50,000 → O(60,000) → instant
+→ V = 100,000, E = 500,000 → O(600,000) → fast
+→ V = 1,000,000, E = 5,000,000 → O(6,000,000) → still manageable
+
+→ Kahn's algorithm is LINEAR in graph size → scales excellently
+→ Bottleneck is usually graph CONSTRUCTION, not the BFS itself
+
+→ For very large graphs:
+     → Adjacency list representation is essential (not adjacency matrix)
+     → Adjacency matrix would be O(V²) space → prohibitive for V &gt; 10,000
+     → Our implementation uses adjacency list → O(V + E) space → optimal
+
+→ For dense graphs (E close to V²):
+     → O(V + E) ≈ O(V²) → still manageable for V up to ~10,000
+     → But rarely encountered in practice — most dependency graphs are sparse</code></pre></div>
+<hr>
+<h2>🔍 INTERPRETABILITY CONSIDERATIONS</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>Kahn's Algorithm — Mental Model:
+</span>  → "Imagine a university registrar"
+  → "Each semester, students can take courses with ALL prerequisites done"
+  → "First semester: take courses with NO prerequisites (in-degree 0)"
+  → "After completing those, check what NEW courses become available"
+  → "Repeat semester by semester until all courses taken or stuck"
+  → "Stuck = circular dependency = impossible schedule"
+
+Interview Explanation:
+  → "I model courses as nodes, prerequisites as directed edges"
+  → "I compute in-degrees to find courses with no prerequisites"
+  → "I use BFS: process available courses, reduce neighbors' in-degrees"
+  → "If a neighbor's in-degree hits 0, it becomes available"
+  → "If all courses get processed, answer is true. Otherwise, there's a cycle"
+  → "Time: O(V + E), Space: O(V + E)"
+
+Debugging Strategy:
+  → Print the adjacency list → verify edge directions
+  → Print in-degree array → verify initial state
+  → Print queue contents at each step → verify BFS progression
+  → Print processedCount at end → compare with numCourses</code></pre></div>
+<hr>
+<div class="github-btn-wrap"><a class="github-btn" href="https://github.com/Shakti4640/leetcode-patterns-guide-java/tree/main/project- (47)" target="_blank" rel="noopener"><svg viewBox="0 0 24 24"><path d="M12 .5C5.37.5 0 5.87 0 12.5c0 5.3 3.44 9.8 8.2 11.39.6.11.82-.26.82-.58v-2.03c-3.34.73-4.04-1.61-4.04-1.61-.55-1.39-1.34-1.76-1.34-1.76-1.09-.74.08-.73.08-.73 1.2.09 1.84 1.24 1.84 1.24 1.07 1.83 2.8 1.3 3.49 1 .1-.78.42-1.3.76-1.6-2.67-.3-5.47-1.33-5.47-5.93 0-1.31.47-2.38 1.24-3.22-.14-.3-.54-1.52.1-3.18 0 0 1.01-.32 3.3 1.23a11.5 11.5 0 0 1 3-.4c1.02 0 2.04.13 3 .4 2.28-1.55 3.29-1.23 3.29-1.23.64 1.66.24 2.88.12 3.18.77.84 1.23 1.91 1.23 3.22 0 4.61-2.81 5.63-5.48 5.92.43.37.81 1.1.81 2.22v3.29c0 .32.21.7.82.58C20.56 22.3 24 17.8 24 12.5 24 5.87 18.63.5 12 .5z"/></svg>💻 View Complete Java Code on GitHub</a></div>
+
+<hr>
+<h2>🔑 EXPECTED OUTPUT</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>╔════════════════════════════════════════════════════╗
+</span>║  PROJECT 47: Course Schedule (Topological Sort)    ║
+║  Pattern: In-Degree Counting → Kahn's BFS         ║
+╚════════════════════════════════════════════════════╝
+
+═══ TEST 1: Standard DAG ═══
+Courses: 0 to 3
+Prerequisites:
+  Course 1 requires Course 0  (edge: 0 → 1)
+  Course 2 requires Course 0  (edge: 0 → 2)
+  Course 3 requires Course 1  (edge: 1 → 3)
+  Course 3 requires Course 2  (edge: 2 → 3)
+
+Adjacency List:
+  0 → [1, 2]
+  1 → [3]
+  2 → [3]
+  3 → []
+
+In-degrees: [0, 1, 1, 2]
+Initial queue (in-degree 0): [0]
+
+─── BFS Processing ───
+
+Step 1: Process course 0
+  Neighbors: [1, 2]
+  → inDegree[1] decremented to 0
+    → Course 1 now has in-degree 0 → ENQUEUED
+  → inDegree[2] decremented to 0
+    → Course 2 now has in-degree 0 → ENQUEUED
+  Queue: [1, 2]
+  Order so far: [0]
+
+Step 2: Process course 1
+  Neighbors: [3]
+  → inDegree[3] decremented to 1
+  Queue: [2]
+  Order so far: [0, 1]
+
+Step 3: Process course 2
+  Neighbors: [3]
+  → inDegree[3] decremented to 0
+    → Course 3 now has in-degree 0 → ENQUEUED
+  Queue: [3]
+  Order so far: [0, 1, 2]
+
+Step 4: Process course 3
+  Neighbors: []
+  Queue: []
+  Order so far: [0, 1, 2, 3]
+
+─── Result ───
+Processed: 4 / 4
+✓ All courses can be completed!
+Valid order: [0, 1, 2, 3]
+
+═══ TEST 2: Cycle Detection ═══
+Courses: 0 to 1
+Prerequisites:
+  Course 1 requires Course 0  (edge: 0 → 1)
+  Course 0 requires Course 1  (edge: 1 → 0)
+
+In-degrees: [1, 1]
+Initial queue (in-degree 0): []
+
+─── BFS Processing ───
+
+─── Result ───
+Processed: 0 / 2
+✗ CYCLE DETECTED — cannot complete all courses!
+Nodes trapped in cycle(s): [0, 1]
+
+═══ TEST 8: Partial Cycle (Some nodes processable) ═══
+Courses: 0 to 4
+Prerequisites:
+  Course 1 requires Course 0  (edge: 0 → 1)
+  Course 3 requires Course 2  (edge: 2 → 3)
+  Course 4 requires Course 3  (edge: 3 → 4)
+  Course 2 requires Course 4  (edge: 4 → 2)
+
+In-degrees: [0, 1, 1, 1, 1]
+Initial queue (in-degree 0): [0]
+
+Step 1: Process course 0
+  → inDegree[1] decremented to 0 → ENQUEUED
+
+Step 2: Process course 1
+  → No neighbors
+
+─── Result ───
+Processed: 2 / 5
+✗ CYCLE DETECTED — cannot complete all courses!
+Nodes trapped in cycle(s): [2, 3, 4]
+
+═══ TEST 7: Cross-Verification (All Approaches) ═══
+  Test 1: Kahns=true   DFS=true   KahnsOrder=[0,1,2,3]     ✓
+  Test 2: Kahns=false  DFS=false  KahnsOrder=[]             ✓
+  Test 3: Kahns=true   DFS=true   KahnsOrder=[0,2,1]        ✓
+  Test 4: Kahns=true   DFS=true   KahnsOrder=[0,1,2,3,4,5]  ✓
+  Test 5: Kahns=false  DFS=false  KahnsOrder=[]             ✓
+  Test 6: Kahns=true   DFS=true   KahnsOrder=[0,1,2,3]      ✓
+  Test 7: Kahns=true   DFS=true   KahnsOrder=[0,1,2,3,4]    ✓</code></pre></div>
+<hr>
+<h2>🧠 COMPARISON: Graph Traversal Techniques Encountered</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>┌──────────────────────────┬───────────────┬──────────────────┬─────────┐
+</span>│ Technique                │ Graph Type    │ Purpose          │ Project │
+├──────────────────────────┼───────────────┼──────────────────┼─────────┤
+│ Tree BFS (Level Order)   │ Tree (DAG)    │ Level traversal  │ 17      │
+│ Tree DFS (Path Sum)      │ Tree (DAG)    │ Path exploration │ 18      │
+│ Topological Sort (Kahn)  │ Directed (DAG)│ Dependency order │ 47 (now)│
+│ Union Find               │ Undirected    │ Connectivity     │ 48 (next│
+└──────────────────────────┴───────────────┴──────────────────┴─────────┘
+
+KEY INSIGHT:
+  → Trees are special cases of DAGs (no cycles, one parent per node)
+  → DAGs are special cases of directed graphs (no cycles)
+  → Topological sort works on DAGs → detects when graph is NOT a DAG
+  → Each technique fits a specific graph structure</code></pre></div>
+<hr>
+<h2>🧠 KEY TAKEAWAY</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>WHAT WE LEARNED:
+</span>→ Dependencies form DIRECTED GRAPHS
+→ Topological sort finds a valid ordering that respects ALL dependencies
+→ Kahn's algorithm uses IN-DEGREE counting + BFS to peel layers
+→ Cycle detection falls out naturally: unprocessed nodes = cycle members
+→ BFS from Project 17 generalizes from trees to arbitrary directed graphs
+→ The "queue of ready items" pattern extends beyond trees
+
+THE CORE MENTAL MODEL:
+→ "Who has NO dependencies left? → Process them first"
+→ "Processing them frees up their dependents"
+→ "Repeat until done or stuck"
+→ "Stuck = cycle = impossible"
+
+PATTERN SIGNATURE:
+→ Directed dependencies between items ✓
+→ Need valid ordering or cycle detection ✓
+→ Items become "ready" when all predecessors are done ✓
+→ = TOPOLOGICAL SORT (Kahn's BFS)
+
+THREE THINGS TO REMEMBER:
+  1. Build: adjacency list + in-degree array
+  2. Start: enqueue all in-degree 0 nodes
+  3. Check: processedCount == totalNodes → no cycle</code></pre></div>
+<hr>
+<h2>🌉 BRIDGE TO NEXT PROJECT</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>PROJECT 47 taught us:
+</span>→ Directed graph → dependency ordering → Kahn's BFS
+→ Nodes connected by DIRECTED edges with prerequisite semantics
+→ Cycle detection via in-degree counting
+
+PROJECT 48 (Number of Connected Components — Union Find) will ask:
+→ What if edges are UNDIRECTED?
+→ "Are nodes A and B in the same group?"
+→ "How many separate groups exist?"
+→ Topological sort doesn't apply to undirected graphs
+→ We need a NEW technique: Union Find (Disjoint Set Union)
+
+The progression:
+  Project 17: Tree BFS → queue-based level processing on trees
+  Project 47: Topological Sort → queue-based ordering on directed graphs
+  Project 48: Union Find → group tracking on undirected graphs
+
+→ From ORDERING (which comes first?) to GROUPING (who belongs together?)
+→ From DIRECTED dependencies to UNDIRECTED connections
+→ From BFS queues to PARENT ARRAYS with path compression</code></pre></div>
+<hr>
+<p><strong>Ready for Project 48: Number of Connected Components in Graph (Union Find → Parent Array → Find with Path Compression → Union by Rank)?</strong></p>
+</div>
+</div>
+
+<!-- ========== data-index="9" ========== -->
+<div class="chat-message" data-index="9"></div>
+</div>
+<div class="bottom-nav">
+  <a href="project-46.html" class="nav-btn prev">← Prev</a>
+  <div class="nav-center">
+    <span class="nav-project-label">PROJECT 47 of 60</span>
+    <span class="nav-project-title">Course Schedule — Cycle Detection in DAG</span>
+    <span class="kbd-hint">← → arrow keys to navigate</span>
+  </div>
+  <a href="project-48.html" class="nav-btn next">Next →</a>
+  <a href="index.html" class="nav-btn home">🏠 TOC</a>
+</div>
+<div id="progress-track"><div id="progress-fill"></div></div>
+<div id="progress-pct">0%</div>
+<script src="script.js"></script>
+<script>
+document.addEventListener('keydown', function(e) {
+  if (['INPUT','TEXTAREA'].includes(document.activeElement.tagName)) return;
+  if (e.key === 'ArrowRight' && "project-48.html" !== null) window.location = "project-48.html";
+  if (e.key === 'ArrowLeft' && "project-46.html" !== null) window.location = "project-46.html";
+});
+</script>
+</body>
+</html>

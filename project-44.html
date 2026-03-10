@@ -1,0 +1,905 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PROJECT 44: 0/1 Knapsack Problem</title>
+<link rel="icon" type="image/png" href="images/favicon.png">
+<link rel="stylesheet" href="styles.css">
+
+</head>
+<body>
+<div id="progress-bar-container"><div id="progress-bar" style="width:74%"></div></div>
+<div id="progress-label">74%</div>
+<div class="page-wrapper">
+<div class="chat-message"><div class="px-2"><h1>PROJECT 44: 0/1 Knapsack Problem</h1>
+<h2>🎯 Dynamic Programming → 2D State Table → Include/Exclude Decision</h2>
+<hr>
+<h2>🧩 THE HYPOTHETICAL PROBLEM</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ You have a knapsack (backpack) with a maximum weight capacity W
+</span>→ You have N items, each with a WEIGHT and a VALUE
+→ Each item can be taken ONCE (0/1 = take or don't take)
+→ Maximize the TOTAL VALUE without exceeding the weight capacity
+→ Return the maximum achievable value
+
+Example 1:
+  Input:  weights = [1, 3, 4, 5], values = [1, 4, 5, 7], capacity = 7
+  
+  Options:
+    Take items {0,1,2}: weight=1+3+4=8 &gt; 7 → exceeds capacity ✗
+    Take items {0,1,3}: weight=1+3+5=9 &gt; 7 → exceeds capacity ✗
+    Take items {1,2}:   weight=3+4=7 ≤ 7, value=4+5=9 ✓
+    Take items {1,3}:   weight=3+5=8 &gt; 7 → exceeds capacity ✗
+    Take items {2,3}:   weight=4+5=9 &gt; 7 → exceeds capacity ✗
+    Take items {0,2}:   weight=1+4=5 ≤ 7, value=1+5=6 ✓
+    Take items {0,3}:   weight=1+5=6 ≤ 7, value=1+7=8 ✓
+    Take items {3}:     weight=5 ≤ 7, value=7 ✓
+  
+  Output: 9 (take items 1 and 2: weight=7, value=9)
+
+Example 2:
+  Input:  weights = [2, 2, 3], values = [3, 3, 4], capacity = 5
+  
+  Take items {0,1}: weight=4 ≤ 5, value=6 ✓
+  Take items {0,2}: weight=5 ≤ 5, value=7 ✓ ← best
+  Take items {1,2}: weight=5 ≤ 5, value=7 ✓ ← tied
+  
+  Output: 7
+
+Example 3:
+  Input:  weights = [5, 10, 15], values = [10, 20, 30], capacity = 4
+  Output: 0 (no item fits — all too heavy)
+
+Example 4:
+  Input:  weights = [1], values = [100], capacity = 10
+  Output: 100 (take the only item)</code></pre></div>
+<hr>
+<h2>🔍 HOW TO APPROACH IT</h2>
+<h3>Step 1 — Connect to Previous Projects</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>PROJECT 42 (Combination Sum — Backtracking):
+</span>  → Explored ALL combinations satisfying a constraint
+  → Enumerated actual solutions
+  → Exponential time (unavoidable for enumeration)
+
+PROJECT 43 (Climbing Stairs — 1D DP):
+  → Counted WAYS (not listed them)
+  → 1D state: just n
+  → Recurrence: ways(n) = ways(n-1) + ways(n-2)
+  → SUM operation for counting
+
+PROJECT 44 (Knapsack — 2D DP):
+  → Finds MAXIMUM VALUE (not counting, not listing)
+  → 2D state: (which items considered, remaining capacity)
+  → Recurrence: MAX of include vs exclude
+  → MAX operation for optimization
+
+THE KEY EVOLUTION:
+  43 → 1D state, SUM for counting
+  44 → 2D state, MAX for optimization
+  Same DP framework — different state space and combination operation</code></pre></div>
+<h3>Step 2 — Try Backtracking First (Why It's Too Slow)</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>For each item: two choices — INCLUDE or EXCLUDE
+</span>N items → 2^N possible subsets
+
+For N = 20:  2^20 = 1,048,576 subsets → manageable
+For N = 30:  2^30 = 1,073,741,824 → borderline
+For N = 40:  2^40 = 1,099,511,627,776 → impossibly slow
+
+BACKTRACKING APPROACH:
+  explore(itemIndex, remainingCapacity):
+    if itemIndex == N or remainingCapacity == 0:
+        return 0
+    
+    // Option 1: EXCLUDE item i
+    exclude = explore(itemIndex + 1, remainingCapacity)
+    
+    // Option 2: INCLUDE item i (if it fits)
+    include = 0
+    if weights[itemIndex] &lt;= remainingCapacity:
+        include = values[itemIndex] + 
+                  explore(itemIndex + 1, remainingCapacity - weights[itemIndex])
+    
+    return max(exclude, include)
+
+THIS IS CORRECT but has OVERLAPPING SUBPROBLEMS:
+  → explore(3, 5) might be called from multiple paths
+  → Path A: include item 0, exclude items 1,2 → explore(3, 5)
+  → Path B: exclude item 0, include item 1, exclude item 2 → explore(3, 5)
+  → SAME subproblem, computed MULTIPLE times
+  → Classic signal for DP!</code></pre></div>
+<h3>Step 3 — Define the DP State</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>STATE DEFINITION:
+</span>  dp[i][w] = maximum value achievable using items 0..i-1 
+             with knapsack capacity w
+
+WHY TWO DIMENSIONS?
+  → We need to track TWO things:
+    1. WHICH items we've considered (index i)
+    2. HOW MUCH capacity remains (weight w)
+  → In Project 43: only ONE thing to track (step number n)
+  → Here: TWO independent variables → 2D table
+
+TABLE DIMENSIONS:
+  → Rows: 0 to N (N+1 rows — one per item plus base case row)
+  → Columns: 0 to W (W+1 columns — one per capacity unit plus zero)
+  → Total cells: (N+1) × (W+1)</code></pre></div>
+<h3>Step 4 — Derive the Recurrence Relation</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>For each item i and capacity w, we have TWO choices:
+</span>
+CHOICE 1 — EXCLUDE item i:
+  → Item i is not taken
+  → Value = whatever we got from items 0..i-1 with same capacity
+  → dp[i][w] = dp[i-1][w]
+
+CHOICE 2 — INCLUDE item i (only if it fits):
+  → Item i is taken → gain values[i-1]
+  → Remaining capacity = w - weights[i-1]
+  → Plus whatever we got from items 0..i-1 with reduced capacity
+  → dp[i][w] = values[i-1] + dp[i-1][w - weights[i-1]]
+  → Only valid when weights[i-1] ≤ w
+
+RECURRENCE:
+  if weights[i-1] &gt; w:
+      dp[i][w] = dp[i-1][w]                              (can't include — too heavy)
+  else:
+      dp[i][w] = max(dp[i-1][w],                          (exclude)
+                     values[i-1] + dp[i-1][w - weights[i-1]])  (include)
+
+BASE CASES:
+  dp[0][w] = 0 for all w   (no items → no value)
+  dp[i][0] = 0 for all i   (no capacity → no value)
+
+ANSWER:
+  dp[N][W] = maximum value using all N items with capacity W</code></pre></div>
+<h3>Step 5 — Visualize the 2D Table</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>weights = [1, 3, 4, 5], values = [1, 4, 5, 7], capacity = 7
+</span>
+Table dp[i][w]:
+
+         w=0  w=1  w=2  w=3  w=4  w=5  w=6  w=7
+i=0       0    0    0    0    0    0    0    0    ← no items
+i=1       0    1    1    1    1    1    1    1    ← item 0 (w=1,v=1)
+i=2       0    1    1    4    5    5    5    5    ← items 0-1 (w=3,v=4)
+i=3       0    1    1    4    5    6    6    9    ← items 0-2 (w=4,v=5)
+i=4       0    1    1    4    5    7    8    9    ← items 0-3 (w=5,v=7)
+
+ANSWER: dp[4][7] = 9
+
+TRACE dp[3][7] (items 0-2, capacity 7):
+  Item 2: weight=4, value=5
+  Option A (exclude): dp[2][7] = 5
+  Option B (include): 5 + dp[2][7-4] = 5 + dp[2][3] = 5 + 4 = 9
+  dp[3][7] = max(5, 9) = 9 ✓
+
+TRACE dp[2][4] (items 0-1, capacity 4):
+  Item 1: weight=3, value=4
+  Option A (exclude): dp[1][4] = 1
+  Option B (include): 4 + dp[1][4-3] = 4 + dp[1][1] = 4 + 1 = 5
+  dp[2][4] = max(1, 5) = 5
+
+Every cell tells a STORY:
+  "Using items 0 through i-1 with capacity w, the best I can do is dp[i][w]"</code></pre></div>
+<h3>Step 6 — Space Optimization (2D → 1D)</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>OBSERVATION:
+</span>  dp[i][w] depends ONLY on row i-1 (previous row)
+  → dp[i-1][w]           (same column, previous row)
+  → dp[i-1][w - weight]  (earlier column, previous row)
+  → We NEVER look at row i-2 or earlier
+
+THEREFORE:
+  → We only need TWO rows at a time: previous and current
+  → Or even BETTER: a single 1D array, processed RIGHT TO LEFT
+
+WHY RIGHT TO LEFT?
+  If we process LEFT TO RIGHT:
+    dp[w] = max(dp[w], values[i] + dp[w - weights[i]])
+    → dp[w - weights[i]] might already be UPDATED for item i
+    → We'd be using item i's contribution TWICE → wrong!
+    → This gives the UNBOUNDED knapsack (unlimited use) result
+
+  If we process RIGHT TO LEFT:
+    dp[w] = max(dp[w], values[i] + dp[w - weights[i]])
+    → dp[w - weights[i]] hasn't been updated yet (it's to the LEFT)
+    → We're using the PREVIOUS row's value → correct!
+    → Each item used AT MOST ONCE → 0/1 knapsack ✓
+
+THIS IS THE MOST SUBTLE AND IMPORTANT INSIGHT IN DP SPACE OPTIMIZATION:
+  → Processing direction determines whether items are reused
+  → Right-to-left → 0/1 knapsack (each item once)
+  → Left-to-right → unbounded knapsack (unlimited reuse)
+  → ONE LINE OF CODE difference → completely different problem!</code></pre></div>
+<hr>
+<h2>🛠️ HOW CAN WE SOLVE IT</h2>
+<h3>The Algorithm — All Approaches</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>APPROACH 1: 2D Tabulation (full table)
+</span>  1. Create dp[N+1][W+1] initialized to 0
+  2. For i = 1 to N:
+       For w = 1 to W:
+         if weights[i-1] &gt; w:
+             dp[i][w] = dp[i-1][w]
+         else:
+             dp[i][w] = max(dp[i-1][w], 
+                            values[i-1] + dp[i-1][w - weights[i-1]])
+  3. Return dp[N][W]
+
+APPROACH 2: 1D Space-Optimized (RIGHT TO LEFT)
+  1. Create dp[W+1] initialized to 0
+  2. For i = 0 to N-1:
+       For w = W down to weights[i]:      ← RIGHT TO LEFT!
+         dp[w] = max(dp[w], values[i] + dp[w - weights[i]])
+  3. Return dp[W]
+
+APPROACH 3: Memoization (Top-Down)
+  1. Create memo[N][W+1] initialized to -1
+  2. Define solve(i, w):
+       if i == 0 or w == 0: return 0
+       if memo[i][w] != -1: return memo[i][w]
+       exclude = solve(i-1, w)
+       include = 0
+       if weights[i-1] &lt;= w:
+           include = values[i-1] + solve(i-1, w - weights[i-1])
+       memo[i][w] = max(exclude, include)
+       return memo[i][w]
+  3. Return solve(N, W)</code></pre></div>
+<hr>
+<h2>✅ WHAT SHOULD YOU DO</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ ALWAYS define the state BEFORE writing code
+</span>     → State = (items considered, capacity remaining)
+     → dp[i][w] = best value using items 0..i-1 with capacity w
+     → Write this definition as a comment in your code
+
+→ ALWAYS initialize base cases explicitly
+     → dp[0][w] = 0 for all w (no items → no value)
+     → dp[i][0] = 0 for all i (no capacity → can't take anything)
+     → In Java: int[][] defaults to 0 → base cases are automatic!
+
+→ ALWAYS consider both INCLUDE and EXCLUDE for each item
+     → This is the "0/1" in 0/1 knapsack
+     → 0 = don't take, 1 = take
+     → The recurrence MUST consider both options
+
+→ ALWAYS process RIGHT TO LEFT in 1D optimization
+     → This ensures each item is used at most once
+     → Left-to-right gives unbounded knapsack → different problem
+     → This is the #1 mistake in knapsack space optimization
+
+→ ALWAYS verify with small examples first
+     → Build the full 2D table by hand for a tiny case
+     → Trace through the recurrence cell by cell
+     → Compare against brute force enumeration
+
+→ ALWAYS think about item recovery after computing optimal value
+     → dp[N][W] gives the VALUE but not WHICH items to take
+     → To recover items: backtrack through the 2D table
+     → If dp[i][w] != dp[i-1][w] → item i was included
+     → This requires the FULL 2D table (not space-optimized)</code></pre></div>
+<hr>
+<h2>🚫 WHAT SHOULD YOU NOT DO</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ DO NOT process LEFT TO RIGHT in 1D optimization
+</span>     → Gives unbounded knapsack (items reused)
+     → Correct for DIFFERENT problem (coin change unlimited)
+     → WRONG for 0/1 knapsack
+
+→ DO NOT confuse item indexing
+     → dp uses 1-based items: dp[i] considers items 0..i-1
+     → weights/values arrays are 0-based: weights[i-1], values[i-1]
+     → Off-by-one here → wrong items referenced → wrong answer
+
+→ DO NOT forget the "can't include" case
+     → When weights[i-1] &gt; w → item doesn't fit
+     → dp[i][w] = dp[i-1][w] (forced exclusion)
+     → Forgetting this → array index out of bounds (negative index)
+
+→ DO NOT use 0/1 knapsack when items can be reused
+     → 0/1 = each item used AT MOST ONCE
+     → Unbounded = each item used UNLIMITED times
+     → Different recurrences, different loop directions
+     → Read the problem carefully
+
+→ DO NOT try to recover items from the 1D optimized table
+     → 1D table overwrites previous rows
+     → Cannot trace back which items were included
+     → Need full 2D table for item recovery
+
+→ DO NOT allocate dp[N][W] when W is very large
+     → W = 10^9 → table has 10^9 columns → memory explosion
+     → When W is large but N is small → use bitmask DP or meet-in-middle
+     → Standard knapsack DP works when W is manageable (≤ 10^5 typically)</code></pre></div>
+<hr>
+<h2>🔀 WHEN TO USE THIS PATTERN</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>✓ "Maximize/minimize value subject to a weight/cost constraint"
+</span>✓ "Select items from a set with a budget/capacity limit"
+✓ Each item has a COST (weight) and a BENEFIT (value)
+✓ Each item is either fully taken or not taken (0/1 decision)
+✓ The capacity W is small enough for a DP table (W ≤ ~10^5)
+
+CLASSIC KNAPSACK VARIANTS:
+  → 0/1 Knapsack: each item once → right-to-left 1D
+  → Unbounded Knapsack: each item unlimited → left-to-right 1D
+  → Bounded Knapsack: each item up to K times → binary decomposition
+  → Subset Sum: can we make exact weight W? (value = weight)
+  → Equal Partition: can we split array into two equal-sum halves?
+  → Target Sum: assign +/- to elements to reach target (transformed knapsack)
+
+SIGNATURE PHRASES:
+  → "Maximum value with weight limit"
+  → "Select subset with constraint on total"
+  → "Is it possible to achieve exact sum S?"
+  → "Partition into two equal subsets"
+  → "Minimum number of items to fill capacity"</code></pre></div>
+<hr>
+<h2>🚫 WHEN NOT TO USE THIS PATTERN</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>✗ Capacity W is extremely large (W &gt; 10^6)
+</span>     → DP table has W+1 columns → too much memory
+     → Consider: meet-in-middle (2^(N/2) subsets), branch and bound
+     → Or: if values are small → use value-based DP instead of weight-based
+
+✗ Items can be fractionally taken
+     → Fractional knapsack → GREEDY (sort by value/weight ratio)
+     → Much simpler and faster than DP: O(N log N)
+     → DP is unnecessary for fractional variant
+
+✗ Items have dependencies (take A only if B is taken)
+     → Standard knapsack assumes INDEPENDENT items
+     → Dependencies need tree-based DP or constraint programming
+
+✗ N is very small (N ≤ 20) and W is huge
+     → Enumerate all 2^N subsets directly → O(2^N)
+     → For N=20: 2^20 ≈ 1M → fast
+     → Meet-in-middle for N ≤ 40: O(2^(N/2)) ≈ O(2^20)
+
+✗ You need ALL optimal solutions (not just the value)
+     → DP gives optimal VALUE efficiently
+     → Recovering ONE optimal set: backtrack through table
+     → Recovering ALL optimal sets: potentially exponential → backtracking needed</code></pre></div>
+<hr>
+<h2>⚙️ HOW IT ONLY WORKS — Internal Mechanics</h2>
+<h3>The Include/Exclude Decision — Why It's Optimal</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>For item i with capacity w, we have exactly two choices:
+</span>
+EXCLUDE:
+  → We don't take item i
+  → Our capacity stays at w
+  → Best value = best we could do with items 0..i-2 and capacity w
+  → This is dp[i-1][w]
+
+INCLUDE:
+  → We take item i → gain values[i-1]
+  → Our capacity drops to w - weights[i-1]
+  → Best value = values[i-1] + best with items 0..i-2 and reduced capacity
+  → This is values[i-1] + dp[i-1][w - weights[i-1]]
+
+WE TAKE THE MAXIMUM:
+  dp[i][w] = max(exclude, include)
+
+WHY THIS IS OPTIMAL:
+  → We exhaustively consider BOTH possibilities for each item
+  → We choose whichever gives more value
+  → Since we do this for EVERY item and EVERY capacity...
+  → The final answer dp[N][W] has considered ALL 2^N subsets
+  → But computed it in O(N*W) time instead of O(2^N)
+  → The "trick" is that many subsets lead to the SAME state (i, w)
+  → DP collapses them into a single computation</code></pre></div>
+<h3>2D Table Filling — Cell Dependencies</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>Each cell dp[i][w] depends on:
+</span>  → dp[i-1][w]              (directly above — same column)
+  → dp[i-1][w-weights[i-1]] (above and to the LEFT)
+
+Visually:
+  Row i-1:  ... dp[i-1][w-weight] ... dp[i-1][w] ...
+                      ↘                    ↓
+  Row i:    ...              ...        dp[i][w]  ...
+
+FILLING ORDER:
+  → Row by row, top to bottom (i = 1, 2, ..., N)
+  → Within each row: left to right OR right to left (both work for 2D)
+  → When we compute dp[i][w], dp[i-1][*] is already complete ✓</code></pre></div>
+<h3>1D Optimization — Why Direction Matters</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>1D array dp[0..W], processing item i:
+</span>
+RIGHT-TO-LEFT (w = W down to weights[i]):
+  dp[w] = max(dp[w], values[i] + dp[w - weights[i]])
+
+  When we compute dp[7]:
+    dp[7] = max(dp[7], values[i] + dp[7 - weights[i]])
+    → dp[7 - weights[i]] has NOT been updated for item i yet
+    → It still holds the value from item i-1 (previous row)
+    → We're using dp[i-1][w - weight] → CORRECT for 0/1
+
+  When we later compute dp[3]:
+    dp[3] = max(dp[3], values[i] + dp[3 - weights[i]])
+    → dp[7] WAS updated but dp[3 - weights[i]] hasn't been
+    → Still using previous row values → correct
+
+LEFT-TO-RIGHT (w = weights[i] to W):
+  dp[w] = max(dp[w], values[i] + dp[w - weights[i]])
+
+  When we compute dp[3] (say weights[i] = 3):
+    dp[3] = max(dp[3], values[i] + dp[0]) → updated
+
+  When we later compute dp[6]:
+    dp[6] = max(dp[6], values[i] + dp[3])
+    → dp[3] was ALREADY updated to include item i
+    → dp[3] already used item i → now dp[6] uses item i AGAIN
+    → Item i is used TWICE → WRONG for 0/1 knapsack!
+    → But CORRECT for unbounded knapsack (unlimited reuse)!
+
+ONE DIRECTION CHANGE → COMPLETELY DIFFERENT PROBLEM</code></pre></div>
+<h3>Time and Space Complexity</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>2D TABULATION:
+</span>  → Time: O(N * W) — fill every cell once
+  → Space: O(N * W) — full 2D table
+
+1D OPTIMIZATION:
+  → Time: O(N * W) — same number of operations
+  → Space: O(W) — single row
+
+MEMOIZATION:
+  → Time: O(N * W) — each state computed at most once
+  → Space: O(N * W) for memo table + O(N) recursion stack
+
+COMPARISON WITH BRUTE FORCE:
+  → Brute force: O(2^N)
+  → DP: O(N * W)
+  → When N = 100, W = 1000: DP = 100,000 vs brute = 2^100 ≈ 10^30
+  → DP is astronomically faster
+
+BUT NOTE:
+  → DP complexity is O(N * W) — depends on W
+  → If W = 10^9 → DP is O(N * 10^9) → also too slow
+  → This is called "pseudo-polynomial" — polynomial in W's VALUE, not its BIT LENGTH
+  → Knapsack is actually NP-complete in the general case
+  → DP is efficient only when W is manageable</code></pre></div>
+<h3>Item Recovery — Backtracking Through the Table</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>After filling dp[N][W], we know the OPTIMAL VALUE.
+</span>But WHICH items did we take?
+
+RECOVERY ALGORITHM:
+  Start at dp[N][W]
+  For i = N down to 1:
+    if dp[i][w] != dp[i-1][w]:
+        → Item i was INCLUDED (because value changed)
+        → Record item i-1 (0-based) in result
+        → w = w - weights[i-1] (reduce remaining capacity)
+    else:
+        → Item i was EXCLUDED (value same as without it)
+        → Move to dp[i-1][w]
+
+EXAMPLE: weights=[1,3,4,5], values=[1,4,5,7], W=7, optimal=9
+
+  Start: i=4, w=7, dp[4][7]=9
+    dp[4][7]=9 vs dp[3][7]=9 → same → item 3 EXCLUDED
+  i=3, w=7, dp[3][7]=9
+    dp[3][7]=9 vs dp[2][7]=5 → different → item 2 INCLUDED
+    → w = 7 - 4 = 3
+  i=2, w=3, dp[2][3]=4
+    dp[2][3]=4 vs dp[1][3]=1 → different → item 1 INCLUDED
+    → w = 3 - 3 = 0
+  i=1, w=0, dp[1][0]=0
+    dp[1][0]=0 vs dp[0][0]=0 → same → item 0 EXCLUDED
+
+  Items taken: {1, 2} (0-based) → weights: 3+4=7, values: 4+5=9 ✓</code></pre></div>
+<hr>
+<h2>⚠️ COMMON PITFALLS AND FAILURE MODES</h2>
+<h3>Pitfall 1: Wrong Loop Direction in 1D Optimization</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>THE #1 KNAPSACK MISTAKE:
+</span>
+WRONG (left to right):
+  for (int w = weights[i]; w &lt;= W; w++) {
+      dp[w] = Math.max(dp[w], values[i] + dp[w - weights[i]]);
+  }
+  → Items can be reused → unbounded knapsack → wrong for 0/1!
+
+CORRECT (right to left):
+  for (int w = W; w &gt;= weights[i]; w--) {
+      dp[w] = Math.max(dp[w], values[i] + dp[w - weights[i]]);
+  }
+  → Each item used at most once → 0/1 knapsack ✓
+
+MEMORY AID:
+  → 0/1 knapsack → REVERSE (right to left)
+  → Unbounded knapsack → FORWARD (left to right)
+  → "Zero-one? Reverse the flow!"</code></pre></div>
+<h3>Pitfall 2: Off-by-One Item Indexing</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>dp[i][w] uses items 0..i-1 (i items total)
+</span>weights and values are 0-indexed
+
+WRONG:
+  if (weights[i] &lt;= w)  // when i starts from 1 → index out of bounds!
+      dp[i][w] = max(dp[i-1][w], values[i] + dp[i-1][w - weights[i]]);
+
+CORRECT:
+  if (weights[i-1] &lt;= w)  // i-1 maps dp row i to array index i-1
+      dp[i][w] = max(dp[i-1][w], values[i-1] + dp[i-1][w - weights[i-1]]);
+
+ALTERNATIVE: Use 0-based dp directly
+  dp[i][w] for item index i (0-based)
+  → Need to handle base case differently
+  → 1-based dp is cleaner for knapsack</code></pre></div>
+<h3>Pitfall 3: Not Handling "Item Too Heavy" Case</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>When weights[i-1] &gt; w → item doesn't fit in remaining capacity
+</span>
+WRONG:
+  dp[i][w] = max(dp[i-1][w], values[i-1] + dp[i-1][w - weights[i-1]]);
+  // If weights[i-1] &gt; w → w - weights[i-1] is NEGATIVE → array index error!
+
+CORRECT:
+  if (weights[i-1] &gt; w) {
+      dp[i][w] = dp[i-1][w];  // forced exclusion
+  } else {
+      dp[i][w] = Math.max(dp[i-1][w], values[i-1] + dp[i-1][w - weights[i-1]]);
+  }</code></pre></div>
+<h3>Pitfall 4: Integer Overflow in Value Summation</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>If values are large (up to 10^9) and many items are taken:
+</span>  → Total value can exceed int range
+  → Use long for dp table
+
+For most LeetCode problems:
+  → Values are moderate → int is fine
+  → But ALWAYS check constraints</code></pre></div>
+<h3>Pitfall 5: Confusing 0/1 with Unbounded Knapsack</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>0/1 KNAPSACK (this project):
+</span>  → Each item used AT MOST ONCE
+  → 2D recurrence: dp[i][w] depends on dp[i-1][...]
+  → 1D: process right to left
+
+UNBOUNDED KNAPSACK:
+  → Each item used UNLIMITED times
+  → 2D recurrence: dp[i][w] depends on dp[i][...] (same row!)
+  → 1D: process left to right
+
+EXAMPLE where they differ:
+  weights = [3], values = [5], W = 9
+  
+  0/1: Take item once → value = 5
+  Unbounded: Take item 3 times → value = 15
+  
+  HUGE difference from one loop direction change!</code></pre></div>
+<h3>Pitfall 6: Large W with Small N</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>N = 5 items, W = 10^9
+</span>→ DP table: 5 × 10^9 → 5 billion cells → IMPOSSIBLE
+
+SOLUTIONS:
+  → If N is small (≤ 20): enumerate all 2^N subsets → O(2^20) = 1M
+  → If N is medium (≤ 40): meet-in-middle → O(2^20 * log)
+  → If values are small: DP on values instead of weights
+     → dp[v] = minimum weight to achieve value v
+     → Answer: largest v where dp[v] ≤ W</code></pre></div>
+<hr>
+<h2>📈 SCALABILITY CONSIDERATIONS</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>SCENARIO 1: Small N, small W
+</span>  → N = 20, W = 100
+  → DP: 20 × 100 = 2,000 operations → instant
+  → Brute force also works: 2^20 = 1M → fine
+  → Use DP for cleanliness
+
+SCENARIO 2: Moderate N, moderate W
+  → N = 1000, W = 10,000
+  → DP: 1000 × 10,000 = 10^7 → ~100ms → acceptable
+  → Brute force: 2^1000 → IMPOSSIBLE
+  → DP is the ONLY option
+
+SCENARIO 3: Large N, large W
+  → N = 10,000, W = 100,000
+  → DP: 10^9 → borderline (needs 1D optimization for speed)
+  → 1D array of size 100,001 → 400KB → fine for memory
+  → Time: ~1 second with 1D optimization
+
+SCENARIO 4: Any N, huge W (W &gt; 10^6)
+  → Standard DP fails on memory/time
+  → Need alternative approaches (see "When Not To Use")
+
+MEMORY SCALING:
+  → 2D table: N × W × 4 bytes (int)
+  → N=1000, W=10000 → 40MB → borderline
+  → 1D optimization: W × 4 bytes → 40KB → trivial
+  → ALWAYS use 1D optimization when you don't need item recovery</code></pre></div>
+<hr>
+<h2>🔍 INTERPRETABILITY CONSIDERATIONS</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>MENTAL MODEL — "Packing a Suitcase for a Trip"
+</span>
+→ You're packing for a trip with a WEIGHT LIMIT (capacity W)
+→ You have N items to consider
+→ Each item has a weight and a "happiness value"
+→ You want to MAXIMIZE happiness without exceeding the weight limit
+
+THE DECISION PROCESS:
+  → Go through items one by one
+  → For each item: "Should I pack this?"
+  → If it's too heavy for remaining space → can't pack it
+  → If it fits → COMPARE:
+       → Pack it → gain its value but lose capacity
+       → Skip it → keep capacity for other items
+  → Choose whichever gives MORE total happiness
+
+THE TABLE:
+  → Each cell dp[i][w] answers: "If I've considered items 1..i
+    and have w kg of space left, what's my max happiness?"
+  → The bottom-right cell = final answer
+
+DEBUGGING:
+  → Print the full 2D table for small examples
+  → Verify each cell = max of (cell above, value + cell above-and-left)
+  → Trace item recovery to verify which items were selected
+  → Check: total weight of selected items ≤ W
+  → Check: total value of selected items = dp[N][W]</code></pre></div>
+<hr>
+<div class="github-btn-wrap"><a class="github-btn" href="https://github.com/Shakti4640/leetcode-patterns-guide-java/tree/main/project- (44)" target="_blank" rel="noopener"><svg viewBox="0 0 24 24"><path d="M12 .5C5.37.5 0 5.87 0 12.5c0 5.3 3.44 9.8 8.2 11.39.6.11.82-.26.82-.58v-2.03c-3.34.73-4.04-1.61-4.04-1.61-.55-1.39-1.34-1.76-1.34-1.76-1.09-.74.08-.73.08-.73 1.2.09 1.84 1.24 1.84 1.24 1.07 1.83 2.8 1.3 3.49 1 .1-.78.42-1.3.76-1.6-2.67-.3-5.47-1.33-5.47-5.93 0-1.31.47-2.38 1.24-3.22-.14-.3-.54-1.52.1-3.18 0 0 1.01-.32 3.3 1.23a11.5 11.5 0 0 1 3-.4c1.02 0 2.04.13 3 .4 2.28-1.55 3.29-1.23 3.29-1.23.64 1.66.24 2.88.12 3.18.77.84 1.23 1.91 1.23 3.22 0 4.61-2.81 5.63-5.48 5.92.43.37.81 1.1.81 2.22v3.29c0 .32.21.7.82.58C20.56 22.3 24 17.8 24 12.5 24 5.87 18.63.5 12 .5z"/></svg>💻 View Complete Java Code on GitHub</a></div>
+
+<hr>
+<h2>🔑 EXPECTED OUTPUT</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>╔═══════════════════════════════════════════════════════╗
+</span>║  PROJECT 44: 0/1 Knapsack Problem                     ║
+║  Pattern: DP → 2D State Table → Include/Exclude       ║
+╚═══════════════════════════════════════════════════════╝
+
+═══ TEST 1: Classic Example with 2D Table Trace ═══
+Items:
+  Item 0: weight=1, value=1
+  Item 1: weight=3, value=4
+  Item 2: weight=4, value=5
+  Item 3: weight=5, value=7
+Capacity: 7
+═══════════════════════════════════════════
+      w=0   w=1   w=2   w=3   w=4   w=5   w=6   w=7
+i=0   0     0     0     0     0     0     0     0      (no items)
+i=1   0     1     1     1     1     1     1     1      (+ item 0: w=1,v=1)
+i=2   0     1     1     4     5     5     5     5      (+ item 1: w=3,v=4)
+i=3   0     1     1     4     5     6     6     9      (+ item 2: w=4,v=5)
+i=4   0     1     1     4     5     7     8     9      (+ item 3: w=5,v=7)
+
+OPTIMAL VALUE: 9
+ITEMS TAKEN: item2(w=4,v=5) item1(w=3,v=4)
+TOTAL: weight=7, value=9
+
+═══ TEST 2: 1D Space-Optimized Trace ═══
+1D SPACE-OPTIMIZED TRACE:
+Initial: [0, 0, 0, 0, 0, 0, 0, 0]
+───────────────────────────────────
+Processing item 0 (w=1, v=1) → RIGHT to LEFT:
+  dp[7]: max(0, 1+0=1) = 1 ← UPDATED
+  dp[6]: max(0, 1+0=1) = 1 ← UPDATED
+  dp[5]: max(0, 1+0=1) = 1 ← UPDATED
+  dp[4]: max(0, 1+0=1) = 1 ← UPDATED
+  dp[3]: max(0, 1+0=1) = 1 ← UPDATED
+  dp[2]: max(0, 1+0=1) = 1 ← UPDATED
+  dp[1]: max(0, 1+0=1) = 1 ← UPDATED
+  dp = [0, 1, 1, 1, 1, 1, 1, 1]
+───────────────────────────────────
+Processing item 1 (w=3, v=4) → RIGHT to LEFT:
+  dp[7]: max(1, 4+1=5) = 5 ← UPDATED
+  dp[6]: max(1, 4+1=5) = 5 ← UPDATED
+  dp[5]: max(1, 4+1=5) = 5 ← UPDATED
+  dp[4]: max(1, 4+1=5) = 5 ← UPDATED
+  dp[3]: max(1, 4+0=4) = 4 ← UPDATED
+  dp = [0, 1, 1, 4, 5, 5, 5, 5]
+───────────────────────────────────
+Processing item 2 (w=4, v=5) → RIGHT to LEFT:
+  dp[7]: max(5, 5+4=9) = 9 ← UPDATED
+  dp[6]: max(5, 5+1=6) = 6 ← UPDATED
+  dp[5]: max(5, 5+1=6) = 6 ← UPDATED
+  dp[4]: max(5, 5+0=5) = 5
+  dp = [0, 1, 1, 4, 5, 6, 6, 9]
+───────────────────────────────────
+Processing item 3 (w=5, v=7) → RIGHT to LEFT:
+  dp[7]: max(9, 7+1=8) = 9
+  dp[6]: max(6, 7+1=8) = 8 ← UPDATED
+  dp[5]: max(6, 7+0=7) = 7 ← UPDATED
+  dp = [0, 1, 1, 4, 5, 7, 8, 9]
+═══════════════════════════════════════════
+ANSWER: 9
+
+═══ TEST 3: Verify All Approaches Agree ═══
+┌────────────────────────┬──────┬──────┬──────┬──────┐
+│ Test                   │  2D  │  1D  │ Memo │Brute │
+├────────────────────────┼──────┼──────┼──────┼──────┤
+│ W=[1, 3, 4, 5] Cap=7  │    9 │    9 │    9 │    9 │
+│ W=[2, 2, 3]     Cap=5  │    7 │    7 │    7 │    7 │
+│ W=[5, 10, 15]   Cap=4  │    0 │    0 │    0 │    0 │
+│ W=[2, 3, 4, 5]  Cap=8  │   10 │   10 │   10 │   10 │
+│ W=[1, 2, 3, 4, 5] Cap=8│   27 │   27 │   27 │   27 │
+└────────────────────────┴──────┴──────┴──────┴──────┘
+═══ TEST 5: 0/1 vs Unbounded Knapsack ═══
+Weights: [3, 4, 5]
+Values:  [5, 6, 8]
+Capacity: 12
+0/1 Knapsack (each once):      19
+Unbounded (unlimited reuse):    20
+Difference: 1 (unbounded can reuse best items)
+
+═══ TEST 6: Subset Sum Variant ═══
+Array: [3, 34, 4, 12, 5, 2]
+Can make sum 9?  true
+Can make sum 30? false
+Can make sum 11? true
+
+═══ TEST 7: Equal Partition Variant ═══
+[1, 5, 11, 5] → can partition? true
+[1, 2, 3, 5] → can partition? false
+[1, 2, 3, 4, 5, 6, 7] → can partition? true
+
+═══ TEST 8: Performance Comparison ═══
+N=500 items, W=5000
+  2D Tabulation: 4838 in 18 ms
+  1D Optimized:  4838 in 4 ms
+  Memoization:   4838 in 22 ms
+  All agree: ✓
+  1D speedup vs 2D: 4.5x
+
+═══ TEST 9: Edge Cases ═══
+No items: 0
+Zero capacity: 0
+All too heavy: 0
+Single item fits: 50
+Single item too heavy: 0
+All items fit: 60</code></pre></div>
+<hr>
+<h2>📊 THE KNAPSACK FAMILY — Variants Map</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>┌─────────────────────────┬────────────────────┬──────────────────┬────────────────────┐
+</span>│ Variant                 │ Item Usage         │ 1D Loop Direction│ Recurrence         │
+├─────────────────────────┼────────────────────┼──────────────────┼────────────────────┤
+│ 0/1 Knapsack            │ Each item ONCE     │ RIGHT to LEFT    │ max(excl, incl)    │
+│ (this project)          │                    │                  │ dp[i-1][w-wt]+val  │
+├─────────────────────────┼────────────────────┼──────────────────┼────────────────────┤
+│ Unbounded Knapsack      │ Each item UNLIMITED│ LEFT to RIGHT    │ max(excl, incl)    │
+│                         │                    │                  │ dp[i][w-wt]+val    │
+├─────────────────────────┼────────────────────┼──────────────────┼────────────────────┤
+│ Subset Sum              │ Each element ONCE  │ RIGHT to LEFT    │ dp[w] || dp[w-num] │
+│                         │                    │                  │ (boolean)          │
+├─────────────────────────┼────────────────────┼──────────────────┼────────────────────┤
+│ Equal Partition         │ Each element ONCE  │ RIGHT to LEFT    │ Subset Sum with    │
+│                         │                    │                  │ target = sum/2     │
+├─────────────────────────┼────────────────────┼──────────────────┼────────────────────┤
+│ Coin Change (min coins) │ Each coin UNLIMITED│ LEFT to RIGHT    │ min(dp[w],         │
+│                         │                    │                  │   1+dp[w-coin])    │
+├─────────────────────────┼────────────────────┼──────────────────┼────────────────────┤
+│ Coin Change (count ways)│ Each coin UNLIMITED│ LEFT to RIGHT    │ dp[w] += dp[w-coin]│
+│                         │                    │                  │ (sum for counting) │
+├─────────────────────────┼────────────────────┼──────────────────┼────────────────────┤
+│ Target Sum (+/-)        │ Each element ONCE  │ RIGHT to LEFT    │ Transform to       │
+│                         │                    │                  │ subset sum variant  │
+└─────────────────────────┴────────────────────┴──────────────────┴────────────────────┘
+
+THE UNIVERSAL RULE:
+  → Item used ONCE    → process RIGHT to LEFT (preserve previous row)
+  → Item used UNLIMITED → process LEFT to RIGHT (use current row)
+  
+THE COMBINATION OPERATION:
+  → Counting ways  → SUM (dp[w] += ...)
+  → Maximize value → MAX (dp[w] = max(...))
+  → Minimize cost  → MIN (dp[w] = min(...))
+  → Feasibility    → OR  (dp[w] = dp[w] || ...)</code></pre></div>
+<hr>
+<h2>📊 THE DP PROGRESSION — Projects 43 and 44</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>┌──────────────────────┬─────────────────────┬──────────────────────┐
+</span>│ Aspect               │ Project 43          │ Project 44           │
+│                      │ (Climbing Stairs)   │ (0/1 Knapsack)       │
+├──────────────────────┼─────────────────────┼──────────────────────┤
+│ State dimension      │ 1D (n)              │ 2D (item i, cap w)   │
+│ Table shape          │ 1D array [0..n]     │ 2D grid [0..N][0..W] │
+│ Recurrence type      │ SUM (counting)      │ MAX (optimization)   │
+│ Decision per step    │ Take 1 or 2 steps   │ Include or exclude   │
+│ Dependencies         │ dp[i-1], dp[i-2]    │ dp[i-1][w],          │
+│                      │                     │ dp[i-1][w-weight]    │
+│ Space optimization   │ 2 variables → O(1)  │ 1D array → O(W)     │
+│ Optimization trick   │ Rolling variables   │ Right-to-left loop   │
+│ Base case            │ dp[0]=1, dp[1]=1    │ dp[0][w]=0, dp[i][0]=0│
+│ Time                 │ O(n)                │ O(N*W)               │
+│ Space (optimized)    │ O(1)                │ O(W)                 │
+└──────────────────────┴─────────────────────┴──────────────────────┘
+
+WHAT CHANGED FROM 43 → 44:
+  1. State gained a SECOND dimension (capacity w)
+  2. Recurrence switched from SUM to MAX
+  3. Decision changed from "which step" to "include/exclude"
+  4. Space optimization: rolling 2 variables → rolling 1D array
+  5. Loop direction matters for correctness (right-to-left)
+
+WHAT STAYED THE SAME:
+  1. DP framework: identify → define state → recurrence → base cases → fill
+  2. Memoization and tabulation both work
+  3. Space optimization by observing dependency depth
+  4. Optimal substructure + overlapping subproblems</code></pre></div>
+<hr>
+<h2>🧠 KEY TAKEAWAY</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>WHAT WE LEARNED:
+</span>→ 2D DP extends 1D DP by adding a second state variable
+→ The include/exclude decision is the HEART of knapsack problems
+→ dp[i][w] = max(dp[i-1][w], values[i-1] + dp[i-1][w-weights[i-1]])
+→ Space optimization: 2D → 1D by processing RIGHT TO LEFT
+→ Loop direction determines 0/1 vs unbounded behavior
+→ Item recovery requires the full 2D table (backtrack through it)
+
+THE INCLUDE/EXCLUDE FRAMEWORK:
+→ This decision pattern appears in MANY DP problems:
+     → Knapsack: include or exclude each item
+     → Subset sum: include or exclude each element
+     → LCS (Project 50): characters match → include; don't match → exclude
+     → Edit distance (Project 51): characters match → free; else → choose operation
+→ "At each step, consider ALL options, pick the best"
+→ This IS dynamic programming at its core
+
+THE SPACE OPTIMIZATION INSIGHT:
+→ If dp[i] depends only on dp[i-1]:
+     → Keep only 2 rows (or 1 row with careful loop direction)
+→ RIGHT-TO-LEFT for 0/1 (each item once)
+→ LEFT-TO-RIGHT for unbounded (items reusable)
+→ This ONE insight solves an entire family of problems
+
+PATTERN SIGNATURE:
+→ "Maximize/minimize subject to capacity constraint" ✓
+→ "Each item: take or don't take" ✓
+→ Weight/capacity constraint ✓
+→ = 0/1 KNAPSACK → 2D DP → 1D SPACE OPTIMIZATION</code></pre></div>
+<hr>
+<h2>🌉 BRIDGE TO NEXT PROJECT</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>PROJECT 43 taught us:
+</span>→ 1D DP with simple recurrence (sum of 2 previous)
+→ The DP development workflow
+
+PROJECT 44 taught us:
+→ 2D DP with include/exclude decision
+→ Space optimization via 1D array + loop direction
+→ The knapsack family of problems
+
+PROJECT 45 (Longest Increasing Subsequence) will ask:
+→ What if the DP state is about SEQUENCES, not sums?
+→ Given an array, find the longest subsequence where each element
+     is STRICTLY greater than the previous
+→ Classic DP approach: O(n²) — for each element, check all previous
+→ But there's a BRILLIANT optimization using BINARY SEARCH
+→ DP + Binary Search hybrid → O(n log n)
+
+THE KEY DIFFERENCES:
+  ┌────────────────────┬────────────────────┬─────────────────────┐
+  │ Aspect             │ Project 44         │ Project 45          │
+  │                    │ (Knapsack)         │ (LIS)               │
+  ├────────────────────┼────────────────────┼─────────────────────┤
+  │ State              │ (item, capacity)   │ (position)          │
+  │ Decision           │ Include/exclude    │ Extend which subseq │
+  │ Recurrence         │ MAX over 2 options │ MAX over all prev   │
+  │ Optimization       │ 1D array           │ Binary search!      │
+  │ Time               │ O(N*W)             │ O(N²) → O(N log N)  │
+  │ Pattern fusion     │ Pure DP            │ DP + Binary Search  │
+  └────────────────────┴────────────────────┴─────────────────────┘
+
+THE PROGRESSION:
+  Project 43: 1D DP, trivial recurrence → foundation
+  Project 44: 2D DP, include/exclude → knapsack family
+  Project 45: 1D DP but O(n²) naive → O(n log n) with binary search HYBRID
+  Project 50: 2D DP on TWO strings → string matching
+  Project 51: 2D DP with THREE choices per cell → string transformation
+
+→ Each project reveals a new DIMENSION of DP mastery
+→ Project 45 uniquely combines DP with binary search (Project 9)
+→ This cross-pattern fusion is what separates good from great problem solvers</code></pre></div>
+<hr>
+<p><strong>Ready for Project 45: Longest Increasing Subsequence (DP → DP + Binary Search Hybrid → Patience Sorting)?</strong></p>
+</div>
+</div>
+
+<!-- ========== data-index="23" ========== -->
+<div class="chat-message" data-index="23"></div>
+</div>
+<div class="bottom-nav">
+  <a href="project-43.html" class="nav-btn prev">← Prev</a>
+  <div class="nav-center">
+    <span class="nav-project-label">PROJECT 44 of 60</span>
+    <span class="nav-project-title">0/1 Knapsack Problem</span>
+    <span class="kbd-hint">← → arrow keys to navigate</span>
+  </div>
+  <a href="project-45.html" class="nav-btn next">Next →</a>
+  <a href="index.html" class="nav-btn home">🏠 TOC</a>
+</div>
+<div id="progress-track"><div id="progress-fill"></div></div>
+<div id="progress-pct">0%</div>
+<script src="script.js"></script>
+<script>
+document.addEventListener('keydown', function(e) {
+  if (['INPUT','TEXTAREA'].includes(document.activeElement.tagName)) return;
+  if (e.key === 'ArrowRight' && "project-45.html" !== null) window.location = "project-45.html";
+  if (e.key === 'ArrowLeft' && "project-43.html" !== null) window.location = "project-43.html";
+});
+</script>
+</body>
+</html>

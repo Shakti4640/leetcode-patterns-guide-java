@@ -1,0 +1,756 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PROJECT 49: Jump Game — Can You Reach the End?</title>
+<link rel="icon" type="image/png" href="images/favicon.png">
+<link rel="stylesheet" href="styles.css">
+
+</head>
+<body>
+<div id="progress-bar-container"><div id="progress-bar" style="width:82%"></div></div>
+<div id="progress-label">82%</div>
+<div class="page-wrapper">
+<div class="chat-message"><div class="px-2"><h1>PROJECT 49: Jump Game — Can You Reach the End?</h1>
+<h2>🎯 Greedy → Farthest-Reachable Tracking → Forward Greedy Scan</h2>
+<hr>
+<h2>🧩 THE HYPOTHETICAL PROBLEM</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ You are given an array of NON-NEGATIVE integers
+</span>→ Each element represents the MAXIMUM jump length from that position
+→ You start at index 0
+→ Determine if you can REACH the last index
+
+→ nums[i] = maximum number of steps you can jump FORWARD from index i
+→ You can jump anywhere from 1 to nums[i] steps (not just exactly nums[i])
+→ If nums[i] = 0, you are STUCK at position i (cannot move forward)
+
+Example 1:
+  Input:  nums = [2, 3, 1, 1, 4]
+  Output: true
+  
+  → From index 0: can jump 1 or 2 steps
+  → Jump 1 → index 1: can jump 1, 2, or 3 steps
+  → Jump 2 → index 3: can jump 1 step
+  → Jump 1 → index 4: REACHED THE END ✓
+  
+  OR: index 0 → jump 2 → index 2 → jump 1 → index 3 → jump 1 → index 4 ✓
+
+Example 2:
+  Input:  nums = [3, 2, 1, 0, 4]
+  Output: false
+  
+  → From index 0: can reach indices 1, 2, 3
+  → From index 1: can reach indices 2, 3
+  → From index 2: can reach index 3
+  → From index 3: nums[3] = 0 → STUCK
+  → Index 4 is unreachable from any path
+  → Every path leads to index 3 which is a dead end
+
+Example 3:
+  Input:  nums = [0]
+  Output: true
+  
+  → Already at the last index → trivially reachable
+
+Example 4:
+  Input:  nums = [2, 0, 0]
+  Output: true
+  
+  → From index 0: can jump 2 → directly to index 2 (last index) ✓
+
+Example 5:
+  Input:  nums = [1, 1, 1, 1, 1]
+  Output: true
+  
+  → Hop one step at a time → reach the end
+
+Example 6:
+  Input:  nums = [1, 0, 1, 0]
+  Output: false
+  
+  → From index 0: jump 1 → index 1
+  → From index 1: nums[1] = 0 → STUCK at index 1
+  → Cannot reach index 2 or 3</code></pre></div>
+<hr>
+<h2>🔍 HOW TO APPROACH IT</h2>
+<h3>Step 1 — Recognize the Problem Structure</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ This is an ARRAY problem, not a graph problem
+</span>→ No explicit edges like Project 48 (Union Find)
+→ No explicit dependencies like Project 47 (Topological Sort)
+→ Connectivity is IMPLIED by the array values
+
+→ From each index i, you can reach indices i+1, i+2, ..., i+nums[i]
+→ This is like an IMPLICIT directed graph:
+     → Nodes = array indices
+     → Edges = possible jumps from each index
+→ But building this graph explicitly would be O(n²) edges → wasteful</code></pre></div>
+<h3>Step 2 — Consider Multiple Approaches</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>APPROACH A — BFS/DFS on Implicit Graph:
+</span>  → Treat each index as a node
+  → From index i, explore all reachable indices
+  → Check if last index is visited
+  → Time: O(n²) worst case (each node can reach up to n others)
+  → Space: O(n) for visited array
+  → Works but slow
+
+APPROACH B — Dynamic Programming (Bottom-Up):
+  → dp[i] = can we reach index i from index 0?
+  → dp[0] = true (starting point)
+  → dp[i] = true if ANY dp[j] is true AND j + nums[j] &gt;= i (for j &lt; i)
+  → Answer = dp[n-1]
+  → Time: O(n²) → for each i, scan all previous j
+  → Space: O(n)
+  → Correct but slow — builds on Project 43 (Climbing Stairs) foundation
+
+APPROACH C — Dynamic Programming (Top-Down / Backward):
+  → Start from the last index, work backward
+  → Mark each index as "good" (can reach end) or "bad" (cannot)
+  → dp[n-1] = GOOD
+  → dp[i] = GOOD if any index reachable from i is GOOD
+  → Time: O(n²) worst case
+  → Space: O(n)
+
+APPROACH D — Greedy (Farthest Reachable):
+  → Track the FARTHEST index reachable so far
+  → Scan left to right
+  → At each index i: if i &lt;= farthest → we CAN stand here → update farthest
+  → If farthest &gt;= last index → return true
+  → If i &gt; farthest → stranded → return false
+  → Time: O(n) → single pass
+  → Space: O(1)
+  → OPTIMAL — this is the interview answer
+
+WHY is Greedy sufficient?
+  → We don't need to know the EXACT path
+  → We only need to know IF we can reach the end
+  → The farthest reachable index is the ONLY thing that matters
+  → If we can reach index i, and i + nums[i] extends our reach, that's all we need
+  → No need to track which specific jumps we make</code></pre></div>
+<h3>Step 3 — Understand the Greedy Insight</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>KEY OBSERVATION:
+</span>  → If you can reach index i, then you can reach ALL indices 0 to i
+  → Why? Because from index 0 you can reach some index j ≤ i
+  → From j you can reach some index k ≤ i
+  → The reachable set is always a CONTIGUOUS PREFIX [0, farthest]
+  → It NEVER has gaps
+
+PROOF:
+  → Suppose we can reach index 5 but NOT index 3
+  → To reach index 5, we must pass through some path
+  → That path goes through indices &lt; 5
+  → At some point, a jump goes OVER index 3 (from j to k where j &lt; 3 &lt; k)
+  → But that same jump position j can also jump to 3 (since k &gt; 3, nums[j] ≥ k-j &gt; 3-j)
+  → Contradiction: index 3 IS reachable
+  → Therefore: reachable set is always [0, farthest] — no gaps
+
+THIS MEANS:
+  → We only need to track ONE number: farthest reachable index
+  → No need for arrays, sets, or queues
+  → Pure O(1) space greedy</code></pre></div>
+<h3>Step 4 — Visualize the Greedy Scan</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>nums = [2, 3, 1, 1, 4]
+</span>Goal: reach index 4
+
+Index:    0   1   2   3   4
+Value:    2   3   1   1   4
+
+Step 0: i=0, farthest=0
+  → i(0) &lt;= farthest(0) → can stand here
+  → farthest = max(0, 0+2) = 2
+  → Can reach up to index 2
+
+Step 1: i=1, farthest=2
+  → i(1) &lt;= farthest(2) → can stand here
+  → farthest = max(2, 1+3) = 4
+  → Can reach up to index 4 → that's the last index!
+  → return TRUE
+
+We didn't even need to check indices 2, 3, 4.</code></pre></div>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>nums = [3, 2, 1, 0, 4]
+</span>Goal: reach index 4
+
+Index:    0   1   2   3   4
+Value:    3   2   1   0   4
+
+Step 0: i=0, farthest=0
+  → i(0) &lt;= farthest(0) → can stand here
+  → farthest = max(0, 0+3) = 3
+
+Step 1: i=1, farthest=3
+  → i(1) &lt;= farthest(3) → can stand here
+  → farthest = max(3, 1+2) = 3 (no improvement)
+
+Step 2: i=2, farthest=3
+  → i(2) &lt;= farthest(3) → can stand here
+  → farthest = max(3, 2+1) = 3 (no improvement)
+
+Step 3: i=3, farthest=3
+  → i(3) &lt;= farthest(3) → can stand here
+  → farthest = max(3, 3+0) = 3 (STUCK — 0 jump)
+
+Step 4: i=4, farthest=3
+  → i(4) &gt; farthest(3) → CANNOT stand here → STRANDED
+  → return FALSE</code></pre></div>
+<h3>Step 5 — Connect to Previous Greedy Knowledge</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>Project 19 (Activity Selection):
+</span>  → Greedy choice: always pick the meeting that ends earliest
+  → Local optimal = global optimal
+  → Proof: exchange argument
+
+Project 49 (Jump Game):
+  → Greedy choice: always track the farthest reachable index
+  → Local optimal = global optimal
+  → Proof: reachable set is contiguous → farthest is sufficient
+
+COMMON GREEDY TRAITS:
+  → Make one simple local decision at each step
+  → Never backtrack or reconsider
+  → Single pass through the data
+  → O(n) time, O(1) space
+  → Correctness requires a PROOF (not obvious)</code></pre></div>
+<hr>
+<h2>🛠️ HOW CAN WE SOLVE IT</h2>
+<h3>The Greedy Algorithm — Step by Step</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>1. Initialize farthest = 0
+</span>2. FOR i = 0 to n-1:
+     a. IF i &gt; farthest → cannot reach index i → return FALSE
+     b. farthest = max(farthest, i + nums[i])
+     c. IF farthest &gt;= n-1 → can reach last index → return TRUE
+3. Return TRUE (loop completed → last index reachable)</code></pre></div>
+<h3>Why the Early Exit in Step 2c?</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ Once farthest &gt;= n-1, we KNOW the end is reachable
+</span>→ No need to continue scanning
+→ This is an OPTIMIZATION, not a correctness requirement
+→ Without it, the algorithm still works — just does unnecessary iterations
+→ With it: best case O(1) (if nums[0] &gt;= n-1)</code></pre></div>
+<hr>
+<h2>✅ WHAT SHOULD YOU DO</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ ALWAYS check i &gt; farthest BEFORE updating farthest
+</span>     → If you can't reach index i, you can't use nums[i]
+     → Order matters: check accessibility first, then extend reach
+
+→ ALWAYS use max(farthest, i + nums[i]) for the update
+     → i + nums[i] = farthest index reachable FROM index i
+     → We keep the MAXIMUM across all reachable indices
+     → A previous index might have given a farther reach than current
+
+→ ALWAYS handle the single-element case
+     → nums = [0] → already at last index → return true
+     → nums = [X] for any X → already at last index → return true
+
+→ CONSIDER early termination
+     → If farthest &gt;= n-1 at any point → return true immediately
+     → Saves unnecessary iterations in best case
+
+→ CONSIDER the DP approach for understanding
+     → Implement DP first to verify correctness
+     → Then optimize to greedy
+     → This builds the intuition bridge from Project 43</code></pre></div>
+<hr>
+<h2>🚫 WHAT SHOULD YOU NOT DO</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ DO NOT try to find the actual PATH
+</span>     → This problem asks BOOLEAN: can you reach the end?
+     → Finding the actual path is a different (harder) problem
+     → Greedy gives yes/no, not the sequence of jumps
+
+→ DO NOT build an explicit graph
+     → Creating adjacency list from jump possibilities = O(n²) edges
+     → Then BFS/DFS on that graph = O(n²) time
+     → Greedy does it in O(n) without any graph
+
+→ DO NOT use recursion without memoization
+     → Naive recursion: "can I reach end from index 0?"
+       → Try each possible jump, recurse
+     → Exponential time without memoization
+     → Even with memoization → O(n²) → still worse than greedy
+
+→ DO NOT confuse "maximum jump" with "exact jump"
+     → nums[i] = 3 means you can jump 1, 2, OR 3 steps
+     → NOT that you MUST jump exactly 3 steps
+     → This is why the farthest reachable approach works
+     → Every index between current and current+nums[i] is reachable
+
+→ DO NOT update farthest for unreachable indices
+     → If i &gt; farthest, index i is unreachable
+     → nums[i] is irrelevant — you can't stand there to jump
+     → Updating farthest with unreachable index = WRONG answer
+
+→ DO NOT use Union Find or Topological Sort
+     → This is an array problem, not a graph connectivity problem
+     → No undirected edges → Union Find doesn't apply (Project 48)
+     → No dependencies → Topological Sort doesn't apply (Project 47)
+     → Greedy is the right tool here</code></pre></div>
+<hr>
+<h2>🔀 WHEN TO USE THIS PATTERN</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>✓ You need to determine REACHABILITY in an array
+</span>✓ Each position defines a RANGE of forward movement
+✓ The reachable set is CONTIGUOUS (no gaps)
+✓ You only need a YES/NO answer (not the actual path)
+✓ A single forward scan can capture all necessary information
+✓ The problem has OPTIMAL SUBSTRUCTURE and GREEDY CHOICE property
+
+VARIANTS OF THIS PATTERN:
+  → Jump Game I: Can you reach the end? (this project)
+  → Jump Game II: Minimum jumps to reach the end (BFS-like greedy)
+  → Jump Game III: Can you reach index with value 0? (BFS — bidirectional)
+  → Jump Game IV: Min jumps with equal-value teleportation (BFS)
+
+REAL-WORLD ANALOGS:
+  → Can a car with fuel at each station reach the destination?
+  → Can a signal propagate through a network of repeaters?
+  → Can a project be completed given resource ranges at each stage?
+  → Can a character cross a platformer level given jump abilities?</code></pre></div>
+<hr>
+<h2>🚫 WHEN NOT TO USE THIS PATTERN</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>✗ You need the ACTUAL PATH (not just reachability)
+</span>     → Greedy tracks farthest reach, not the jump sequence
+     → For the path → use DP with backtracking or BFS with parent tracking
+
+✗ You need MINIMUM number of jumps
+     → That's Jump Game II → BFS-like greedy with level counting
+     → Different algorithm (though related)
+
+✗ Jumps can go BACKWARD
+     → Farthest-reachable greedy assumes FORWARD-only movement
+     → Backward jumps break the contiguous reachable set property
+     → Need BFS/DFS for bidirectional jump problems
+
+✗ Reachable set is NOT contiguous
+     → If you can reach index 5 but not index 3 → gaps exist
+     → Greedy farthest-reach assumes no gaps
+     → Need full BFS/DFS for gap-prone reachability
+
+✗ The cost of jumping matters (weighted jumps)
+     → Greedy doesn't account for jump costs
+     → Need DP or Dijkstra for weighted optimization</code></pre></div>
+<hr>
+<h2>⚙️ HOW IT ONLY WORKS — Internal Mechanics</h2>
+<h3>The Farthest-Reachable Invariant</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>INVARIANT:
+</span>  After processing index i, 'farthest' equals the maximum index
+  reachable from any index in [0, i] that is itself reachable from index 0.
+
+FORMALLY:
+  farthest = max(j + nums[j]) for all j in [0, i] where j is reachable
+
+INITIALIZATION:
+  Before processing: farthest = 0 (only index 0 is reachable)
+
+MAINTENANCE:
+  At index i:
+    → If i &gt; farthest: index i is unreachable → stop (invariant preserved trivially)
+    → If i &lt;= farthest: index i IS reachable → update farthest = max(farthest, i + nums[i])
+    → This correctly extends the reach using index i's jump ability
+
+TERMINATION:
+  → If farthest &gt;= n-1 at any point → last index reachable → return true
+  → If we reach an index i where i &gt; farthest → stranded → return false
+  → If loop completes → farthest &gt;= n-1 (otherwise would have returned false)</code></pre></div>
+<h3>Why Contiguity is the Key Insight</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>CLAIM: The set of reachable indices from index 0 is always [0, farthest]
+</span>
+PROOF BY INDUCTION:
+
+Base: Only index 0 is reachable → reachable set = [0, 0] ✓
+
+Inductive step: 
+  Assume reachable set at some point is [0, k]
+  Consider any index j in [0, k]
+  From j, we can reach j+1, j+2, ..., j+nums[j]
+  The new reachable set includes all these indices
+  Since j is in [0, k], and we can reach j+1 to j+nums[j]:
+    → All indices from 0 to max(k, j+nums[j]) are reachable
+    → This is still a contiguous range [0, new_farthest]
+
+Therefore: reachable set is ALWAYS a contiguous prefix [0, farthest]
+
+CONSEQUENCE:
+  → We ONLY need to track the right boundary (farthest)
+  → Everything to the left of farthest is automatically reachable
+  → This reduces the problem to tracking a single integer</code></pre></div>
+<h3>Why Greedy Beats DP Here</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>DP APPROACH (from Project 43 foundation):
+</span>  dp[i] = can index i be reached?
+  dp[0] = true
+  dp[i] = true if EXISTS j &lt; i such that dp[j] == true AND j + nums[j] &gt;= i
+
+  → For each i, we scan ALL previous j → O(n) per index → O(n²) total
+  → We're doing REDUNDANT work: checking many j values
+
+GREEDY APPROACH:
+  → Instead of asking "can I reach index i?"
+  → Ask "what's the FARTHEST I can reach overall?"
+  → If farthest &gt;= i → yes, I can reach index i
+  → This collapses the inner loop to a single comparison
+
+  → DP: O(n²) time, O(n) space
+  → Greedy: O(n) time, O(1) space
+  → Greedy wins by exploiting the contiguity property</code></pre></div>
+<h3>Greedy Correctness Proof</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>THEOREM: The greedy algorithm returns TRUE if and only if
+</span>         the last index is reachable from index 0.
+
+PROOF (⟹ direction — if greedy returns TRUE, then end is reachable):
+  → Greedy returns true when farthest &gt;= n-1
+  → farthest = max(j + nums[j]) for reachable j
+  → If farthest &gt;= n-1, then some reachable index j has j + nums[j] &gt;= n-1
+  → From j, we can jump to index n-1 → end is reachable ✓
+
+PROOF (⟸ direction — if end is reachable, greedy returns TRUE):
+  → Suppose there exists a path: 0 = p₀, p₁, p₂, ..., pₖ = n-1
+  → At index p₀=0: farthest &gt;= 0+nums[0] &gt;= p₁ (since p₁ is reachable from 0)
+  → At index p₁: p₁ &lt;= farthest → we process it → farthest &gt;= p₁+nums[p₁] &gt;= p₂
+  → By induction: at each pᵢ, farthest &gt;= pᵢ₊₁
+  → At pₖ₋₁: farthest &gt;= pₖ = n-1 → greedy returns true ✓</code></pre></div>
+<h3>Time Complexity</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ Single pass through the array: O(n)
+</span>→ Each index: O(1) work (comparison, max, comparison)
+→ TOTAL: O(n)
+
+→ Best case: O(1) if nums[0] &gt;= n-1 (jump directly to end)
+→ Worst case: O(n) full scan
+→ Average case: O(n)</code></pre></div>
+<h3>Space Complexity</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ One integer variable: farthest
+</span>→ No arrays, no data structures
+→ TOTAL: O(1)</code></pre></div>
+<hr>
+<h2>⚠️ COMMON PITFALLS AND FAILURE MODES</h2>
+<h3>Pitfall 1: Not Checking Reachability Before Updating</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>WRONG:
+</span>  for (int i = 0; i &lt; n; i++) {
+      farthest = Math.max(farthest, i + nums[i]);  // ← always update
+  }
+  return farthest &gt;= n - 1;
+
+→ This updates farthest even for UNREACHABLE indices
+→ nums = [1, 0, 5] → index 2 is unreachable (stuck at 1)
+→ But wrong code computes farthest = max(1, 2+5) = 7 → returns true
+→ WRONG! Correct answer is false
+
+RIGHT:
+  for (int i = 0; i &lt; n; i++) {
+      if (i &gt; farthest) return false;               // ← check FIRST
+      farthest = Math.max(farthest, i + nums[i]);
+  }
+  return true;</code></pre></div>
+<h3>Pitfall 2: Off-by-One in Loop Bound</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>OPTION A — Loop to n-1 (inclusive):
+</span>  for (int i = 0; i &lt; n; i++) { ... }
+  → Checks all indices including the last
+  → Works correctly (if we reach last index, farthest &gt;= n-1)
+
+OPTION B — Loop to n-2 (exclusive of last):
+  for (int i = 0; i &lt; n - 1; i++) { ... }
+  → Doesn't process last index
+  → If farthest &gt;= n-1 after this loop → return true
+  → This is also correct because:
+       → We only need to REACH the last index, not jump FROM it
+       → nums[n-1] doesn't matter — we're already there
+  → Slightly cleaner — avoids checking i &gt; farthest for the last index
+
+BOTH are correct — choose one and be consistent</code></pre></div>
+<h3>Pitfall 3: Single Element Array</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>nums = [0]
+</span>→ n = 1 → last index = 0 → already there
+→ farthest = 0 → 0 &gt;= 0 → return true ✓
+
+→ The loop doesn't even execute if we use i &lt; n-1
+→ Or executes once and returns true if we use i &lt; n
+→ Either way: correct
+
+→ EDGE CASE: always verify single-element arrays</code></pre></div>
+<h3>Pitfall 4: Array of All Zeros</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>nums = [0, 0, 0, 0]
+</span>→ i=0: farthest = max(0, 0+0) = 0
+→ i=1: i(1) &gt; farthest(0) → return FALSE ✓
+
+nums = [0]
+→ Already at end → return TRUE ✓
+
+→ All zeros except possibly the first → can never move → false (unless n=1)</code></pre></div>
+<h3>Pitfall 5: Confusing with Jump Game II (Minimum Jumps)</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>Jump Game I (this problem):
+</span>  → CAN you reach the end? → YES/NO → Greedy farthest tracking
+  → O(n) time, O(1) space
+
+Jump Game II (different problem):
+  → MINIMUM number of jumps to reach the end
+  → Need to count "levels" of BFS-like expansion
+  → Still greedy but with additional tracking (currentEnd, jumps)
+  → O(n) time, O(1) space but more complex logic
+
+→ Don't mix up the two — different questions, different algorithms</code></pre></div>
+<hr>
+<h2>📈 SCALABILITY CONSIDERATIONS</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>n = array length
+</span>
+→ n = 100 → O(100) → instant
+→ n = 100,000 → O(100,000) → instant
+→ n = 10,000,000 → O(10,000,000) → fast (~100ms)
+→ n = 1,000,000,000 → O(10^9) → borderline (memory for array is the issue)
+
+→ Greedy is the MOST SCALABLE approach for this problem
+→ Single pass, no extra memory, no recursion
+→ Limited only by the array size itself
+
+COMPARISON:
+  → BFS/DFS on implicit graph: O(n²) → fails at n &gt; 10,000
+  → DP: O(n²) → fails at n &gt; 10,000
+  → Greedy: O(n) → handles n up to 10^8+ easily</code></pre></div>
+<hr>
+<h2>🔍 INTERPRETABILITY CONSIDERATIONS</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>Greedy Approach — Mental Model:
+</span>  → "Imagine walking along a number line"
+  → "At each position, you can see how far ahead you could jump"
+  → "You keep track of the FARTHEST point you could possibly reach"
+  → "As you walk forward, if you're still within reachable range, keep going"
+  → "If you ever step beyond the farthest reachable point — you're stranded"
+  → "If the farthest point covers the end — you can make it"
+
+Alternative Mental Model — Fuel Tank:
+  → "Imagine a car that starts with fuel = nums[0]"
+  → "At each step forward, fuel decreases by 1"
+  → "At each gas station (index), you can REFUEL up to nums[i]"
+  → "You take max(current_fuel, nums[i]) — the better option"
+  → "If fuel ever hits 0 before the end — stranded"
+  → "This is equivalent to the farthest-reachable approach"
+
+Interview Explanation:
+  → "I scan left to right, tracking the farthest reachable index"
+  → "At each index, if it's within reach, I update the farthest"
+  → "If the farthest ever covers the last index, I return true"
+  → "If I encounter an index beyond reach, I return false"
+  → "Time: O(n), Space: O(1)"</code></pre></div>
+<hr>
+<div class="github-btn-wrap"><a class="github-btn" href="https://github.com/Shakti4640/leetcode-patterns-guide-java/tree/main/project- (49)" target="_blank" rel="noopener"><svg viewBox="0 0 24 24"><path d="M12 .5C5.37.5 0 5.87 0 12.5c0 5.3 3.44 9.8 8.2 11.39.6.11.82-.26.82-.58v-2.03c-3.34.73-4.04-1.61-4.04-1.61-.55-1.39-1.34-1.76-1.34-1.76-1.09-.74.08-.73.08-.73 1.2.09 1.84 1.24 1.84 1.24 1.07 1.83 2.8 1.3 3.49 1 .1-.78.42-1.3.76-1.6-2.67-.3-5.47-1.33-5.47-5.93 0-1.31.47-2.38 1.24-3.22-.14-.3-.54-1.52.1-3.18 0 0 1.01-.32 3.3 1.23a11.5 11.5 0 0 1 3-.4c1.02 0 2.04.13 3 .4 2.28-1.55 3.29-1.23 3.29-1.23.64 1.66.24 2.88.12 3.18.77.84 1.23 1.91 1.23 3.22 0 4.61-2.81 5.63-5.48 5.92.43.37.81 1.1.81 2.22v3.29c0 .32.21.7.82.58C20.56 22.3 24 17.8 24 12.5 24 5.87 18.63.5 12 .5z"/></svg>💻 View Complete Java Code on GitHub</a></div>
+
+<hr>
+<h2>🔑 EXPECTED OUTPUT</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>╔══════════════════════════════════════════════════╗
+</span>║  PROJECT 49: Jump Game — Can You Reach the End?  ║
+║  Pattern: Greedy → Farthest Reachable Tracking   ║
+╚══════════════════════════════════════════════════╝
+
+═══ TEST 1: Reachable ═══
+Array: [2, 3, 1, 1, 4]
+Goal:  Reach index 4
+
+Index:  0   1   2   3   4   
+Value:  2   3   1   1   4   
+Reach:  →2  →4  →3  →4  →4  
+
+─── Greedy Scan ───
+Step 0:
+  i=0  farthest=0  nums[0]=2
+  → Reachable! Extend farthest: 0 → 2
+  → Reachable range: [0...2]
+
+Step 1:
+  i=1  farthest=2  nums[1]=3
+  → Reachable! Extend farthest: 2 → 4
+  → Reachable range: [0...4]
+  → farthest(4) &gt;= last(4) → REACHED THE END!
+
+═══ ANSWER: TRUE — Can reach the end ═══
+
+═══ TEST 2: Not Reachable (Stuck at zero) ═══
+Array: [3, 2, 1, 0, 4]
+Goal:  Reach index 4
+
+Index:  0   1   2   3   4   
+Value:  3   2   1   0   4   
+Reach:  →3  →3  →3  →3  →4  
+
+─── Greedy Scan ───
+Step 0:
+  i=0  farthest=0  nums[0]=3
+  → Reachable! Extend farthest: 0 → 3
+  → Reachable range: [0...3]
+
+Step 1:
+  i=1  farthest=3  nums[1]=2
+  → Reachable! Farthest unchanged: 3
+  → Reachable range: [0...3]
+
+Step 2:
+  i=2  farthest=3  nums[2]=1
+  → Reachable! Farthest unchanged: 3
+  → Reachable range: [0...3]
+
+Step 3:
+  i=3  farthest=3  nums[3]=0
+  → Reachable! Farthest unchanged: 3
+  → Reachable range: [0...3]
+
+Step 4:
+  i=4  farthest=3  nums[4]=4
+  → i(4) &gt; farthest(3) → STRANDED!
+
+═══ ANSWER: FALSE — Cannot reach the end ═══
+
+═══ TEST 8: Fuel Tank Model ═══
+Array: [2, 3, 1, 1, 4]
+Fuel Tank Model: start with 0 fuel
+
+Index 0: station offers 2 fuel, had 0 → take max → fuel=2
+  → Move forward → fuel=1
+Index 1: station offers 3 fuel, had 1 → take max → fuel=3
+  → Move forward → fuel=2
+Index 2: station offers 1 fuel, had 2 → take max → fuel=2
+  → Move forward → fuel=1
+Index 3: station offers 1 fuel, had 1 → take max → fuel=1
+  → Move forward → fuel=0
+Arrived at index 4! ANSWER: TRUE
+
+Array: [3, 2, 1, 0, 4]
+Fuel Tank Model: start with 0 fuel
+
+Index 0: station offers 3 fuel, had 0 → take max → fuel=3
+  → Move forward → fuel=2
+Index 1: station offers 2 fuel, had 2 → take max → fuel=2
+  → Move forward → fuel=1
+Index 2: station offers 1 fuel, had 1 → take max → fuel=1
+  → Move forward → fuel=0
+Index 3: station offers 0 fuel, had 0 → take max → fuel=0
+  → OUT OF FUEL! Stranded at index 3
+  → ANSWER: FALSE
+
+═══ TEST 9: Cross-Verification (All Approaches) ═══
+  Test 1:  [2,3,1,1,4]       → Greedy=true   Fuel=true   DP=true   ✓
+  Test 2:  [3,2,1,0,4]       → Greedy=false  Fuel=false  DP=false  ✓
+  Test 3:  [0]               → Greedy=true   Fuel=true   DP=true   ✓
+  Test 4:  [5,0,0,0,0]       → Greedy=true   Fuel=true   DP=true   ✓
+  Test 5:  [1,1,1,1,1]       → Greedy=true   Fuel=true   DP=true   ✓
+  Test 6:  [1,0,1,0]         → Greedy=false  Fuel=false  DP=false  ✓
+  Test 7:  [2,0,0]           → Greedy=true   Fuel=true   DP=true   ✓
+  Test 8:  [2,0,1,0,1]       → Greedy=true   Fuel=true   DP=true   ✓
+  Test 9:  [1,2,3]           → Greedy=true   Fuel=true   DP=true   ✓
+  Test 10: [0,1]             → Greedy=false  Fuel=false  DP=false  ✓
+  Test 11: [3,0,8,2,0,0,1]   → Greedy=true   Fuel=true   DP=true   ✓
+  Test 12: [2,5,0,0]         → Greedy=true   Fuel=true   DP=true   ✓
+
+═══ TEST 10: Jump Game II — Minimum Jumps ═══
+  [2,3,1,1,4] → min jumps = 2
+  [2,3,0,1,4] → min jumps = 2
+  [1,1,1,1,1] → min jumps = 4
+  [5,0,0,0,0] → min jumps = 1
+  [1,2,1,1,1] → min jumps = 3</code></pre></div>
+<hr>
+<h2>🧠 COMPARISON: Greedy Problems Encountered</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>┌────────────────────────────┬──────────────────────────┬───────────────┬─────────┐
+</span>│ Problem                    │ Greedy Choice            │ Sort Needed?  │ Project │
+├────────────────────────────┼──────────────────────────┼───────────────┼─────────┤
+│ Activity Selection         │ Pick earliest ending     │ Yes (by end)  │ 19      │
+│ Jump Game I (Reachability) │ Track farthest reachable │ No (scan L→R) │ 49 (now)│
+│ Task Scheduler (upcoming)  │ Fill most frequent first │ Yes (by freq) │ 60      │
+└────────────────────────────┴──────────────────────────┴───────────────┴─────────┘
+
+COMMON TRAITS OF GREEDY PROBLEMS:
+  → One simple metric captures everything (end time, farthest reach, frequency)
+  → Local decision = global optimal (provable by exchange argument)
+  → Single pass through data
+  → O(n) or O(n log n) time, O(1) space
+  → Correctness is NOT obvious → requires proof/intuition</code></pre></div>
+<hr>
+<h2>🧠 COMPARISON: Reachability Approaches</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>┌──────────────────────┬──────────┬───────────┬──────────────────────────────┐
+</span>│ Approach             │ Time     │ Space     │ When to Use                  │
+├──────────────────────┼──────────┼───────────┼──────────────────────────────┤
+│ Greedy (farthest)    │ O(n)     │ O(1)      │ Forward-only, yes/no answer  │
+│ DP (bottom-up)       │ O(n²)    │ O(n)      │ Need to know reachability    │
+│                      │          │           │ at every index               │
+│ DP (backward)        │ O(n²)    │ O(n)      │ Need good/bad classification │
+│ BFS on implicit graph│ O(n²)    │ O(n)      │ Need actual path             │
+│ Union Find           │ N/A      │ N/A       │ Wrong tool for this problem  │
+│ Topological Sort     │ N/A      │ N/A       │ Wrong tool for this problem  │
+└──────────────────────┴──────────┴───────────┴──────────────────────────────┘</code></pre></div>
+<hr>
+<h2>🧠 KEY TAKEAWAY</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>WHAT WE LEARNED:
+</span>→ Array reachability can be solved with a SINGLE INTEGER (farthest)
+→ The contiguity property (no gaps in reachable set) enables greedy
+→ Greedy reduces O(n²) DP to O(n) single pass
+→ Two equivalent mental models: farthest-reachable and fuel-tank
+→ Early termination in both directions: success AND failure
+→ Greedy correctness requires PROOF — not intuition alone
+
+THE CORE MENTAL MODEL:
+→ "Scan left to right"
+→ "At each step, can I stand here? (i &lt;= farthest)"
+→ "If yes, extend my reach (farthest = max(farthest, i + nums[i]))"
+→ "If no, I'm stranded (return false)"
+→ "If reach covers the end (farthest &gt;= n-1), I'm done (return true)"
+
+PATTERN SIGNATURE:
+→ Array of forward-jump capacities ✓
+→ Reachability question (yes/no) ✓
+→ Contiguous reachable set ✓
+→ No backward movement ✓
+→ = GREEDY FARTHEST-REACHABLE TRACKING
+
+THE GREEDY-DP CONNECTION:
+  Project 43: DP → Climbing Stairs → overlapping subproblems → O(n)
+  Project 44: DP → 0/1 Knapsack → include/exclude → O(n×W)
+  Project 49: Greedy → Jump Game → contiguity insight → O(n)
+  
+  → DP is the GENERAL tool → always works
+  → Greedy is the SPECIALIZED tool → works when structure allows
+  → Recognizing when greedy suffices = the key skill</code></pre></div>
+<hr>
+<h2>🌉 BRIDGE TO NEXT PROJECT</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>PROJECT 49 taught us:
+</span>→ Greedy forward scan on arrays
+→ Single metric (farthest reachable) captures the problem
+→ O(n) time, O(1) space — optimal for reachability
+
+PROJECT 50 (Longest Common Subsequence — Dynamic Programming) will ask:
+→ What if greedy DOESN'T work?
+→ "Given two strings, find the longest common subsequence"
+→ Greedy fails because choosing the first match greedily
+  can block better matches later
+→ We MUST consider all possibilities → DP is required
+→ This is a 2D DP problem: dp[i][j] = LCS of first i chars and first j chars
+→ Builds on Project 44 (0/1 Knapsack) which introduced 2D DP tables
+
+The progression through PHASE 5:
+  Project 50: DP → 2D string matching → LCS
+  Project 51: DP → 2D string transformation → Edit Distance
+  Project 52: DP → String partitioning → Word Break
+  
+→ From GREEDY (when structure allows shortcuts)
+  to DP (when ALL possibilities must be considered)
+→ From ARRAYS (1D scan)
+  to STRINGS (2D table)
+→ The ultimate test: knowing WHEN greedy works and WHEN DP is needed</code></pre></div>
+<hr>
+<p><strong>Ready for Project 50: Longest Common Subsequence (Dynamic Programming → 2D String Matching Table → Diagonal Transition)?</strong></p>
+</div>
+</div>
+
+<!-- ========== data-index="15" ========== -->
+<div class="chat-message" data-index="15"></div>
+</div>
+<div class="bottom-nav">
+  <a href="project-48.html" class="nav-btn prev">← Prev</a>
+  <div class="nav-center">
+    <span class="nav-project-label">PROJECT 49 of 60</span>
+    <span class="nav-project-title">Jump Game — Can You Reach the End?</span>
+    <span class="kbd-hint">← → arrow keys to navigate</span>
+  </div>
+  <a href="project-50.html" class="nav-btn next">Next →</a>
+  <a href="index.html" class="nav-btn home">🏠 TOC</a>
+</div>
+<div id="progress-track"><div id="progress-fill"></div></div>
+<div id="progress-pct">0%</div>
+<script src="script.js"></script>
+<script>
+document.addEventListener('keydown', function(e) {
+  if (['INPUT','TEXTAREA'].includes(document.activeElement.tagName)) return;
+  if (e.key === 'ArrowRight' && "project-50.html" !== null) window.location = "project-50.html";
+  if (e.key === 'ArrowLeft' && "project-48.html" !== null) window.location = "project-48.html";
+});
+</script>
+</body>
+</html>

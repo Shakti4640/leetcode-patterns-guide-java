@@ -1,0 +1,893 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PROJECT 48: Number of Connected Components in Graph</title>
+<link rel="icon" type="image/png" href="images/favicon.png">
+<link rel="stylesheet" href="styles.css">
+
+</head>
+<body>
+<div id="progress-bar-container"><div id="progress-bar" style="width:80%"></div></div>
+<div id="progress-label">80%</div>
+<div class="page-wrapper">
+<div class="chat-message"><div class="px-2"><h1>PROJECT 48: Number of Connected Components in Graph</h1>
+<h2>🎯 Union Find → Parent Array → Find with Path Compression → Union by Rank</h2>
+<hr>
+<h2>🧩 THE HYPOTHETICAL PROBLEM</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ You are given N nodes labeled 0 to N-1
+</span>→ You are given a list of UNDIRECTED edges
+→ edges[i] = [a, b] means node a and node b are connected
+→ Find the NUMBER OF CONNECTED COMPONENTS
+
+→ A connected component = a group of nodes where every node
+  can reach every other node through some path of edges
+
+Example 1:
+  n = 5
+  edges = [[0,1], [1,2], [3,4]]
+  
+  Groups:
+    {0, 1, 2} → connected via 0-1 and 1-2
+    {3, 4}    → connected via 3-4
+  
+  Answer: 2 components
+
+Example 2:
+  n = 5
+  edges = [[0,1], [1,2], [2,3], [3,4]]
+  
+  Groups:
+    {0, 1, 2, 3, 4} → all connected in a chain
+  
+  Answer: 1 component
+
+Example 3:
+  n = 4
+  edges = []
+  
+  Groups:
+    {0}, {1}, {2}, {3} → no edges → every node is its own component
+  
+  Answer: 4 components
+
+Example 4:
+  n = 5
+  edges = [[0,1], [2,3], [0,2]]
+  
+  Initially: {0,1} and {2,3}
+  Edge [0,2] MERGES them: {0,1,2,3}
+  Node 4 remains alone: {4}
+  
+  Answer: 2 components</code></pre></div>
+<hr>
+<h2>🔍 HOW TO APPROACH IT</h2>
+<h3>Step 1 — Recognize This is an UNDIRECTED Graph Problem</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>PROJECT 47 (Course Schedule):
+</span>  → DIRECTED edges: prerequisite → course (one-way)
+  → Question: "Is there a valid ordering?" → Topological Sort
+  → Cycle detection = "can all nodes be processed?"
+
+THIS Problem:
+  → UNDIRECTED edges: a — b (both ways)
+  → Question: "How many separate groups exist?"
+  → No ordering needed → no topological sort
+  → No direction → no in-degrees
+
+KEY DIFFERENCE:
+  → Directed graph → ordering/dependency → Kahn's BFS (Project 47)
+  → Undirected graph → grouping/connectivity → Union Find (this project)</code></pre></div>
+<h3>Step 2 — Consider Simpler Approaches First</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>APPROACH A — BFS/DFS from Each Unvisited Node:
+</span>  → Start from node 0 → BFS/DFS to find all reachable nodes → that's component 1
+  → Find next unvisited node → BFS/DFS again → component 2
+  → Repeat until all nodes visited
+  → Count of BFS/DFS runs = number of components
+  → Time: O(V + E), Space: O(V + E) for adjacency list
+  → WORKS perfectly for this problem
+
+APPROACH B — Union Find:
+  → Initially, every node is its own component (n components)
+  → For each edge [a, b]: MERGE the components containing a and b
+  → After processing all edges: count remaining distinct components
+  → Time: O(V + E × α(V)) ≈ O(V + E), Space: O(V)
+  → α(V) = inverse Ackermann function → practically constant
+
+WHY LEARN UNION FIND if BFS/DFS works?
+  → Union Find handles DYNAMIC connectivity
+       → "Add edge → are A and B now connected?"
+       → BFS/DFS would need to rebuild from scratch
+  → Union Find answers "Are A and B in the same group?" in O(1) amortized
+  → Union Find is the FOUNDATION for:
+       → Kruskal's Minimum Spanning Tree
+       → Accounts Merge (Project 57)
+       → Dynamic graph connectivity
+       → Network connectivity monitoring
+  → It's a TECHNIQUE, not just a solution to this one problem</code></pre></div>
+<h3>Step 3 — The Core Idea: Representative/Parent</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>CONCEPT:
+</span>  → Every group has a REPRESENTATIVE (also called "root" or "leader")
+  → To check if two nodes are in the same group:
+       → Find the representative of each
+       → Same representative → same group
+       → Different representatives → different groups
+
+ANALOGY:
+  → Imagine each person points to their "boss"
+  → The top boss (who points to themselves) is the representative
+  → To check if two people work in the same company:
+       → Follow the chain of bosses up to the top
+       → Same top boss → same company
+
+DATA STRUCTURE:
+  → parent[] array where parent[i] = the node that i points to
+  → Initially: parent[i] = i (everyone is their own boss)
+  → FIND(x): follow parent pointers until parent[x] == x → that's the root
+  → UNION(x, y): find roots of x and y → make one point to the other</code></pre></div>
+<h3>Step 4 — Visualize the Process</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>n = 5, edges = [[0,1], [2,3], [0,2]]
+</span>
+INITIAL STATE:
+  parent: [0, 1, 2, 3, 4]
+  Each node is its own root
+  Components: {0}, {1}, {2}, {3}, {4} → 5 components
+
+PROCESS EDGE [0, 1]:
+  find(0) = 0, find(1) = 1 → different roots → UNION
+  Set parent[1] = 0  (1 now points to 0)
+  parent: [0, 0, 2, 3, 4]
+  Components: {0,1}, {2}, {3}, {4} → 4 components
+
+PROCESS EDGE [2, 3]:
+  find(2) = 2, find(3) = 3 → different roots → UNION
+  Set parent[3] = 2  (3 now points to 2)
+  parent: [0, 0, 2, 2, 4]
+  Components: {0,1}, {2,3}, {4} → 3 components
+
+PROCESS EDGE [0, 2]:
+  find(0) = 0, find(2) = 2 → different roots → UNION
+  Set parent[2] = 0  (2 now points to 0)
+  parent: [0, 0, 0, 2, 4]
+  Components: {0,1,2,3}, {4} → 2 components
+
+  Wait — node 3 points to 2, and 2 now points to 0
+  So find(3): 3 → parent[3]=2 → parent[2]=0 → parent[0]=0 → root is 0 ✓
+  Node 3 is in the same component as 0 ✓
+
+FINAL: 2 components</code></pre></div>
+<h3>Step 5 — The Problem with Naive Find</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>Consider a CHAIN: 0 ← 1 ← 2 ← 3 ← 4 ← 5 ← ... ← 999
+</span>
+find(999): 
+  999 → 998 → 997 → ... → 0
+  Takes 999 steps!
+
+find(998):
+  998 → 997 → ... → 0
+  Takes 998 steps!
+
+→ Each find is O(n) in the worst case
+→ n finds = O(n²) total → terrible
+
+SOLUTION: PATH COMPRESSION
+  → When you find the root, make EVERY node on the path point directly to the root
+  → Next time you call find on any of those nodes → O(1)!
+
+find(999) with path compression:
+  Follow: 999 → 998 → 997 → ... → 0 (root found = 0)
+  Now set: parent[999]=0, parent[998]=0, parent[997]=0, ...
+  All nodes now point directly to root
+
+find(999) again: 999 → parent[999]=0 → done! O(1)</code></pre></div>
+<h3>Step 6 — The Problem with Naive Union</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>If we always make the FIRST root point to the SECOND root:
+</span>
+union(0,1): parent[0] = 1      tree height = 1
+union(1,2): parent[1] = 2      tree height = 2
+union(2,3): parent[2] = 3      tree height = 3
+union(3,4): parent[3] = 4      tree height = 4
+
+Result: 0 → 1 → 2 → 3 → 4    (a degenerate chain)
+
+find(0) takes 4 steps → O(n) per find
+
+SOLUTION: UNION BY RANK
+  → Track the "rank" (approximate height) of each tree
+  → Always attach the SHORTER tree under the TALLER tree
+  → This keeps the tree balanced → height stays O(log n)
+
+With union by rank:
+  union(0,1): rank equal → pick one → parent[1]=0, rank[0]=1
+  union(2,3): rank equal → parent[3]=2, rank[2]=1
+  union(0,2): rank equal → parent[2]=0, rank[0]=2
+
+  Result:    0 (rank 2)
+           / | \
+          1  2  (height = 2, not 4)
+             |
+             3
+
+find(3): 3 → 2 → 0 → only 2 steps instead of 4</code></pre></div>
+<h3>Step 7 — The Combined Power</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>PATH COMPRESSION + UNION BY RANK together:
+</span>
+→ Each find() operation costs O(α(n)) amortized
+→ α(n) = inverse Ackermann function
+→ For ALL practical purposes: α(n) ≤ 4 for n up to 10^80
+→ Effectively O(1) per operation
+
+→ This makes Union Find one of the most efficient data structures
+→ Almost-constant-time group membership queries
+→ Almost-constant-time group merging</code></pre></div>
+<hr>
+<h2>🛠️ HOW CAN WE SOLVE IT</h2>
+<h3>The Algorithm</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>1. INITIALIZE:
+</span>     → parent[i] = i for all i (each node is its own root)
+     → rank[i] = 0 for all i (each tree has height 0)
+     → componentCount = n (initially n separate components)
+
+2. FOR EACH EDGE [a, b]:
+     → rootA = find(a)  (with path compression)
+     → rootB = find(b)  (with path compression)
+     → IF rootA != rootB:
+          → union(rootA, rootB) using rank
+          → componentCount--  (two components merged into one)
+     → IF rootA == rootB:
+          → Already in same component → skip
+
+3. RETURN componentCount</code></pre></div>
+<h3>Find with Path Compression — Two Implementations</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>RECURSIVE (clean but risk of stack overflow for deep trees):
+</span>  find(x):
+    if parent[x] != x:
+      parent[x] = find(parent[x])  // point directly to root
+    return parent[x]
+
+ITERATIVE (safe for large inputs):
+  find(x):
+    // Phase 1: Walk to root
+    root = x
+    while parent[root] != root:
+      root = parent[root]
+    
+    // Phase 2: Compress path — point all nodes to root
+    while parent[x] != root:
+      next = parent[x]
+      parent[x] = root
+      x = next
+    
+    return root</code></pre></div>
+<h3>Union by Rank</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>union(rootA, rootB):
+</span>  if rank[rootA] &lt; rank[rootB]:
+    parent[rootA] = rootB          // shorter tree goes under taller
+  else if rank[rootA] &gt; rank[rootB]:
+    parent[rootB] = rootA
+  else:
+    parent[rootB] = rootA          // same rank: pick one, increase rank
+    rank[rootA]++</code></pre></div>
+<hr>
+<h2>✅ WHAT SHOULD YOU DO</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ ALWAYS implement BOTH path compression AND union by rank
+</span>     → Path compression alone: O(log n) amortized per operation
+     → Union by rank alone: O(log n) per operation
+     → Both together: O(α(n)) ≈ O(1) amortized per operation
+     → In interviews: implement both → shows deep understanding
+
+→ ALWAYS initialize parent[i] = i
+     → Every node starts as its own root
+     → This is the "each node is its own component" state
+
+→ ALWAYS find roots BEFORE comparing
+     → Don't compare parent[a] with parent[b]
+     → parent[a] might not be the root (could be an intermediate node)
+     → MUST call find(a) and find(b) to get actual roots
+
+→ ALWAYS decrement component count on successful union
+     → "Successful" = the two nodes were in DIFFERENT components
+     → If already in the same component → no merge → no decrement
+
+→ ALWAYS check if rootA != rootB before union
+     → If they're the same → already connected → nothing to do
+     → Skipping this check won't break correctness but wastes effort
+     → Also prevents incorrect rank increments</code></pre></div>
+<hr>
+<h2>🚫 WHAT SHOULD YOU NOT DO</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ DO NOT compare parent[a] == parent[b] without finding roots
+</span>     parent: [0, 0, 1, 1]
+     
+     Is node 0 connected to node 3?
+     parent[0] = 0, parent[3] = 1 → different! But...
+     find(0) = 0, find(3) = find(1) = find(0) = 0 → SAME root!
+     
+     → Direct parent comparison is WRONG
+     → MUST use find() which follows the chain to the root
+
+→ DO NOT use Union Find for DIRECTED graphs
+     → Union Find treats edges as UNDIRECTED (symmetric)
+     → union(a, b) = union(b, a) → no direction
+     → For directed dependencies → Topological Sort (Project 47)
+
+→ DO NOT forget to handle the edge case of no edges
+     → n nodes, 0 edges → n components
+     → parent[i] = i for all i → each is its own component
+     → componentCount = n → correct
+
+→ DO NOT implement path compression without iterative option for large inputs
+     → Recursive find can cause StackOverflowError for deep chains
+     → n = 100,000 with chain structure → recursion depth 100,000
+     → Java default stack ≈ 512KB → ~10,000 frames → CRASH
+     → Use iterative find for production code
+
+→ DO NOT use Union Find when simple BFS/DFS suffices and no dynamic updates
+     → For a ONE-TIME "count components" query → BFS/DFS is simpler
+     → Union Find shines when edges arrive DYNAMICALLY
+     → Or when you need REPEATED "are X and Y connected?" queries
+     → In interviews: Union Find shows deeper knowledge → preferred
+
+→ DO NOT confuse rank with SIZE
+     → Rank = approximate height of the tree
+     → Size = number of nodes in the component
+     → Union by rank: attach shorter tree under taller tree
+     → Union by size: attach smaller tree under larger tree
+     → BOTH work → both give O(α(n)) with path compression
+     → We implement both variants for completeness</code></pre></div>
+<hr>
+<h2>🔀 WHEN TO USE UNION FIND</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>✓ You need to track CONNECTIVITY between elements
+</span>✓ Elements are grouped and groups can MERGE
+✓ You need to answer "Are X and Y in the same group?" efficiently
+✓ Edges/connections arrive DYNAMICALLY (one by one)
+✓ You need to count the number of DISTINCT groups
+
+REAL-WORLD ANALOGS:
+  → Social network: "Are Alice and Bob in the same friend circle?"
+  → Network connectivity: "Can server A reach server B?"
+  → Image processing: "Which pixels belong to the same region?"
+  → Game boards: "Are these two cells connected?"
+  → Account merging: "Do these accounts belong to the same person?" (Project 57)
+  → Kruskal's MST: "Does adding this edge create a cycle?"
+
+PATTERN SIGNATURE:
+  → Undirected connections ✓
+  → Group membership queries ✓
+  → Dynamic merging of groups ✓
+  → = UNION FIND</code></pre></div>
+<hr>
+<h2>🚫 WHEN NOT TO USE UNION FIND</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>✗ You need to SPLIT groups (Union Find only MERGES, never splits)
+</span>     → Once two groups are merged, they cannot be un-merged
+     → For split operations → use different data structures
+
+✗ You need ORDERING of elements (use Topological Sort — Project 47)
+
+✗ Graph is DIRECTED (use BFS/DFS or Topological Sort)
+
+✗ You need SHORTEST PATH between nodes (use BFS or Dijkstra)
+
+✗ You need to enumerate ALL members of a group efficiently
+     → Union Find answers "same group?" in O(1)
+     → But listing all members requires O(n) scan
+     → If you need frequent member listing → use adjacency list + BFS
+
+✗ Graph is static and you only need component count ONCE
+     → BFS/DFS is simpler and equally efficient
+     → Union Find is overkill (but still valid)</code></pre></div>
+<hr>
+<h2>⚙️ HOW IT ONLY WORKS — Internal Mechanics</h2>
+<h3>The Parent Array as a Forest</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>parent[] represents a FOREST of trees
+</span>
+→ Each tree = one connected component
+→ Root of each tree = representative of that component
+→ parent[root] = root (root points to itself)
+→ All other nodes point toward the root (directly or indirectly)
+
+EXAMPLE:
+  parent: [0, 0, 0, 3, 3]
+  
+  Tree 1:    0          Tree 2:  3
+           / |                   |
+          1  2                   4
+  
+  Components: {0,1,2} and {3,4}
+  Roots: 0 and 3
+
+AFTER path compression (find(2) called):
+  parent: [0, 0, 0, 3, 3]  → already flat, no change
+  
+  But if parent were [0, 0, 1, 3, 3]:
+  Tree 1:    0          
+             |          
+             1          
+             |          
+             2          
+  
+  find(2): 2→1→0 (root=0) → compress: parent[2]=0, parent[1]=0
+  
+  Tree 1:    0
+           / |
+          1  2    → FLAT — future finds are O(1)</code></pre></div>
+<h3>Path Compression — Detailed Mechanics</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>BEFORE find(5):
+</span>  parent: [0, 0, 1, 2, 3, 4]
+  
+  Chain: 5 → 4 → 3 → 2 → 1 → 0 (root)
+  
+        0
+        |
+        1
+        |
+        2
+        |
+        3
+        |
+        4
+        |
+        5
+
+RECURSIVE find(5):
+  find(5) → parent[5]=4, so find(4)
+    find(4) → parent[4]=3, so find(3)
+      find(3) → parent[3]=2, so find(2)
+        find(2) → parent[2]=1, so find(1)
+          find(1) → parent[1]=0, so find(0)
+            find(0) → parent[0]=0 → return 0
+          parent[1] = 0, return 0
+        parent[2] = 0, return 0
+      parent[3] = 0, return 0
+    parent[4] = 0, return 0
+  parent[5] = 0, return 0
+
+AFTER:
+  parent: [0, 0, 0, 0, 0, 0]
+  
+        0
+      / | \ \ \
+     1  2  3 4 5    → COMPLETELY FLAT
+
+→ One expensive find() → all future finds are O(1)
+→ Cost is "amortized" across operations</code></pre></div>
+<h3>Union by Rank — Why It Works</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>WITHOUT union by rank:
+</span>  Always attach first to second:
+  
+  union(0,1): 0→1
+  union(1,2): 1→2   → chain: 0→1→2
+  union(2,3): 2→3   → chain: 0→1→2→3
+  
+  Height = n-1 = O(n) → find is O(n)
+
+WITH union by rank:
+  union(0,1): rank equal → parent[1]=0, rank[0]=1
+      0
+      |
+      1
+      
+  union(2,3): rank equal → parent[3]=2, rank[2]=1
+      2
+      |
+      3
+      
+  union(0,2): rank equal → parent[2]=0, rank[0]=2
+      0
+     / \
+    1   2
+        |
+        3
+  
+  Height = 2 (not 3)
+
+THEOREM:
+  → With union by rank, tree height ≤ log₂(n)
+  → Because: a tree of rank r has at least 2^r nodes
+  → Proof: when two trees of rank r merge, result has rank r+1
+    and at least 2^r + 2^r = 2^(r+1) nodes ✓
+  → So rank ≤ log₂(n) → height ≤ log₂(n) → find is O(log n)</code></pre></div>
+<h3>Combined Complexity — Inverse Ackermann</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>WITH both path compression AND union by rank:
+</span>
+→ Amortized cost per operation = O(α(n))
+→ α(n) = inverse Ackermann function
+
+What is α(n)?
+  → Ackermann function A(n) grows INSANELY fast:
+       A(1) = 2
+       A(2) = 4
+       A(3) = 16
+       A(4) = 65536
+       A(5) = 2^65536 (a number with ~20,000 digits)
+  
+  → α(n) = inverse: "how many times must I apply A to exceed n?"
+  → For n = number of atoms in the observable universe (~10^80):
+       α(10^80) = 4
+  
+  → For ANY practical input size: α(n) ≤ 4
+  → Effectively O(1) per operation
+
+→ m operations on n elements: O(m × α(n)) ≈ O(m) total
+→ This makes Union Find one of the fastest data structures in existence</code></pre></div>
+<h3>Time Complexity for This Problem</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ Initialize parent and rank arrays: O(n)
+</span>→ Process each edge: find + find + union = O(α(n)) per edge
+→ Total for e edges: O(e × α(n)) ≈ O(e)
+→ OVERALL: O(n + e)
+→ Same as BFS/DFS but with different constant factors</code></pre></div>
+<h3>Space Complexity</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ parent array: O(n)
+</span>→ rank array: O(n)
+→ No adjacency list needed (unlike BFS/DFS)
+→ TOTAL: O(n)
+→ BETTER than BFS/DFS which needs O(n + e) for adjacency list</code></pre></div>
+<hr>
+<h2>⚠️ COMMON PITFALLS AND FAILURE MODES</h2>
+<h3>Pitfall 1: Forgetting to Find Roots Before Union</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>WRONG:
+</span>  void union(int a, int b) {
+      parent[a] = b;  // ← directly modifying without finding roots
+  }
+
+  → This doesn't connect the COMPONENTS
+  → It just makes a point to b
+  → The rest of a's component is orphaned
+
+RIGHT:
+  void union(int a, int b) {
+      int rootA = find(a);
+      int rootB = find(b);
+      if (rootA != rootB) {
+          parent[rootA] = rootB;  // connect the ROOTS
+      }
+  }</code></pre></div>
+<h3>Pitfall 2: Not Checking rootA != rootB Before Union</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>If rootA == rootB and we do parent[rootA] = rootB:
+</span>  → parent[rootA] = rootA (since rootA == rootB)
+  → No harm done (already pointing to itself)
+  → BUT if we decrement componentCount:
+       → componentCount decreases incorrectly
+       → Final answer is WRONG
+
+ALWAYS CHECK:
+  if (rootA != rootB) {
+      // perform union
+      componentCount--;
+  }</code></pre></div>
+<h3>Pitfall 3: Recursive Path Compression Stack Overflow</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>For n = 100,000 with a chain structure:
+</span>  → find(99999) recurses 99,999 levels deep
+  → Java default stack ≈ 512KB → ~10,000 frames
+  → StackOverflowError!
+
+FIX: Use ITERATIVE path compression
+  → Two-pass approach: find root, then compress
+  → No recursion → no stack overflow
+  → We implement both versions</code></pre></div>
+<h3>Pitfall 4: Rank Update Errors</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>WRONG:
+</span>  union(rootA, rootB):
+    parent[rootA] = rootB
+    rank[rootB]++         // ← always incrementing
+
+RIGHT:
+  union(rootA, rootB):
+    if rank[rootA] &lt; rank[rootB]:
+      parent[rootA] = rootB     // no rank change
+    else if rank[rootA] &gt; rank[rootB]:
+      parent[rootB] = rootA     // no rank change  
+    else:
+      parent[rootB] = rootA
+      rank[rootA]++             // only increment when ranks are EQUAL
+
+→ Rank only increases when two trees of EQUAL rank merge
+→ Incrementing in other cases corrupts the rank invariant</code></pre></div>
+<h3>Pitfall 5: Confusing Node Values with Node Indices</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>If nodes are labeled 1 to n (not 0 to n-1):
+</span>  → parent array of size n+1
+  → Initialize parent[i] = i for i = 1 to n
+  → Or translate to 0-based indexing
+
+If nodes are strings (like in Project 57 — Accounts Merge):
+  → Map strings to integer indices
+  → Use Union Find on the integer indices
+  → Map back to strings at the end</code></pre></div>
+<hr>
+<h2>📈 SCALABILITY CONSIDERATIONS</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>n = nodes, e = edges
+</span>
+→ n = 100, e = 200 → O(300) → instant
+→ n = 100,000, e = 500,000 → O(600,000) → instant
+→ n = 1,000,000, e = 5,000,000 → O(6,000,000) → fast
+→ n = 10,000,000, e = 50,000,000 → O(60,000,000) → manageable
+
+→ Union Find scales LINEARLY (with α(n) constant)
+→ Space is O(n) only → no adjacency list overhead
+→ Handles dynamic edge additions naturally
+
+COMPARISON WITH BFS/DFS:
+  → Static graph, one query → BFS/DFS and UF are equivalent
+  → Dynamic edges (online) → UF is vastly superior
+       → BFS/DFS: must rebuild graph + re-traverse = O(n+e) per query
+       → UF: O(α(n)) per edge addition = practically O(1)
+  → Repeated "are X and Y connected?" → UF answers in O(1) amortized</code></pre></div>
+<hr>
+<h2>🔍 INTERPRETABILITY CONSIDERATIONS</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>Union Find — Mental Model:
+</span>  → "Imagine every person wears a name tag of their group leader"
+  → "Initially, everyone is their own leader"
+  → "When two groups merge, one leader becomes subordinate to the other"
+  → "To check if two people are in the same group: follow the leader chain"
+  → "Path compression: after finding the top leader, everyone in the chain
+     updates their tag to point directly to the top leader"
+  → "Union by rank: when merging, the bigger group absorbs the smaller one"
+
+Interview Explanation:
+  → "I use Union Find with path compression and union by rank"
+  → "Each node starts as its own component"
+  → "For each edge, I find the roots of both endpoints"
+  → "If different roots, I merge them and decrement the component count"
+  → "Path compression flattens the tree on every find → near O(1)"
+  → "Union by rank keeps trees balanced → prevents degenerate chains"
+  → "Final component count is the answer"
+  → "Time: O(n + e × α(n)) ≈ O(n + e), Space: O(n)"</code></pre></div>
+<hr>
+<div class="github-btn-wrap"><a class="github-btn" href="https://github.com/Shakti4640/leetcode-patterns-guide-java/tree/main/project- (48)" target="_blank" rel="noopener"><svg viewBox="0 0 24 24"><path d="M12 .5C5.37.5 0 5.87 0 12.5c0 5.3 3.44 9.8 8.2 11.39.6.11.82-.26.82-.58v-2.03c-3.34.73-4.04-1.61-4.04-1.61-.55-1.39-1.34-1.76-1.34-1.76-1.09-.74.08-.73.08-.73 1.2.09 1.84 1.24 1.84 1.24 1.07 1.83 2.8 1.3 3.49 1 .1-.78.42-1.3.76-1.6-2.67-.3-5.47-1.33-5.47-5.93 0-1.31.47-2.38 1.24-3.22-.14-.3-.54-1.52.1-3.18 0 0 1.01-.32 3.3 1.23a11.5 11.5 0 0 1 3-.4c1.02 0 2.04.13 3 .4 2.28-1.55 3.29-1.23 3.29-1.23.64 1.66.24 2.88.12 3.18.77.84 1.23 1.91 1.23 3.22 0 4.61-2.81 5.63-5.48 5.92.43.37.81 1.1.81 2.22v3.29c0 .32.21.7.82.58C20.56 22.3 24 17.8 24 12.5 24 5.87 18.63.5 12 .5z"/></svg>💻 View Complete Java Code on GitHub</a></div>
+
+<hr>
+<h2>🔑 EXPECTED OUTPUT</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>╔═════════════════════════════════════════════════════════╗
+</span>║  PROJECT 48: Number of Connected Components             ║
+║  Pattern: Union Find → Path Compression → Union by Rank ║
+╚═════════════════════════════════════════════════════════╝
+
+═══ TEST 1: Two Components ═══
+Nodes: 0 to 4
+Edges:
+  0 — 1
+  1 — 2
+  3 — 4
+
+Initial state:
+  parent: [0, 1, 2, 3, 4]
+  rank:   [0, 0, 0, 0, 0]
+  components: 5
+
+─── Processing Edges ───
+
+Step 1: Edge [0, 1]
+  find(0) = 0
+  find(1) = 1
+  → Different roots → MERGE components
+  parent: [0, 0, 2, 3, 4]
+  rank:   [1, 0, 0, 0, 0]
+  components: 4
+
+Step 2: Edge [1, 2]
+  find(1) = 0
+  find(2) = 2
+  → Different roots → MERGE components
+  parent: [0, 0, 0, 3, 4]
+  rank:   [1, 0, 0, 0, 0]
+  components: 3
+
+Step 3: Edge [3, 4]
+  find(3) = 3
+  find(4) = 4
+  → Different roots → MERGE components
+  parent: [0, 0, 0, 3, 3]
+  rank:   [1, 0, 0, 1, 0]
+  components: 2
+
+═══ ANSWER: 2 connected components ═══
+
+═══ TEST 4: Merging Two Groups ═══
+Nodes: 0 to 4
+Edges:
+  0 — 1
+  2 — 3
+  0 — 2
+
+Step 1: Edge [0, 1]
+  find(0) = 0, find(1) = 1 → MERGE
+  parent: [0, 0, 2, 3, 4]  components: 4
+
+Step 2: Edge [2, 3]
+  find(2) = 2, find(3) = 3 → MERGE
+  parent: [0, 0, 2, 2, 4]  components: 3
+
+Step 3: Edge [0, 2]
+  find(0) = 0, find(2) = 2 → MERGE (groups unite!)
+  parent: [0, 0, 0, 2, 4]  components: 2
+
+═══ ANSWER: 2 connected components ═══
+
+═══ TEST 5: Redundant Edge ═══
+Step 1: Edge [0, 1]
+  find(0) = 0, find(1) = 1 → MERGE  components: 2
+
+Step 2: Edge [1, 2]
+  find(1) = 0, find(2) = 2 → MERGE  components: 1
+
+Step 3: Edge [0, 2]
+  find(0) = 0, find(2) = 0
+  → Same root! Already connected → skip
+  components: 1
+
+═══ ANSWER: 1 connected components ═══
+
+═══ TEST 8: Path Compression Demo ═══
+Before path compression:
+  parent: [0, 0, 1, 2, 3, 4, 5, 6]
+  Tree shape:
+    0 ← 1 ← 2 ← 3 ← 4 ← 5 ← 6 ← 7
+  find(7) would traverse: 7→6→5→4→3→2→1→0 (7 hops)
+
+After path compression:
+  parent: [0, 0, 0, 0, 0, 0, 0, 0]
+  Tree shape:
+         0
+       / | \ \ \ \ \
+      1  2  3 4 5 6 7
+  find(7) now: 7→0 (1 hop!)
+
+═══ TEST 9: Dynamic Connectivity (Social Network) ═══
+→ Alice befriends Bob
+  Groups merged! Components: 5
+  Are Alice and Diana connected? false
+
+→ Charlie befriends Diana
+  Groups merged! Components: 4
+  Are Alice and Diana connected? false
+
+→ Eve befriends Frank
+  Groups merged! Components: 3
+  Are Alice and Diana connected? false
+
+→ Bob befriends Charlie
+  Groups merged! Components: 2
+  Alice's group size: 4
+  Are Alice and Diana connected? true   ← Now connected!
+
+→ Alice befriends Eve
+  Groups merged! Components: 1
+  Alice's group size: 6
+  Are Alice and Diana connected? true
+
+═══ TEST 7: Cross-Verification ═══
+  Test 1: UF=2  BFS=2  ✓ MATCH
+  Test 2: UF=1  BFS=1  ✓ MATCH
+  Test 3: UF=4  BFS=4  ✓ MATCH
+  Test 4: UF=2  BFS=2  ✓ MATCH
+  Test 5: UF=1  BFS=1  ✓ MATCH
+  Test 6: UF=1  BFS=1  ✓ MATCH
+
+═══ TEST 10: Is Valid Tree? ═══
+  5 nodes, edges [[0,1],[0,2],[0,3],[1,4]]: true
+  5 nodes, edges [[0,1],[1,2],[2,3],[1,3],[1,4]]: false
+  4 nodes, edges [[0,1],[2,3]]: false</code></pre></div>
+<hr>
+<h2>🧠 COMPARISON: Graph Connectivity Techniques</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>┌───────────────────────┬──────────────┬──────────────────┬──────────────┬───────────┐
+</span>│ Technique             │ Graph Type   │ Purpose          │ Dynamic?     │ Project   │
+├───────────────────────┼──────────────┼──────────────────┼──────────────┼───────────┤
+│ Tree BFS              │ Tree         │ Level traversal  │ No           │ 17        │
+│ Tree DFS              │ Tree         │ Path exploration │ No           │ 18        │
+│ Topological Sort      │ Directed DAG │ Dependency order │ No           │ 47        │
+│ Union Find            │ Undirected   │ Connectivity     │ YES (merge)  │ 48 (now)  │
+│ BFS Component Count   │ Undirected   │ Connectivity     │ No           │ 48 (alt)  │
+└───────────────────────┴──────────────┴──────────────────┴──────────────┴───────────┘
+
+KEY INSIGHT:
+  → Union Find is the ONLY technique here that handles DYNAMIC updates
+  → Add edge → O(α(n)) update → immediate connectivity answer
+  → All others require full re-computation on graph changes
+  → This is WHY Union Find exists as a separate pattern</code></pre></div>
+<hr>
+<h2>🧠 UNION FIND OPERATIONS CHEAT SHEET</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>┌─────────────────────────────────┬───────────────────────┬───────────────┐
+</span>│ Operation                       │ Without Optimization  │ With PC + UR  │
+├─────────────────────────────────┼───────────────────────┼───────────────┤
+│ find(x)                         │ O(n) worst case       │ O(α(n)) ≈ O(1│
+│ union(x, y)                     │ O(n) worst case       │ O(α(n)) ≈ O(1│
+│ connected(x, y)                 │ O(n) worst case       │ O(α(n)) ≈ O(1│
+│ m operations on n elements      │ O(m × n)              │ O(m × α(n))  │
+├─────────────────────────────────┼───────────────────────┼───────────────┤
+│ PC = Path Compression                                                   │
+│ UR = Union by Rank                                                      │
+│ α(n) ≤ 4 for all practical n                                           │
+└─────────────────────────────────┴───────────────────────┴───────────────┘</code></pre></div>
+<hr>
+<h2>🧠 KEY TAKEAWAY</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>WHAT WE LEARNED:
+</span>→ Union Find is a data structure for DYNAMIC GROUP MANAGEMENT
+→ parent[] array represents a forest of trees → one tree per component
+→ find() follows parent pointers to the root → identifies the group
+→ union() connects two roots → merges two groups
+→ Path compression makes find() amortized O(1)
+→ Union by rank keeps trees balanced → prevents degenerate chains
+→ Combined: O(α(n)) per operation → practically constant time
+→ Component count = n minus number of successful unions
+
+THE CORE MENTAL MODEL:
+→ "Everyone starts as their own leader"
+→ "When two people connect, their groups merge under one leader"
+→ "To check if two people are in the same group: find both their leaders"
+→ "Path compression: once you find the leader, tell everyone directly"
+→ "Union by rank: bigger group absorbs smaller group"
+
+PATTERN SIGNATURE:
+→ Undirected connections ✓
+→ Group membership / connectivity queries ✓
+→ Dynamic merging of groups ✓
+→ No need to split groups ✓
+→ = UNION FIND
+
+THREE OPERATIONS TO REMEMBER:
+  1. find(x) → return root of x's component (with path compression)
+  2. union(x, y) → merge components of x and y (by rank)
+  3. connected(x, y) → find(x) == find(y)</code></pre></div>
+<hr>
+<h2>🌉 BRIDGE TO NEXT PROJECT</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>PROJECT 48 taught us:
+</span>→ Union Find for undirected connectivity on INTEGER-labeled nodes
+→ parent[] array indexed by node number
+→ Simple edge processing: union the two endpoints
+→ Dynamic group management with near-constant-time operations
+
+PROJECT 49 (Jump Game — Can You Reach the End?) will ask:
+→ What if instead of explicit edges, connectivity is IMPLIED?
+→ "From index i, you can jump up to nums[i] steps forward"
+→ "Can you reach the last index?"
+→ No graph to build → no edges → no Union Find
+→ No dependencies → no Topological Sort
+→ Instead: GREEDY forward scanning
+
+The progression:
+  Project 19: Greedy → Activity Selection → sort by end time → maximize count
+  Project 43: DP → Climbing Stairs → overlapping subproblems → memoization
+  Project 49: Greedy → Jump Game → farthest-reachable tracking → forward scan
+
+→ From GRAPH-BASED connectivity (Project 48)
+  to ARRAY-BASED reachability (Project 49)
+→ From "are these nodes connected via edges?"
+  to "can I reach the end via jumps?"
+→ The GREEDY insight: track the farthest index reachable so far
+→ If current index ≤ farthest reachable → you can stand here → extend reach
+→ If current index &gt; farthest reachable → you're stranded → return false
+
+WHY GREEDY and not DP?
+  → DP works (Project 43 foundation) but is O(n²) for this problem
+  → Greedy works in O(n) because we only need the FARTHEST reach
+  → We don't need to know HOW to get there, just WHETHER we can
+  → This is the hallmark of greedy: local decision = global answer</code></pre></div>
+<hr>
+<p><strong>Ready for Project 49: Jump Game — Can You Reach the End? (Greedy → Farthest-Reachable Tracking → Forward Greedy Scan)?</strong></p>
+</div>
+</div>
+
+<!-- ========== data-index="13" ========== -->
+<div class="chat-message" data-index="13"></div>
+</div>
+<div class="bottom-nav">
+  <a href="project-47.html" class="nav-btn prev">← Prev</a>
+  <div class="nav-center">
+    <span class="nav-project-label">PROJECT 48 of 60</span>
+    <span class="nav-project-title">Number of Connected Components in Graph</span>
+    <span class="kbd-hint">← → arrow keys to navigate</span>
+  </div>
+  <a href="project-49.html" class="nav-btn next">Next →</a>
+  <a href="index.html" class="nav-btn home">🏠 TOC</a>
+</div>
+<div id="progress-track"><div id="progress-fill"></div></div>
+<div id="progress-pct">0%</div>
+<script src="script.js"></script>
+<script>
+document.addEventListener('keydown', function(e) {
+  if (['INPUT','TEXTAREA'].includes(document.activeElement.tagName)) return;
+  if (e.key === 'ArrowRight' && "project-49.html" !== null) window.location = "project-49.html";
+  if (e.key === 'ArrowLeft' && "project-47.html" !== null) window.location = "project-47.html";
+});
+</script>
+</body>
+</html>

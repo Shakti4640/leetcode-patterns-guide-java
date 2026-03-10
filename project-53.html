@@ -1,0 +1,717 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PROJECT 53: Smallest Range Covering Elements from K Lists</title>
+<link rel="icon" type="image/png" href="images/favicon.png">
+<link rel="stylesheet" href="styles.css">
+
+</head>
+<body>
+<div id="progress-bar-container"><div id="progress-bar" style="width:89%"></div></div>
+<div id="progress-label">89%</div>
+<div class="page-wrapper">
+<div class="chat-message"><div class="px-2"><h1>PROJECT 53: Smallest Range Covering Elements from K Lists</h1>
+<h2>🎯 K-way Merge → Sliding Min-Max Across K Pointers → Heap + Global Tracking</h2>
+<hr>
+<h2>🧩 THE HYPOTHETICAL PROBLEM</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ You are given K sorted lists of integers
+</span>→ Find the SMALLEST range [a, b] such that the range
+  includes AT LEAST ONE number from EACH of the K lists
+→ "Smallest range" = minimize (b - a)
+→ If there are ties, return the range with the smaller starting point
+
+Example 1:
+  lists = [[4, 10, 15, 24, 26],
+           [0, 9, 12, 20],
+           [5, 18, 22, 30]]
+  Output: [20, 24]
+  
+  → 20 is from list 2 (index 3)
+  → 24 is from list 1 (index 3)
+  → 22 is from list 3 (index 2) → 22 is in [20, 24] ✓
+  → Range size = 24 - 20 = 4
+  → No smaller range covers all three lists
+
+Example 2:
+  lists = [[1, 2, 3],
+           [1, 2, 3],
+           [1, 2, 3]]
+  Output: [1, 1]
+  
+  → All lists contain 1 → range [1, 1] covers all → size 0
+
+Example 3:
+  lists = [[1, 5, 10],
+           [3, 7, 12],
+           [2, 6, 11]]
+  Output: [1, 3] or [5, 7] or [10, 12]
+  
+  → [1, 3]: 1 from list 1, 3 from list 2, 2 from list 3 ✓ → size 2
+  → [5, 7]: 5 from list 1, 7 from list 2, 6 from list 3 ✓ → size 2
+  → [10, 12]: 10 from list 1, 12 from list 2, 11 from list 3 ✓ → size 2
+  → All have size 2 → return [1, 3] (smallest start)
+
+Example 4:
+  lists = [[1],
+           [2],
+           [3]]
+  Output: [1, 3]
+  
+  → Must include at least one from each → range must span 1 to 3</code></pre></div>
+<hr>
+<h2>🔍 HOW TO APPROACH IT</h2>
+<h3>Step 1 — Understand What "Covering All Lists" Means</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ At any moment, we're looking at ONE element from each list
+</span>→ These K elements define a "window" of values
+→ The RANGE of this window = max(elements) - min(elements)
+→ We want to MINIMIZE this range
+
+→ This is like having K pointers, one in each list
+→ Each pointer points to the "current element" from that list
+→ The range = max(current elements) - min(current elements)
+→ We want to advance pointers strategically to minimize the range</code></pre></div>
+<h3>Step 2 — Connect to Previous Knowledge</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>Project 40 (Merge K Sorted Lists):
+</span>  → Used a min-heap to track the smallest element across K lists
+  → Each heap entry: (value, listIndex, elementIndex)
+  → Poll minimum → advance that list's pointer → push next element
+  → This gave us a MERGED sorted stream
+
+THIS Problem:
+  → Same K-list structure → same min-heap approach
+  → But instead of just tracking the MIN, we also track the MAX
+  → At every step: range = currentMax - heap.peek() (heap gives min)
+  → We want to MINIMIZE this range
+
+KEY INSIGHT:
+  → The min-heap always gives us the MINIMUM across K current elements
+  → We separately track the MAXIMUM across K current elements
+  → Range = max - min = currentMax - heap.peek()
+  → To SHRINK the range: we must INCREASE the minimum
+  → Increasing the minimum = advancing the pointer in the list that has the minimum
+  → This is EXACTLY what polling from the min-heap does!
+
+Project 34 (Sliding Window Median) / Project 41 (Sliding Window Median):
+  → Maintained heaps while sliding a window
+  → Rebalanced on each slide
+
+THIS Problem:
+  → Similar "sliding" behavior across K lists
+  → But instead of a fixed window on ONE array
+  → It's K pointers sliding across K arrays
+  → The "window" is defined by the K current elements</code></pre></div>
+<h3>Step 3 — The Algorithm Intuition</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>INITIAL STATE:
+</span>  → Start with the FIRST element from each list
+  → These K elements define our initial range
+  → Put all K elements in a min-heap
+  → Track the maximum separately
+
+IMPROVEMENT STEP:
+  → The range = currentMax - minHeap.peek()
+  → To shrink the range, we have two options:
+       a. DECREASE the maximum → but we can only move FORWARD in sorted lists
+          → Moving forward means the next element is ≥ current → max won't decrease
+          → This option is IMPOSSIBLE (lists are sorted ascending)
+       b. INCREASE the minimum → advance the list that currently has the minimum
+          → Poll from min-heap → get the list with smallest current element
+          → Push the NEXT element from that list into the heap
+          → The new minimum is ≥ old minimum (might be larger)
+          → This CAN shrink the range!
+
+  → So we ALWAYS advance the minimum → this is the ONLY productive move
+
+TERMINATION:
+  → When ANY list is exhausted (no more elements to advance to)
+  → At that point, we can't cover all K lists anymore
+  → The best range seen so far is the answer
+
+THIS IS GREEDY:
+  → At each step, advance the minimum element's list
+  → Track the best range seen
+  → Stop when any list runs out</code></pre></div>
+<h3>Step 4 — Visualize the Process</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>lists = [[4, 10, 15, 24, 26],
+</span>         [0, 9, 12, 20],
+         [5, 18, 22, 30]]
+
+INITIAL:
+  Current elements: 4 (list 0), 0 (list 1), 5 (list 2)
+  Min = 0, Max = 5, Range = [0, 5], Size = 5
+  Best so far: [0, 5] size 5
+
+STEP 1: Advance minimum (0 from list 1) → next is 9
+  Current: 4, 9, 5
+  Min = 4, Max = 9, Range = [4, 9], Size = 5
+  Best: [0, 5] (tied, keep first)
+
+STEP 2: Advance minimum (4 from list 0) → next is 10
+  Current: 10, 9, 5
+  Min = 5, Max = 10, Range = [5, 10], Size = 5
+  Best: [0, 5]
+
+STEP 3: Advance minimum (5 from list 2) → next is 18
+  Current: 10, 9, 18
+  Min = 9, Max = 18, Range = [9, 18], Size = 9
+  Best: [0, 5]
+
+STEP 4: Advance minimum (9 from list 1) → next is 12
+  Current: 10, 12, 18
+  Min = 10, Max = 18, Range = [10, 18], Size = 8
+  Best: [0, 5]
+
+STEP 5: Advance minimum (10 from list 0) → next is 15
+  Current: 15, 12, 18
+  Min = 12, Max = 18, Range = [12, 18], Size = 6
+  Best: [0, 5]
+
+STEP 6: Advance minimum (12 from list 1) → next is 20
+  Current: 15, 20, 18
+  Min = 15, Max = 20, Range = [15, 20], Size = 5
+  Best: [0, 5] (tied)
+
+STEP 7: Advance minimum (15 from list 0) → next is 24
+  Current: 24, 20, 18
+  Min = 18, Max = 24, Range = [18, 24], Size = 6
+  Best: [0, 5]
+
+STEP 8: Advance minimum (18 from list 2) → next is 22
+  Current: 24, 20, 22
+  Min = 20, Max = 24, Range = [20, 24], Size = 4  ← NEW BEST!
+  Best: [20, 24] size 4
+
+STEP 9: Advance minimum (20 from list 1) → next is... list 1 exhausted!
+  → STOP
+
+ANSWER: [20, 24]</code></pre></div>
+<h3>Step 5 — Why This Works</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>CLAIM: The algorithm finds the optimal (smallest) range.
+</span>
+INTUITION:
+  → At each step, we consider a "configuration" of K elements (one per list)
+  → The range of this configuration = max - min
+  → We MUST advance the minimum to potentially shrink the range
+  → Advancing any other pointer would only increase the max or leave it same
+  → Advancing the min is the ONLY way to potentially reduce range
+
+EXHAUSTIVE COVERAGE:
+  → Every possible "optimal range" corresponds to some configuration
+  → The algorithm visits ALL configurations reachable by advancing minimums
+  → Since advancing the minimum is the only productive move,
+    ALL potentially optimal configurations are visited
+
+FORMAL PROOF SKETCH:
+  → Let [a*, b*] be the optimal range
+  → b* is the maximum in some configuration C*
+  → In C*, the minimum is a* (or the range would be smaller)
+  → The algorithm will reach a configuration where:
+       → All elements ≤ a* have been advanced past
+       → The current minimum is a* (or close to it)
+       → The current maximum includes b*
+  → At that moment, the algorithm records [a*, b*] as the best range ✓</code></pre></div>
+<hr>
+<h2>🛠️ HOW CAN WE SOLVE IT</h2>
+<h3>Algorithm — Min-Heap + Global Max Tracking</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>1. Create a min-heap storing (value, listIndex, elementIndex)
+</span>2. Initialize:
+     → For each list i, push (lists[i][0], i, 0) into heap
+     → Track currentMax = max of all lists[i][0]
+3. Initialize bestRange = [heap.peek().value, currentMax]
+4. WHILE true:
+     a. Poll minimum element from heap → (minVal, listIdx, elemIdx)
+     b. Check if this list has a next element:
+          → If elemIdx + 1 &gt;= lists[listIdx].length → STOP (list exhausted)
+     c. Push next element: (lists[listIdx][elemIdx+1], listIdx, elemIdx+1)
+     d. Update currentMax = max(currentMax, lists[listIdx][elemIdx+1])
+     e. New range = [heap.peek().value, currentMax]
+     f. If new range is smaller than bestRange → update bestRange
+5. RETURN bestRange</code></pre></div>
+<h3>Why We Track Max Separately (Not in Heap)</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ The min-heap gives us the MINIMUM in O(1) via peek()
+</span>→ But getting the MAXIMUM from a min-heap is O(K) — need to scan all entries
+→ Instead, we maintain currentMax as a separate variable
+
+→ currentMax ONLY INCREASES (or stays same) as we advance:
+     → When we push a new element, it's the next in a sorted list
+     → Next element ≥ current element (sorted ascending)
+     → So the new element might be a new maximum
+     → currentMax = max(currentMax, newElement)
+     → It NEVER decreases → simple tracking works
+
+→ This is the KEY TRICK: min from heap (O(1)) + max from variable (O(1))
+→ Range computation at each step: O(1)</code></pre></div>
+<hr>
+<h2>✅ WHAT SHOULD YOU DO</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ ALWAYS push ONE element from EACH list initially
+</span>     → The heap must have exactly K elements at all times
+     → Each element represents one list's "current pointer"
+     → Missing a list = range doesn't cover all lists
+
+→ ALWAYS update currentMax when pushing new elements
+     → New element might be larger than current max
+     → Forgetting this = wrong range calculation
+
+→ ALWAYS compare range using (max - min) not just min or max
+     → We minimize (max - min), not min or max individually
+     → A range [100, 101] (size 1) is better than [0, 50] (size 50)
+
+→ ALWAYS stop when ANY list is exhausted
+     → If one list has no more elements, we can't cover all K lists
+     → Continuing would violate the "at least one from each list" constraint
+
+→ ALWAYS store (value, listIndex, elementIndex) in heap entries
+     → value: for heap ordering (min-heap sorts by value)
+     → listIndex: to know WHICH list this element came from
+     → elementIndex: to know WHERE in the list to get the NEXT element
+
+→ CONSIDER using an int[] array as heap entry (cleaner than custom class)
+     → int[] entry = {value, listIndex, elementIndex}
+     → Comparator: (a, b) -&gt; a[0] - b[0]</code></pre></div>
+<hr>
+<h2>🚫 WHAT SHOULD YOU NOT DO</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ DO NOT advance ALL pointers simultaneously
+</span>     → Only advance the MINIMUM pointer
+     → Advancing others would increase the range unnecessarily
+     → Each step: poll one (min), push one (next from same list)
+
+→ DO NOT use a max-heap
+     → We need the MINIMUM to decide which pointer to advance
+     → Min-heap gives minimum in O(1)
+     → Max is tracked separately (only increases)
+
+→ DO NOT try to find max from the heap
+     → Scanning the heap for max is O(K)
+     → Doing this at every step makes total O(n×K) instead of O(n×log K)
+     → Track max separately in O(1)
+
+→ DO NOT merge all lists and then search
+     → Merging: O(N log K) where N = total elements
+     → Then searching for smallest range: complex and no better
+     → The heap approach does both simultaneously
+
+→ DO NOT confuse with "merge K sorted lists" (Project 40)
+     → Project 40: produce a single merged sorted list
+     → This project: find smallest range covering all lists
+     → Same heap setup, DIFFERENT objective
+     → Project 40 doesn't need max tracking or range comparison
+
+→ DO NOT continue after a list is exhausted
+     → Exhausted list = can't be covered = range is invalid
+     → Any range found after this point is incomplete</code></pre></div>
+<hr>
+<h2>🔀 WHEN TO USE THIS PATTERN</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>✓ You have MULTIPLE sorted sources
+</span>✓ You need to find a property involving ALL sources simultaneously
+✓ The property involves MIN and MAX across current elements
+✓ You need to advance through sources in a coordinated manner
+
+VARIANTS:
+  → Smallest range covering K lists (this project)
+  → Merge K sorted lists (Project 40) — same structure, simpler goal
+  → K-way merge sort — same heap technique
+  → Find median of K sorted arrays — related coordination
+
+REAL-WORLD ANALOGS:
+  → Database query optimization: find overlap across multiple sorted indices
+  → Sensor fusion: find time window where all sensors have readings
+  → Log analysis: find time range where all servers reported errors
+  → Stock trading: find price range where all stocks were within bounds
+  → Meeting scheduling: find time slot where all participants are available</code></pre></div>
+<hr>
+<h2>🚫 WHEN NOT TO USE THIS PATTERN</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>✗ Lists are NOT sorted
+</span>     → Sorting first adds O(N log N) overhead
+     → For unsorted lists → different approach needed
+     → Sort first, then apply this algorithm
+
+✗ You only have ONE list (not K lists)
+     → Single list range problems → sliding window (Projects 12, 33)
+     → K-way merge is specifically for MULTIPLE sources
+
+✗ You need ALL elements in the range (not just one per list)
+     → This finds a range with AT LEAST one element per list
+     → Finding ranges with ALL elements → different problem
+
+✗ Lists have very different sizes and you need worst-case efficiency
+     → Algorithm runs until the shortest list is exhausted
+     → Long lists after shortest is done = wasted preprocessing
+     → But in practice this is rarely an issue</code></pre></div>
+<hr>
+<h2>⚙️ HOW IT ONLY WORKS — Internal Mechanics</h2>
+<h3>The Min-Heap Invariant</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>AT EVERY STEP:
+</span>  → Heap contains exactly K elements
+  → Each element represents one list's "current" value
+  → No two elements are from the same list
+  → heap.peek() = minimum across all K current values
+  → currentMax = maximum across all K current values
+
+WHEN WE POLL AND PUSH:
+  → Poll: remove the minimum → one list loses its representative
+  → Push: add the NEXT element from that list → list regains a representative
+  → Heap still has exactly K elements → invariant maintained
+  → currentMax: new element might be larger → update → invariant maintained
+
+WHEN WE STOP:
+  → Poll minimum → its list has no next element
+  → Cannot push → heap would have K-1 elements → invariant broken
+  → One list is uncovered → no valid range → STOP</code></pre></div>
+<h3>Why Advancing Minimum is Optimal</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>CURRENT STATE:
+</span>  → K current elements: e₁, e₂, ..., eₖ
+  → min = eₘᵢₙ, max = eₘₐₓ
+  → range = eₘₐₓ - eₘᵢₙ
+
+TO SHRINK THE RANGE:
+  Option A: Decrease eₘₐₓ
+    → Lists are sorted ascending → next element ≥ current
+    → Advancing eₘₐₓ's list gives element ≥ eₘₐₓ → max stays or increases
+    → CANNOT decrease max by advancing
+
+  Option B: Increase eₘᵢₙ
+    → Advance eₘᵢₙ's list → next element ≥ eₘᵢₙ
+    → New minimum might be larger → range might shrink
+    → THIS IS THE ONLY PRODUCTIVE MOVE
+
+  Option C: Advance some middle element
+    → Middle element ≥ eₘᵢₙ and ≤ eₘₐₓ
+    → Advancing it: next ≥ current → might increase max
+    → But doesn't help decrease range (min stays same)
+    → WASTEFUL — no benefit
+
+THEREFORE:
+  → Advancing the minimum is the ONLY move that can improve the range
+  → This is why the algorithm is correct and greedy</code></pre></div>
+<h3>Why All Optimal Configurations Are Visited</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>THEOREM: Every potentially optimal configuration is visited.
+</span>
+DEFINITION: A "configuration" is a choice of one element per list.
+
+KEY OBSERVATION:
+  → The algorithm generates configurations in order of INCREASING minimum
+  → Each step increases the minimum (or keeps it same)
+  → Once we pass a minimum value, we never go back
+
+  → For any optimal configuration with minimum value m:
+       → The algorithm will reach a state where its minimum ≥ m
+       → At the moment the minimum first reaches m (or passes through m),
+         the maximum is the smallest it can be given that minimum
+       → Because we haven't unnecessarily advanced any other pointer
+       → So the range at that moment is optimal for that minimum
+
+  → Since we check ALL possible minimum values (in order),
+    we will find the global optimum ✓</code></pre></div>
+<h3>Time Complexity</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ Total elements across all K lists: N = n₁ + n₂ + ... + nₖ
+</span>→ Each element is pushed into the heap at most once
+→ Each element is polled from the heap at most once
+→ Each push/poll: O(log K) (heap of size K)
+→ TOTAL: O(N × log K)
+
+→ Initialization: O(K × log K) to build initial heap
+
+→ OVERALL: O(N × log K)
+→ This is OPTIMAL — we must examine each element at least once: O(N)
+→ The log K factor is for heap maintenance</code></pre></div>
+<h3>Space Complexity</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ Heap stores exactly K elements: O(K)
+</span>→ No additional arrays needed
+→ TOTAL: O(K)
+→ Very space-efficient</code></pre></div>
+<hr>
+<h2>⚠️ COMMON PITFALLS AND FAILURE MODES</h2>
+<h3>Pitfall 1: Not Tracking Max Separately</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>WRONG:
+</span>  → Using only min-heap
+  → Trying to compute max by scanning heap entries: O(K) per step
+  → Total: O(N × K) instead of O(N × log K)
+  → Or worse: forgetting max entirely → wrong range
+
+RIGHT:
+  → Track currentMax as a separate variable
+  → Update it when pushing new elements: currentMax = max(currentMax, newVal)
+  → currentMax only increases → simple O(1) update</code></pre></div>
+<h3>Pitfall 2: Forgetting to Update Max When Pushing</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>WRONG:
+</span>  // Push new element without updating max
+  heap.offer(new int[]{nextVal, listIdx, elemIdx + 1});
+  // currentMax is stale → range calculation is wrong
+
+RIGHT:
+  int nextVal = lists[listIdx][elemIdx + 1];
+  currentMax = Math.max(currentMax, nextVal);
+  heap.offer(new int[]{nextVal, listIdx, elemIdx + 1});</code></pre></div>
+<h3>Pitfall 3: Not Stopping When a List is Exhausted</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>WRONG:
+</span>  → Poll minimum → list has no next element → skip and continue
+  → Heap now has K-1 elements → one list uncovered
+  → Range found after this is INVALID (doesn't cover all lists)
+
+RIGHT:
+  → Poll minimum → check if next element exists
+  → If NOT → STOP immediately → return best range found so far</code></pre></div>
+<h3>Pitfall 4: Heap Entry Without List/Element Tracking</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>WRONG:
+</span>  → Push only the value into the heap
+  → When polling, don't know which list it came from
+  → Can't advance the correct list's pointer
+
+RIGHT:
+  → Each heap entry = {value, listIndex, elementIndex}
+  → After polling, use listIndex to find the list
+  → Use elementIndex + 1 to get the next element</code></pre></div>
+<h3>Pitfall 5: Range Comparison Tie-Breaking</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>Problem says: "If ties, return the range with smaller start"
+</span>
+→ When comparing ranges:
+     → Primary: smaller size (b - a)
+     → Secondary: smaller start (a)
+→ If newSize &lt; bestSize → update
+→ If newSize == bestSize AND newStart &lt; bestStart → update
+
+→ With our algorithm: we naturally visit configurations with increasing min
+→ Earlier configurations have smaller start values
+→ So we use &lt; (strictly less) for range comparison
+→ Ties are automatically resolved in favor of smaller start</code></pre></div>
+<hr>
+<h2>📈 SCALABILITY CONSIDERATIONS</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>K = number of lists, N = total elements across all lists
+</span>
+→ K=3, N=15 → 15 × log(3) ≈ 24 → instant
+→ K=10, N=1000 → 1000 × log(10) ≈ 3300 → instant
+→ K=100, N=100,000 → 100K × log(100) ≈ 665K → fast
+→ K=1000, N=1,000,000 → 1M × log(1000) ≈ 10M → fast
+→ K=10,000, N=10,000,000 → 10M × log(10K) ≈ 133M → manageable
+
+→ The log K factor keeps things efficient even for many lists
+→ The algorithm is LINEAR in total elements (times log K)
+→ Space is only O(K) → extremely efficient</code></pre></div>
+<hr>
+<h2>🔍 INTERPRETABILITY CONSIDERATIONS</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>K Pointers — Mental Model:
+</span>  → "Imagine K sorted conveyor belts, each showing items in order"
+  → "You see one item from each belt at a time"
+  → "The 'range' is the gap between the smallest and largest visible items"
+  → "To shrink the range: advance the belt showing the smallest item"
+  → "It reveals its next (larger) item → the range might shrink"
+  → "Keep going until one belt runs out of items"
+  → "The smallest range you saw is the answer"
+
+Min-Heap — Mental Model:
+  → "The min-heap is like a tournament bracket"
+  → "K contestants (current elements) compete"
+  → "The winner (minimum) gets to advance to the next round"
+  → "Their replacement (next element from same list) enters the bracket"
+  → "Meanwhile, we separately track who's the strongest (maximum)"
+  → "The range = strongest - weakest at each round"
+
+Interview Explanation:
+  → "I use a min-heap of size K, one element per list"
+  → "I also track the current maximum separately"
+  → "At each step, I poll the minimum, advance that list's pointer"
+  → "Push the next element, update max, check if range improved"
+  → "Stop when any list is exhausted"
+  → "Time: O(N log K), Space: O(K)"</code></pre></div>
+<hr>
+<div class="github-btn-wrap"><a class="github-btn" href="https://github.com/Shakti4640/leetcode-patterns-guide-java/tree/main/project- (53)" target="_blank" rel="noopener"><svg viewBox="0 0 24 24"><path d="M12 .5C5.37.5 0 5.87 0 12.5c0 5.3 3.44 9.8 8.2 11.39.6.11.82-.26.82-.58v-2.03c-3.34.73-4.04-1.61-4.04-1.61-.55-1.39-1.34-1.76-1.34-1.76-1.09-.74.08-.73.08-.73 1.2.09 1.84 1.24 1.84 1.24 1.07 1.83 2.8 1.3 3.49 1 .1-.78.42-1.3.76-1.6-2.67-.3-5.47-1.33-5.47-5.93 0-1.31.47-2.38 1.24-3.22-.14-.3-.54-1.52.1-3.18 0 0 1.01-.32 3.3 1.23a11.5 11.5 0 0 1 3-.4c1.02 0 2.04.13 3 .4 2.28-1.55 3.29-1.23 3.29-1.23.64 1.66.24 2.88.12 3.18.77.84 1.23 1.91 1.23 3.22 0 4.61-2.81 5.63-5.48 5.92.43.37.81 1.1.81 2.22v3.29c0 .32.21.7.82.58C20.56 22.3 24 17.8 24 12.5 24 5.87 18.63.5 12 .5z"/></svg>💻 View Complete Java Code on GitHub</a></div>
+
+<hr>
+<h2>🔑 EXPECTED OUTPUT</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>╔═══════════════════════════════════════════════════════╗
+</span>║  PROJECT 53: Smallest Range Covering K Lists          ║
+║  Pattern: K-way Merge → Min-Heap + Global Max Track   ║
+╚═══════════════════════════════════════════════════════╝
+
+═══ TEST 1: Classic Example ═══
+Lists (3):
+  List 0: [4, 10, 15, 24, 26]
+  List 1: [0, 9, 12, 20]
+  List 2: [5, 18, 22, 30]
+
+Initial: min=0 max=5 → range [0, 5] size=5
+
+Step 1: Poll min=0 (list 1, idx 0)
+  → Push next=9 from list 1
+  → Current: min=4 max=9 → range [4, 9] size=5
+  → Best unchanged: [0, 5] size=5
+
+Step 2: Poll min=4 (list 0, idx 0)
+  → Push next=10 from list 0
+  → Current: min=5 max=10 → range [5, 10] size=5
+  → Best unchanged: [0, 5] size=5
+
+Step 3: Poll min=5 (list 2, idx 0)
+  → Push next=18 from list 2
+  → Current: min=9 max=18 → range [9, 18] size=9
+  → Best unchanged: [0, 5] size=5
+
+Step 4: Poll min=9 (list 1, idx 1)
+  → Push next=12 from list 1
+  → Current: min=10 max=18 → range [10, 18] size=8
+  → Best unchanged: [0, 5] size=5
+
+Step 5: Poll min=10 (list 0, idx 1)
+  → Push next=15 from list 0
+  → Current: min=12 max=18 → range [12, 18] size=6
+  → Best unchanged: [0, 5] size=5
+
+Step 6: Poll min=12 (list 1, idx 2)
+  → Push next=20 from list 1
+  → Current: min=15 max=20 → range [15, 20] size=5
+  → Best unchanged: [0, 5] size=5
+
+Step 7: Poll min=15 (list 0, idx 2)
+  → Push next=24 from list 0
+  → Current: min=18 max=24 → range [18, 24] size=6
+  → Best unchanged: [0, 5] size=5
+
+Step 8: Poll min=18 (list 2, idx 1)
+  → Push next=22 from list 2
+  → Current: min=20 max=24 → range [20, 24] size=4
+  → ★ NEW BEST: [20, 24] size=4
+
+Step 9: Poll min=20 (list 1, idx 3)
+  → List 1 EXHAUSTED → stop
+
+═══ ANSWER: [20, 24] (size 4) ═══
+
+═══ TEST 2: Identical Lists ═══
+Initial: min=1 max=1 → range [1, 1] size=0
+...
+═══ ANSWER: [1, 1] (size 0) ═══
+
+═══ TEST 3: Single Element Lists ═══
+Initial: min=1 max=3 → range [1, 3] size=2
+Step 1: Poll min=1 (list 0, idx 0)
+  → List 0 EXHAUSTED → stop
+═══ ANSWER: [1, 3] (size 2) ═══
+
+═══ TEST 6: Cross-Verification (All Approaches) ═══
+  Test 1: Heap=[20,24]  Merge=[20,24]  Brute=[20,24]  ✓
+  Test 2: Heap=[1,1]    Merge=[1,1]    Brute=[1,1]    ✓
+  Test 3: Heap=[1,3]    Merge=[1,3]    Brute=[1,3]    ✓
+  Test 4: Heap=[3,5]    Merge=[3,5]    Brute=[3,5]    ✓
+  Test 5: Heap=[1,3]    Merge=[1,3]    Brute=[1,3]    ✓
+  Test 6: Heap=[-1,1]   Merge=[-1,1]   Brute=[-1,1]   ✓
+  Test 7: Heap=[1,2]    Merge=[1,2]    Brute=[1,2]    ✓
+  Test 8: Heap=[11,15]  Merge=[11,15]  Brute=[11,15]  ✓
+
+═══ TEST 7: Performance Benchmark ═══
+  K=10 × n=1000 (total=10000):
+    Heap:  [...] → 3 ms
+    Merge: [...] → 8 ms
+  K=50 × n=5000 (total=250000):
+    Heap:  [...] → 25 ms
+    Merge: [...] → 120 ms
+  K=100 × n=10000 (total=1000000):
+    Heap:  [...] → 85 ms
+    Merge: [...] → 450 ms
+  K=500 × n=5000 (total=2500000):
+    Heap:  [...] → 200 ms
+    Merge: [...] → 900 ms</code></pre></div>
+<hr>
+<h2>🧠 COMPARISON: K-way Merge Problems</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>┌────────────────────────┬──────────────────────┬───────────────────┬─────────┐
+</span>│ Problem                │ Heap Usage           │ Extra Tracking    │ Project │
+├────────────────────────┼──────────────────────┼───────────────────┼─────────┤
+│ Merge K Sorted Lists   │ Min-heap of K heads  │ None (just merge) │ 40      │
+│                        │ Poll min, push next  │                   │         │
+├────────────────────────┼──────────────────────┼───────────────────┼─────────┤
+│ Smallest Range K Lists │ Min-heap of K current│ Global max +      │ 53 (now)│
+│                        │ Poll min, push next  │ best range        │         │
+├────────────────────────┼──────────────────────┼───────────────────┼─────────┤
+│ Kth Smallest in Matrix │ Min-heap of row heads│ Count of polled   │ Related │
+│                        │ Poll min K times     │ elements          │         │
+└────────────────────────┴──────────────────────┴───────────────────┴─────────┘
+
+KEY INSIGHT:
+  → Same heap setup: one element per source, poll min, push next
+  → Different OBJECTIVES change what we track alongside the heap
+  → Merge: just output the polled elements in order
+  → Smallest Range: track max and compare range at each step
+  → Kth Smallest: count polls until K-th element</code></pre></div>
+<hr>
+<h2>🧠 KEY TAKEAWAY</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>WHAT WE LEARNED:
+</span>→ K sorted lists + min-heap = powerful coordination mechanism
+→ Min-heap gives minimum in O(1), we track maximum separately in O(1)
+→ Advancing the minimum pointer is the ONLY productive move to shrink range
+→ Stop when any list is exhausted (can't cover all K lists)
+→ The merge+window alternative provides a different perspective but same result
+→ This problem synthesizes heap skills (Project 35, 40) with range optimization
+
+THE CORE MENTAL MODEL:
+→ "K conveyor belts, each showing one item"
+→ "Range = gap between smallest and largest visible items"
+→ "Always advance the smallest → it might get closer to the largest"
+→ "Track the best range seen across all steps"
+→ "Stop when a belt runs out"
+
+PATTERN SIGNATURE:
+→ K sorted sources ✓
+→ Need one element from each source ✓
+→ Minimize the span across chosen elements ✓
+→ = MIN-HEAP OF K CURRENT ELEMENTS + GLOBAL MAX TRACKING
+
+THE K-WAY MERGE FRAMEWORK:
+  1. Initialize heap with one element from each source
+  2. Loop: poll min → process → push next from same source
+  3. Track whatever the problem needs (merged output, range, count, etc.)
+  4. Stop when a source is exhausted (or goal achieved)</code></pre></div>
+<hr>
+<h2>🌉 BRIDGE TO NEXT PROJECT</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>PROJECT 53 taught us:
+</span>→ Min-heap for coordinating K sorted sources
+→ Global tracking alongside heap operations
+→ Range optimization via advancing minimum pointers
+
+PROJECT 54 (Largest Rectangle in Histogram) will shift to:
+→ A completely different data structure: MONOTONIC STACK
+→ Given an array of bar heights, find the largest rectangle
+→ The rectangle must fit under the histogram bars
+→ This requires finding LEFT and RIGHT boundaries for each bar
+→ Monotonic stack discovers boundaries in O(n) total
+
+The progression:
+  Project 36: Monotonic Stack → Next Greater Element → right-side lookup
+  Project 54: Monotonic Stack → Largest Rectangle → left AND right boundaries
+  Project 55: Monotonic Stack → Trapping Rain Water → bounded containers
+
+→ From HEAPS (priority-based processing) to STACKS (order-based processing)
+→ From MULTI-SOURCE coordination to SINGLE-ARRAY boundary discovery
+→ The monotonic stack maintains a sorted invariant
+→ Elements that violate the invariant reveal BOUNDARY information
+→ This is one of the most powerful interview patterns</code></pre></div>
+<hr>
+<p><strong>Ready for Project 54: Largest Rectangle in Histogram (Monotonic Stack → Left/Right Boundary Discovery → Area Maximization)?</strong></p>
+</div>
+</div>
+
+
+<!-- ========== data-index="5" ========== -->
+<div class="chat-message" data-index="5"></div>
+</div>
+<div class="bottom-nav">
+  <a href="project-52.html" class="nav-btn prev">← Prev</a>
+  <div class="nav-center">
+    <span class="nav-project-label">PROJECT 53 of 60</span>
+    <span class="nav-project-title">Smallest Range Covering Elements from K Lists</span>
+    <span class="kbd-hint">← → arrow keys to navigate</span>
+  </div>
+  <a href="project-54.html" class="nav-btn next">Next →</a>
+  <a href="index.html" class="nav-btn home">🏠 TOC</a>
+</div>
+<div id="progress-track"><div id="progress-fill"></div></div>
+<div id="progress-pct">0%</div>
+<script src="script.js"></script>
+<script>
+document.addEventListener('keydown', function(e) {
+  if (['INPUT','TEXTAREA'].includes(document.activeElement.tagName)) return;
+  if (e.key === 'ArrowRight' && "project-54.html" !== null) window.location = "project-54.html";
+  if (e.key === 'ArrowLeft' && "project-52.html" !== null) window.location = "project-52.html";
+});
+</script>
+</body>
+</html>

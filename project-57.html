@@ -1,0 +1,829 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PROJECT 57: Accounts Merge (Merge by Common Emails)</title>
+<link rel="icon" type="image/png" href="images/favicon.png">
+<link rel="stylesheet" href="styles.css">
+
+</head>
+<body>
+<div id="progress-bar-container"><div id="progress-bar" style="width:95%"></div></div>
+<div id="progress-label">95%</div>
+<div class="page-wrapper">
+<div class="chat-message"><div class="px-2"><h1>PROJECT 57: Accounts Merge (Merge by Common Emails)</h1>
+<h2>🎯 Union Find → String-Keyed Union → Component Grouping Post-Union</h2>
+<hr>
+<h2>🔗 DEPENDENCY CHAIN</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>Project 1  → Two Pointers foundation
+</span>Project 17 → Tree BFS → Queue-based processing
+Project 19 → Greedy → Activity Selection
+Project 47 → Topological Sort → Kahn's BFS → Directed graph
+Project 48 → Union Find → Parent array → Path compression → Union by rank
+Project 56 → Topological Sort → Graph CONSTRUCTION from constraints
+             ↓
+Project 57 → THIS PROJECT
+             → Union Find on STRING keys (not integer indices)
+             → Building union relationships from shared emails
+             → Post-union component grouping and collection
+             ↓
+Project 58 → Trie → Node-per-character structure</code></pre></div>
+<hr>
+<h2>🧩 THE HYPOTHETICAL PROBLEM</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ You are given a list of ACCOUNTS
+</span>→ Each account is a list of strings:
+     → First string = person's NAME
+     → Remaining strings = person's EMAIL addresses
+→ Two accounts belong to the SAME person if they share at least one email
+→ MERGE all accounts belonging to the same person
+→ Return merged accounts with:
+     → Name (first element)
+     → All unique emails SORTED alphabetically
+
+Example:
+  Input:
+    accounts = [
+      ["John", "john@mail.com", "john_work@mail.com"],
+      ["John", "john@mail.com", "john00@mail.com"],
+      ["Mary", "mary@mail.com"],
+      ["John", "johnny@mail.com"]
+    ]
+
+  Analysis:
+  → Account 0 and Account 1 share "john@mail.com"
+  → So they belong to the SAME person
+  → Account 2 has no shared email with anyone → separate person
+  → Account 3 has name "John" but NO shared email → separate person
+  → (Same name does NOT mean same person!)
+
+  Output:
+    [
+      ["John", "john00@mail.com", "john@mail.com", "john_work@mail.com"],
+      ["Mary", "mary@mail.com"],
+      ["John", "johnny@mail.com"]
+    ]
+
+  → Account 0 and 1 merged → 3 unique emails sorted
+  → Account 2 unchanged
+  → Account 3 unchanged (different John!)</code></pre></div>
+<hr>
+<h2>🔍 HOW TO APPROACH IT</h2>
+<h3>Step 1 — Understand the Grouping Relationship</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ Two accounts are CONNECTED if they share an email
+</span>→ Connection is TRANSITIVE:
+     → Account A shares email with Account B
+     → Account B shares email with Account C
+     → Then A, B, C are ALL the same person
+     → Even if A and C share NO direct email
+
+Example:
+  Account 0: [email1, email2]
+  Account 1: [email2, email3]
+  Account 2: [email3, email4]
+
+  → 0 and 1 share email2 → same person
+  → 1 and 2 share email3 → same person
+  → Therefore 0, 1, 2 are ALL the same person
+  → Merged: [email1, email2, email3, email4]
+
+This is TRANSITIVE CLOSURE → classic UNION FIND territory</code></pre></div>
+<h3>Step 2 — Why Union Find?</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>Recall Project 48:
+</span>→ Union Find groups elements into connected components
+→ union(a, b) → merge the groups containing a and b
+→ find(a) → return the representative (root) of a's group
+→ Two elements are in the same group iff find(a) == find(b)
+
+For Accounts Merge:
+→ Each EMAIL is an element
+→ If two emails appear in the same account → union them
+→ After all unions → emails with the same root = same person
+→ Collect all emails per root → that's one merged account
+
+WHY NOT use BFS/DFS instead?
+→ BFS/DFS also finds connected components
+→ But Union Find is more NATURAL here:
+     → We process accounts one at a time
+     → Each account gives us "these emails are connected"
+     → Union Find handles incremental merging perfectly
+     → BFS/DFS would require building full adjacency list first
+→ Both work, but Union Find is cleaner for this problem</code></pre></div>
+<h3>Step 3 — The Key Mapping Challenge</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>Project 48 used Union Find on INTEGERS (node indices 0 to n-1)
+</span>→ Parent array: int[] parent = new int[n]
+→ find(3) → returns root index
+
+This problem has STRINGS (email addresses) as elements
+→ Cannot use int[] parent
+→ Need: Map&lt;String, String&gt; parent
+→ find("john@mail.com") → returns root email string
+
+Additionally:
+→ We need to map each email to the account NAME
+→ Because the output needs the person's name
+→ Use: Map&lt;String, String&gt; emailToName
+
+This is the progression from Project 48:
+  Project 48: Union Find on integers → array-based → simple
+  Project 57: Union Find on strings → map-based → flexible</code></pre></div>
+<h3>Step 4 — The Three Phases</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>Phase 1: BUILD Union Find relationships
+</span>→ For each account:
+     → The first email is the "anchor"
+     → Union every other email in this account with the anchor
+     → Map every email to the account name
+
+Phase 2: GROUP emails by their root
+→ For each email encountered:
+     → Find its root via find()
+     → Add it to the root's group
+
+Phase 3: FORMAT output
+→ For each group:
+     → Sort the emails
+     → Prepend the name
+     → Add to result list</code></pre></div>
+<hr>
+<h2>🛠️ HOW CAN WE SOLVE IT</h2>
+<h3>Full Algorithm — Detailed Steps</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>STEP 1: Initialize Union Find (Map-based)
+</span>→ parent: Map&lt;String, String&gt; → each email points to its parent
+→ rank: Map&lt;String, Integer&gt; → for union by rank optimization
+→ emailToName: Map&lt;String, String&gt; → email → person name
+
+STEP 2: Process each account
+→ For account = [name, email1, email2, email3, ...]:
+     → emailToName[email1] = name
+     → emailToName[email2] = name
+     → emailToName[email3] = name
+     → Initialize parent[email1] = email1 (if new)
+     → Initialize parent[email2] = email2 (if new)
+     → Initialize parent[email3] = email3 (if new)
+     → union(email1, email2)
+     → union(email1, email3)
+     → (union all with the first email as anchor)
+
+STEP 3: Group emails by root
+→ components: Map&lt;String, List&lt;String&gt;&gt;
+→ For each email in parent.keySet():
+     → root = find(email)
+     → components[root].add(email)
+
+STEP 4: Build result
+→ For each root in components:
+     → emails = components[root]
+     → Sort emails alphabetically
+     → name = emailToName[root]
+     → result.add([name] + emails)</code></pre></div>
+<h3>Detailed Walkthrough</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>Input:
+</span>  Account 0: ["John", "john@mail.com", "john_work@mail.com"]
+  Account 1: ["John", "john@mail.com", "john00@mail.com"]
+  Account 2: ["Mary", "mary@mail.com"]
+  Account 3: ["John", "johnny@mail.com"]
+
+STEP 2: Process accounts
+
+  Account 0: name="John", emails=[john@, john_work@]
+    → parent: {john@: john@, john_work@: john_work@}
+    → union(john@, john_work@)
+    → parent: {john@: john@, john_work@: john@}
+    → emailToName: {john@: John, john_work@: John}
+
+  Account 1: name="John", emails=[john@, john00@]
+    → john@ already exists in parent
+    → parent: {..., john00@: john00@}
+    → union(john@, john00@)
+    → find(john@) = john@, find(john00@) = john00@
+    → Merge: john00@ → john@
+    → parent: {john@: john@, john_work@: john@, john00@: john@}
+    → emailToName: {..., john00@: John}
+
+  Account 2: name="Mary", emails=[mary@]
+    → parent: {..., mary@: mary@}
+    → No unions needed (single email)
+    → emailToName: {..., mary@: Mary}
+
+  Account 3: name="John", emails=[johnny@]
+    → parent: {..., johnny@: johnny@}
+    → No unions needed (single email)
+    → emailToName: {..., johnny@: John}
+
+STEP 3: Group by root
+
+  find(john@) = john@       → group john@: [john@]
+  find(john_work@) = john@  → group john@: [john@, john_work@]
+  find(john00@) = john@     → group john@: [john@, john_work@, john00@]
+  find(mary@) = mary@       → group mary@: [mary@]
+  find(johnny@) = johnny@   → group johnny@: [johnny@]
+
+STEP 4: Build result
+
+  Group root=john@:
+    → Sort: [john00@, john@, john_work@]
+    → Name: emailToName[john@] = "John"
+    → Result: ["John", "john00@mail.com", "john@mail.com", "john_work@mail.com"]
+
+  Group root=mary@:
+    → Sort: [mary@]
+    → Name: "Mary"
+    → Result: ["Mary", "mary@mail.com"]
+
+  Group root=johnny@:
+    → Sort: [johnny@]
+    → Name: "John"
+    → Result: ["John", "johnny@mail.com"]
+
+OUTPUT: ✓</code></pre></div>
+<hr>
+<h2>✅ WHAT SHOULD YOU DO</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ ALWAYS use the FIRST email in each account as the union anchor
+</span>     → Union every subsequent email WITH the first one
+     → This creates a star topology per account
+     → Minimizes the number of union operations
+     → Any email in the account works as anchor — first is convention
+
+→ ALWAYS initialize parent[email] = email for NEW emails
+     → Union Find requires every element to start as its own root
+     → Check if email already exists before initializing
+     → If it exists → it's already in the structure from a previous account
+
+→ ALWAYS use path compression in find()
+     → Without it → find() degrades to O(n)
+     → With it → amortized nearly O(1)
+     → Same optimization as Project 48
+
+→ ALWAYS map email → name BEFORE doing unions
+     → After unions, root might change
+     → We need to know the name for any email
+     → Store the mapping during account processing
+
+→ ALWAYS sort emails within each merged group
+     → Problem requires alphabetical order
+     → Sort AFTER grouping, BEFORE building output
+     → Collections.sort() on the email list
+
+→ ALWAYS use find() when grouping — NOT direct parent lookup
+     → parent[email] might not be the ROOT
+     → It might be an intermediate node
+     → find(email) with path compression gives the actual root</code></pre></div>
+<hr>
+<h2>🚫 WHAT SHOULD YOU NOT DO</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ DO NOT merge accounts by NAME
+</span>     → Same name ≠ same person
+     → "John" can be multiple different people
+     → Only SHARED EMAILS indicate same person
+     → The name is just metadata attached to accounts
+
+→ DO NOT use integer-based Union Find directly
+     → Emails are strings, not integers
+     → You COULD map emails to integers and use array-based UF
+     → But Map-based UF is cleaner and more readable
+     → Both work — choose based on clarity preference
+
+→ DO NOT union emails ACROSS accounts without shared emails
+     → Account 0: [email1, email2]
+     → Account 1: [email3, email4]
+     → These are separate unless email1==email3, email1==email4, etc.
+     → Union only happens WITHIN an account's email list
+     → Cross-account merging happens AUTOMATICALLY through Union Find
+        when the same email appears in multiple accounts
+
+→ DO NOT forget to handle single-email accounts
+     → Account with one email → no union operations
+     → But the email still needs to be in the output
+     → It forms its own group of size 1
+
+→ DO NOT sort the final result list by name
+     → Problem typically says "return in any order"
+     → Sort only the EMAILS within each group
+     → The groups themselves can be in any order
+
+→ DO NOT skip path compression thinking "it's just a small input"
+     → Without path compression → worst case O(n) per find
+     → With it → amortized O(α(n)) ≈ O(1)
+     → Always implement it — it's one extra line</code></pre></div>
+<hr>
+<h2>🔀 WHEN TO USE THIS PATTERN</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>✓ You need to GROUP elements by shared properties
+</span>✓ The grouping is TRANSITIVE (A-B connected, B-C connected → A-C connected)
+✓ Elements arrive INCREMENTALLY (process one account at a time)
+✓ The key question is "which elements belong together?"
+
+SIGNATURE PROBLEMS:
+→ Accounts Merge ← THIS
+→ Number of Connected Components (Project 48)
+→ Redundant Connection (find the extra edge in a tree)
+→ Number of Islands II (dynamic grid connectivity)
+→ Sentence Similarity II (transitive word similarity)
+→ Smallest String with Swaps
+→ Any problem with "merge groups that share an element"
+
+THE PATTERN:
+→ "Same X means same group" → Union Find
+→ Where X can be: email, word, cell, node, etc.</code></pre></div>
+<hr>
+<h2>🚫 WHEN NOT TO USE THIS PATTERN</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>✗ You need ORDERING, not grouping
+</span>     → Ordering = directed relationships → Topological Sort (Project 56)
+     → Grouping = undirected relationships → Union Find
+
+✗ Groups have HIERARCHY (parent-child structure)
+     → Union Find creates FLAT groups (all equal)
+     → If you need tree structure → use actual tree/graph
+
+✗ You need to SPLIT groups (un-merge)
+     → Union Find is designed for MERGING only
+     → Splitting/disconnecting is extremely expensive
+     → Use different data structure (link-cut trees, etc.)
+
+✗ The relationships are NOT transitive
+     → "A is friends with B" and "B is friends with C"
+     → Does NOT mean "A is friends with C" in some problems
+     → Union Find assumes transitivity — will over-merge
+
+✗ You need the actual PATH between elements
+     → Union Find tells you IF two elements are connected
+     → It does NOT tell you HOW they are connected
+     → For path finding → use BFS/DFS</code></pre></div>
+<hr>
+<h2>⚙️ HOW IT ONLY WORKS — Internal Mechanics</h2>
+<h3>Map-Based Union Find vs Array-Based Union Find</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>PROJECT 48 (Array-Based):
+</span>  int[] parent = new int[n];
+  int[] rank = new int[n];
+  
+  // Initialize
+  for (int i = 0; i &lt; n; i++) parent[i] = i;
+  
+  // Find
+  int find(int x) {
+      if (parent[x] != x) parent[x] = find(parent[x]);
+      return parent[x];
+  }
+  
+  // Union
+  void union(int x, int y) {
+      int rx = find(x), ry = find(y);
+      // merge by rank
+  }
+
+PROJECT 57 (Map-Based):
+  Map&lt;String, String&gt; parent = new HashMap&lt;&gt;();
+  Map&lt;String, Integer&gt; rank = new HashMap&lt;&gt;();
+  
+  // Initialize (on demand)
+  void init(String x) {
+      if (!parent.containsKey(x)) {
+          parent.put(x, x);
+          rank.put(x, 0);
+      }
+  }
+  
+  // Find (identical logic, different data structure)
+  String find(String x) {
+      if (!parent.get(x).equals(x)) {
+          parent.put(x, find(parent.get(x)));
+      }
+      return parent.get(x);
+  }
+  
+  // Union (identical logic)
+  void union(String x, String y) {
+      String rx = find(x), ry = find(y);
+      // merge by rank
+  }
+
+THE LOGIC IS IDENTICAL
+→ Only the data structure changes (array → map)
+→ This is the power of Union Find as an ABSTRACT pattern
+→ The algorithm doesn't care what the elements ARE
+→ It only cares about find() and union() operations</code></pre></div>
+<h3>How Cross-Account Merging Happens Automatically</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>Account 0: ["John", "A@", "B@"]
+</span>Account 1: ["John", "B@", "C@"]
+Account 2: ["John", "C@", "D@"]
+
+Processing Account 0:
+  → init(A@), init(B@)
+  → union(A@, B@) → parent: {A@: A@, B@: A@}
+  → Group: {A@, B@}
+
+Processing Account 1:
+  → B@ already exists!
+  → init(C@)
+  → union(B@, C@) → find(B@)=A@, find(C@)=C@ → merge: C@ → A@
+  → parent: {A@: A@, B@: A@, C@: A@}
+  → Group: {A@, B@, C@}
+
+Processing Account 2:
+  → C@ already exists!
+  → init(D@)
+  → union(C@, D@) → find(C@)=A@, find(D@)=D@ → merge: D@ → A@
+  → parent: {A@: A@, B@: A@, C@: A@, D@: A@}
+  → Group: {A@, B@, C@, D@}
+
+ALL FOUR EMAILS END UP IN THE SAME GROUP
+→ Even though A@ and D@ were never in the same account
+→ The chain A@-B@ (account 0) + B@-C@ (account 1) + C@-D@ (account 2)
+→ Transitively connects them all
+→ Union Find handles this AUTOMATICALLY through find() root tracking</code></pre></div>
+<h3>Why "Anchor to First Email" Strategy Works</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>Account: ["Name", "E1", "E2", "E3", "E4"]
+</span>
+Strategy: union(E1, E2), union(E1, E3), union(E1, E4)
+→ Creates a STAR: E1 is center, all others point to E1
+→ 3 union operations
+
+Alternative: union(E1, E2), union(E2, E3), union(E3, E4)
+→ Creates a CHAIN: E1 → E2 → E3 → E4
+→ 3 union operations (same count)
+→ But find() needs to traverse the chain (longer paths)
+→ Path compression eventually flattens it, but more work initially
+
+Alternative: union ALL pairs
+→ union(E1,E2), union(E1,E3), union(E1,E4), union(E2,E3), ...
+→ C(n,2) = n*(n-1)/2 operations → wasteful
+→ Many are redundant (already in same group)
+
+STAR STRATEGY IS OPTIMAL:
+→ n-1 union operations (minimum to connect n elements)
+→ Short paths from the start (star topology)
+→ Clean and simple code</code></pre></div>
+<h3>Post-Union Grouping — The Collection Phase</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>After all unions are done, we need to COLLECT groups.
+</span>
+APPROACH: Iterate over all emails, find root, group by root
+
+for (String email : parent.keySet()) {
+    String root = find(email);  // WITH path compression
+    components.computeIfAbsent(root, k -&gt; new ArrayList&lt;&gt;()).add(email);
+}
+
+WHY find() and not parent.get()?
+→ parent.get(email) might return an INTERMEDIATE node
+→ Only find(email) with path compression returns the TRUE ROOT
+→ Two emails in the same group might have different parent values
+→ But find() on both returns the SAME root
+
+Example:
+  parent: {A: A, B: A, C: B, D: C}
+  
+  parent.get(D) = C (NOT the root!)
+  parent.get(C) = B (NOT the root!)
+  find(D) = A ✓ (with path compression, also updates D→A)
+  find(C) = A ✓ (with path compression, also updates C→A)</code></pre></div>
+<hr>
+<h2>⚠️ COMMON PITFALLS AND FAILURE MODES</h2>
+<h3>Pitfall 1: Merging by Name Instead of Email</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>WRONG THINKING:
+</span>  "Both accounts have name 'John' → merge them"
+  
+CORRECT THINKING:
+  "Both accounts share email 'john@mail.com' → merge them"
+
+Two different people can have the same name
+→ Only shared EMAILS prove they're the same person
+→ Name is metadata, not identity</code></pre></div>
+<h3>Pitfall 2: Forgetting to Initialize New Emails</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>WRONG:
+</span>  void union(String x, String y) {
+      String rx = find(x);  // CRASH — x not in parent map!
+      ...
+  }
+
+CORRECT:
+  void union(String x, String y) {
+      init(x);  // Ensure x exists in parent map
+      init(y);  // Ensure y exists in parent map
+      String rx = find(x);
+      ...
+  }
+
+OR initialize all emails BEFORE any union operations
+→ Process each account: first add all emails, then union them</code></pre></div>
+<h3>Pitfall 3: Using parent.get() Instead of find() for Grouping</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>After all unions:
+</span>  parent = {A: A, B: A, C: B, D: B}
+  
+Using parent.get():
+  A → group A: [A]
+  B → group A: [A, B]
+  C → group B: [C]     ← WRONG! C should be in group A
+  D → group B: [C, D]  ← WRONG! D should be in group A
+
+Using find():
+  find(A) = A → group A: [A]
+  find(B) = A → group A: [A, B]
+  find(C) = A → group A: [A, B, C]     ✓
+  find(D) = A → group A: [A, B, C, D]  ✓
+
+ALWAYS use find() for grouping — NEVER raw parent lookup</code></pre></div>
+<h3>Pitfall 4: Not Sorting Emails in Output</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>Problem requires emails sorted alphabetically within each group.
+</span>
+WRONG: Return emails in whatever order they were discovered
+CORRECT: Collections.sort(emailList) before adding to result
+
+This is easy to forget but will fail test cases</code></pre></div>
+<h3>Pitfall 5: Losing the Name Mapping</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>After all unions, we need the NAME for each group.
+</span>→ The root email might not be the "first" email of any account
+→ We need a reliable email → name mapping
+
+SOLUTION: Store emailToName for EVERY email encountered
+→ Every email maps to its account's name
+→ When building output: name = emailToName.get(rootEmail)
+→ Since all emails in the same group belong to the same person
+→ Any email's name will give the correct name</code></pre></div>
+<h3>Pitfall 6: Handling Accounts with One Email</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>Account: ["Mary", "mary@mail.com"]
+</span>
+→ Only one email → no union operation needed
+→ But email must still be initialized in parent map
+→ And must appear in output as its own group
+
+If you only process emails during union operations:
+→ Single-email accounts might be skipped entirely
+→ ALWAYS initialize emails in a separate loop before unions</code></pre></div>
+<hr>
+<h2>📈 SCALABILITY CONSIDERATIONS</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>Let:
+</span>  N = number of accounts
+  K = maximum emails per account
+  E = total number of emails across all accounts
+  U = number of unique emails
+
+TIME COMPLEXITY:
+→ Step 1 (initialize): O(E) → process all emails
+→ Step 2 (unions): O(E × α(U)) → one union per email pair
+     → α(U) is inverse Ackermann → practically O(1)
+     → So effectively O(E)
+→ Step 3 (grouping): O(U × α(U)) → one find per unique email
+     → Effectively O(U)
+→ Step 4 (sorting): O(U log U) → sort emails within groups
+     → This is actually the bottleneck!
+→ TOTAL: O(E + U log U)
+
+SPACE COMPLEXITY:
+→ Parent map: O(U) unique emails
+→ Rank map: O(U)
+→ Email-to-name map: O(U)
+→ Components map: O(U)
+→ TOTAL: O(U)
+
+PRACTICAL PERFORMANCE:
+→ E = 1,000 → instant
+→ E = 100,000 → ~10ms (dominated by sorting)
+→ E = 10,000,000 → ~1 second (sorting bottleneck)
+
+COMPARISON WITH BFS/DFS APPROACH:
+→ BFS/DFS: Build adjacency list → O(E), BFS → O(E) → Total O(E)
+→ Union Find: Process unions → O(E × α), Group → O(U) → Total O(E)
+→ Both are O(E) in practice
+→ Union Find is often cleaner for incremental merging
+→ BFS/DFS might be simpler if you're more comfortable with graph traversal</code></pre></div>
+<hr>
+<h2>🔍 INTERPRETABILITY CONSIDERATIONS</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ Union Find approach is NATURAL for "merge by shared property":
+</span>     → "These emails belong together because they share an email"
+     → → "Union them!"
+     → The concept maps directly to the algorithm
+
+→ For interviews, explain in three phases:
+     Phase 1: "I model each email as a node in Union Find"
+     Phase 2: "For each account, I union all its emails together"
+     Phase 3: "After all unions, I group emails by their root"
+
+→ Draw the Union Find state on the whiteboard:
+     → Show parent pointers as arrows
+     → Show how path compression flattens the tree
+     → Show the final groups
+
+→ Mention the edge case about names:
+     → "Same name doesn't mean same person"
+     → "Only shared emails prove identity"
+     → This shows attention to detail
+
+→ The ALTERNATIVE BFS approach:
+     → Build graph: email → set of connected emails
+     → BFS from each unvisited email → collect component
+     → Same result, different implementation
+     → Mention this to show breadth of knowledge</code></pre></div>
+<hr>
+<div class="github-btn-wrap"><a class="github-btn" href="https://github.com/Shakti4640/leetcode-patterns-guide-java/tree/main/project- (57)" target="_blank" rel="noopener"><svg viewBox="0 0 24 24"><path d="M12 .5C5.37.5 0 5.87 0 12.5c0 5.3 3.44 9.8 8.2 11.39.6.11.82-.26.82-.58v-2.03c-3.34.73-4.04-1.61-4.04-1.61-.55-1.39-1.34-1.76-1.34-1.76-1.09-.74.08-.73.08-.73 1.2.09 1.84 1.24 1.84 1.24 1.07 1.83 2.8 1.3 3.49 1 .1-.78.42-1.3.76-1.6-2.67-.3-5.47-1.33-5.47-5.93 0-1.31.47-2.38 1.24-3.22-.14-.3-.54-1.52.1-3.18 0 0 1.01-.32 3.3 1.23a11.5 11.5 0 0 1 3-.4c1.02 0 2.04.13 3 .4 2.28-1.55 3.29-1.23 3.29-1.23.64 1.66.24 2.88.12 3.18.77.84 1.23 1.91 1.23 3.22 0 4.61-2.81 5.63-5.48 5.92.43.37.81 1.1.81 2.22v3.29c0 .32.21.7.82.58C20.56 22.3 24 17.8 24 12.5 24 5.87 18.63.5 12 .5z"/></svg>💻 View Complete Java Code on GitHub</a></div>
+
+<hr>
+<h2>🔑 EXPECTED OUTPUT</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>╔══════════════════════════════════════════════════════╗
+</span>║  PROJECT 57: Accounts Merge                          ║
+║  Pattern: Union Find → String Keys → Component Group ║
+╚══════════════════════════════════════════════════════╝
+
+═══ TEST 1: Classic Example ═══
+  ── INPUT ACCOUNTS ──
+    Account 0: [John, john@mail.com, john_work@mail.com]
+    Account 1: [John, john@mail.com, john00@mail.com]
+    Account 2: [Mary, mary@mail.com]
+    Account 3: [John, johnny@mail.com]
+
+  ── PHASE 1: Union Operations ──
+    Processing Account 0 (name="John"):
+      email: john@mail.com (NEW)
+      email: john_work@mail.com (NEW)
+      → union(john@mail.com, john_work@mail.com) → MERGED
+
+    Processing Account 1 (name="John"):
+      email: john@mail.com (EXISTS)
+      email: john00@mail.com (NEW)
+      → union(john@mail.com, john00@mail.com) → MERGED
+
+    Processing Account 2 (name="Mary"):
+      email: mary@mail.com (NEW)
+
+    Processing Account 3 (name="John"):
+      email: johnny@mail.com (NEW)
+
+  ── PHASE 2: Group by Root ──
+    Root: john@mail.com → Group: [john@mail.com, john_work@mail.com, john00@mail.com]
+    Root: mary@mail.com → Group: [mary@mail.com]
+    Root: johnny@mail.com → Group: [johnny@mail.com]
+
+  ── PHASE 3: Build Result ──
+    [John, [john00@mail.com, john@mail.com, john_work@mail.com]]
+    [Mary, [mary@mail.com]]
+    [John, [johnny@mail.com]]
+
+═══ TEST 2: Transitive Merge (Chain) ═══
+  ── PHASE 1: Union Operations ──
+    Processing Account 0 (name="Alice"):
+      email: a@mail.com (NEW)
+      email: b@mail.com (NEW)
+      → union(a@mail.com, b@mail.com) → MERGED
+
+    Processing Account 1 (name="Alice"):
+      email: b@mail.com (EXISTS)
+      email: c@mail.com (NEW)
+      → union(b@mail.com, c@mail.com) → MERGED
+
+    Processing Account 2 (name="Alice"):
+      email: c@mail.com (EXISTS)
+      email: d@mail.com (NEW)
+      → union(c@mail.com, d@mail.com) → MERGED
+
+  ── PHASE 2: Group by Root ──
+    Root: a@mail.com → Group: [a@mail.com, b@mail.com, c@mail.com, d@mail.com]
+
+  ── PHASE 3: Build Result ──
+    [Alice, [a@mail.com, b@mail.com, c@mail.com, d@mail.com]]
+
+═══ TEST 6: Complex Web ═══
+  ── PHASE 1: Union Operations ──
+    Processing Account 0 (name="Alex"):
+      email: a1@ (NEW)
+      email: a2@ (NEW)
+      → union(a1@, a2@) → MERGED
+      email: a3@ (NEW)
+      → union(a1@, a3@) → MERGED
+
+    Processing Account 1 (name="Alex"):
+      email: a4@ (NEW)
+      email: a5@ (NEW)
+      → union(a4@, a5@) → MERGED
+
+    Processing Account 2 (name="Alex"):
+      email: a3@ (EXISTS)
+      email: a4@ (EXISTS)
+      → union(a3@, a4@) → MERGED    ← BRIDGES the two groups!
+
+    Processing Account 3 (name="Bob"):
+      email: b1@ (NEW)
+      email: b2@ (NEW)
+      → union(b1@, b2@) → MERGED
+
+  ── PHASE 2: Group by Root ──
+    Root: a1@ → Group: [a1@, a2@, a3@, a4@, a5@]   ← ALL merged!
+    Root: b1@ → Group: [b1@, b2@]
+
+═══ TEST 7: Verification — Union Find vs BFS ═══
+  Test 1: UF groups=3 BFS groups=3 ✓ MATCH
+  Test 2: UF groups=1 BFS groups=1 ✓ MATCH
+  Test 3: UF groups=3 BFS groups=3 ✓ MATCH
+  Test 4: UF groups=1 BFS groups=1 ✓ MATCH
+  Test 5: UF groups=3 BFS groups=3 ✓ MATCH
+  Test 6: UF groups=2 BFS groups=2 ✓ MATCH
+
+  ✅ ALL TESTS PASSED</code></pre></div>
+<hr>
+<h2>🧠 KEY TAKEAWAY</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>WHAT WE LEARNED:
+</span>→ Union Find extends naturally from integers to strings (Map-based)
+→ "Merge by shared property" = Union Find's sweet spot
+→ The algorithm has three clear phases:
+     Phase 1: Build union relationships
+     Phase 2: Group elements by root
+     Phase 3: Format output
+
+THE UNION FIND ARC IS NOW COMPLETE:
+
+┌───────────────┬──────────────────────┬──────────────────────────┐
+│ Project       │ Elements             │ What We Learned          │
+├───────────────┼──────────────────────┼──────────────────────────┤
+│ 48: Connected │ Integer nodes        │ Basic Union Find         │
+│    Components │ (0 to n-1)           │ Path compression         │
+│               │                      │ Union by rank            │
+│               │                      │ Component counting       │
+├───────────────┼──────────────────────┼──────────────────────────┤
+│ 57: Accounts  │ String emails        │ Map-based Union Find     │
+│    Merge      │ (arbitrary keys)     │ Building relationships   │
+│               │                      │ from shared properties   │
+│               │                      │ Post-union grouping      │
+│               │                      │ Sorting within groups    │
+└───────────────┴──────────────────────┴──────────────────────────┘
+
+THE KEY INSIGHT:
+→ Union Find is an ABSTRACT pattern
+→ The elements can be ANYTHING: integers, strings, objects
+→ The operations (find, union) work identically
+→ Only the storage changes (array → map)
+→ The pattern is about GROUPING, not about data types
+
+GRAPH PATTERN FAMILY — COMPLETE PICTURE:
+
+  Topological Sort (Projects 47, 56):
+  → "What ORDER?" → Directed graph → Kahn's BFS
+  → Project 47: given edges → run algorithm
+  → Project 56: build edges from data → run algorithm
+
+  Union Find (Projects 48, 57):
+  → "What GROUPS?" → Undirected graph → Find/Union
+  → Project 48: given edges → count components
+  → Project 57: build relationships from data → collect groups
+
+  Both arcs follow the same progression:
+  → First project: algorithm on GIVEN graph
+  → Second project: BUILD graph from data, THEN run algorithm
+  → The construction skill is what separates medium from hard</code></pre></div>
+<hr>
+<h2>🌉 BRIDGE TO NEXT PROJECT</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>PROJECT 57 taught us:
+</span>→ Map-based Union Find for string keys
+→ Building union relationships from shared properties
+→ Post-union grouping and collection
+→ The Union Find pattern is now COMPLETE ✓
+
+PROJECT 58 (Implement Trie / Prefix Tree) will introduce an entirely new
+data structure:
+→ Instead of grouping elements → ORGANIZING strings by prefix
+→ A Trie stores strings character by character
+→ Each node represents one character
+→ Shared prefixes share nodes in the tree
+
+The connection:
+→ Project 57 grouped strings (emails) by EQUALITY
+     → "Same email = same group"
+→ Project 58 will organize strings by PREFIX STRUCTURE
+     → "Same prefix = same path in tree"
+→ Both deal with string relationships but in fundamentally different ways
+
+Why Trie matters:
+→ Trie enables O(L) insert/search where L = string length
+→ Supports prefix queries: "find all words starting with 'app'"
+→ Foundation for Project 59 (Word Search II on grid)
+→ Combines tree structure (Project 17-18) with string processing
+
+The remaining arc:
+  Project 58: Implement Trie → basic structure → insert/search/startsWith
+  Project 59: Word Search II → Trie-guided DFS on grid → backtracking + pruning
+  Project 60: Task Scheduler → Greedy synthesis → grand finale</code></pre></div>
+<hr>
+<p><strong>Ready for Project 58: Implement Trie / Prefix Tree (Trie → Node-per-Character Structure → Insert/Search/StartsWith Operations)?</strong></p>
+<p>→ Please confirm and I will continue.</p></div>
+</div>
+
+<!-- ========== data-index="15" ========== -->
+<div class="chat-message" data-index="15"></div>
+</div>
+<div class="bottom-nav">
+  <a href="project-56.html" class="nav-btn prev">← Prev</a>
+  <div class="nav-center">
+    <span class="nav-project-label">PROJECT 57 of 60</span>
+    <span class="nav-project-title">Accounts Merge (Merge by Common Emails)</span>
+    <span class="kbd-hint">← → arrow keys to navigate</span>
+  </div>
+  <a href="project-58.html" class="nav-btn next">Next →</a>
+  <a href="index.html" class="nav-btn home">🏠 TOC</a>
+</div>
+<div id="progress-track"><div id="progress-fill"></div></div>
+<div id="progress-pct">0%</div>
+<script src="script.js"></script>
+<script>
+document.addEventListener('keydown', function(e) {
+  if (['INPUT','TEXTAREA'].includes(document.activeElement.tagName)) return;
+  if (e.key === 'ArrowRight' && "project-58.html" !== null) window.location = "project-58.html";
+  if (e.key === 'ArrowLeft' && "project-56.html" !== null) window.location = "project-56.html";
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,870 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PROJECT 60: Task Scheduler with Cooldown</title>
+<link rel="icon" type="image/png" href="images/favicon.png">
+<link rel="stylesheet" href="styles.css">
+
+</head>
+<body>
+<div id="progress-bar-container"><div id="progress-bar" style="width:100%"></div></div>
+<div id="progress-label">100%</div>
+<div class="page-wrapper">
+<div class="chat-message"><div class="px-2"><h1>PROJECT 60: Task Scheduler with Cooldown</h1>
+<h2>🎯 Greedy → Frequency-Based Slot Filling → Idle Slot Calculation → Grand Finale</h2>
+<hr>
+<h2>🔗 DEPENDENCY CHAIN — THE FULL PICTURE</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>Project 1  → Two Pointers → Foundation of algorithmic thinking
+</span>Project 19 → Greedy → Activity Selection → Sort-based local optimal
+Project 31 → Top K Elements → Heap-based frequency selection
+Project 38 → Kth Largest → Min-heap of size K
+Project 40 → Merge K Sorted Lists → Multi-source heap processing
+Project 49 → Jump Game → Forward greedy scan → Farthest-reachable
+             ↓
+Project 60 → THIS PROJECT — GRAND FINALE
+             → Greedy: most frequent task first
+             → Frequency analysis: count-based reasoning
+             → Mathematical formula: direct computation
+             → Heap simulation: step-by-step verification
+             → Synthesis of patterns across the entire curriculum</code></pre></div>
+<hr>
+<h2>🧩 THE HYPOTHETICAL PROBLEM</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ You are given an array of CPU tasks represented by characters: A-Z
+</span>→ Each task takes ONE unit of time to execute
+→ There is a COOLDOWN period of n units between two SAME tasks
+→ During cooldown, the CPU can execute DIFFERENT tasks or stay IDLE
+→ Find the MINIMUM number of time units to finish ALL tasks
+
+Example 1:
+  tasks = ["A","A","A","B","B","B"], n = 2
+
+  One valid schedule:
+  A → B → idle → A → B → idle → A → B
+  Time: 8 units
+
+  Can we do better?
+  A → B → idle → A → B → idle → A → B
+  → Between each A: 2 slots (cooldown n=2)
+  → Fill with B where possible
+  → Still need 1 idle slot per gap
+  → Total: 8 → this IS the minimum
+
+Example 2:
+  tasks = ["A","A","A","B","B","B"], n = 0
+
+  No cooldown needed!
+  A → B → A → B → A → B   OR   A → A → A → B → B → B
+  Time: 6 units (just total number of tasks)
+
+Example 3:
+  tasks = ["A","A","A","A","A","A","B","C","D","E","F","G"], n = 2
+
+  A is the bottleneck: appears 6 times
+  Between each A: need 2 slots
+  
+  A → B → C → A → D → E → A → F → G → A → _ → _ → A → _ → _ → A
+  
+  Wait, let's think more carefully:
+  A _ _ A _ _ A _ _ A _ _ A _ _ A
+  Fill: A B C A D E A F G A _ _ A _ _ A
+  
+  Actually: 5 gaps × 3 slots = 15 + 1 = 16
+  But we only have 12 tasks total
+  Filled slots: 6(A) + 6(others) = 12
+  Idle slots: 16 - 12 = 4
+  Total: 16
+
+  But wait — can we rearrange?
+  A B C A D E A F G A idle idle A idle idle A → 16
+  
+  Hmm, that's too many. Let me recalculate:
+  maxFreq = 6 (task A)
+  gaps = maxFreq - 1 = 5
+  gapLength = n = 2
+  totalSlots = gaps × (n + 1) + 1 = 5 × 3 + 1 = 16
+  filledSlots = 12 (total tasks)
+  idleSlots = 16 - 12 = 4
+  Total = max(16, 12) = 16 ✓</code></pre></div>
+<hr>
+<h2>🔍 HOW TO APPROACH IT</h2>
+<h3>Step 1 — Understand What Creates Idle Time</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ Idle time happens when:
+</span>     → The CPU needs to wait for a cooldown to expire
+     → AND there are no other tasks available to fill the gap
+     
+→ Idle time does NOT happen when:
+     → Enough different tasks exist to fill all cooldown gaps
+     → n = 0 (no cooldown needed)
+
+→ The MOST FREQUENT task creates the MOST gaps
+→ Other tasks FILL those gaps
+→ If there aren't enough other tasks → idle slots remain
+→ If there ARE enough other tasks → no idle time needed
+     → Total time = just the number of tasks</code></pre></div>
+<h3>Step 2 — Visualize the Frame Structure</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>tasks = ["A","A","A","B","B","B"], n = 2
+</span>
+The most frequent task (A, freq=3) creates a FRAME:
+
+  A _ _ | A _ _ | A
+  
+  → (maxFreq - 1) gaps of size n
+  → Plus 1 for the last occurrence of A
+
+Frame slots:
+  Position:  1  2  3 | 4  5  6 | 7
+  Content:   A  _  _ | A  _  _ | A
+  
+Now fill other tasks into the gaps:
+  Position:  1  2  3 | 4  5  6 | 7
+  Content:   A  B  _ | A  B  _ | A
+  
+B has freq=3, so it also fills the last position:
+  Position:  1  2  3 | 4  5  6 | 7  8
+  Content:   A  B  _ | A  B  _ | A  B
+  
+  Idle slots: 2
+  Total time: 8
+
+THE FRAME FORMULA:
+  → gaps = maxFreq - 1
+  → each gap has n slots (the cooldown period)
+  → plus the last "chunk" which has all tasks with maxFreq
+  → Frame size = gaps × (n + 1) + countOfMaxFreqTasks</code></pre></div>
+<h3>Step 3 — Derive the Mathematical Formula</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>Let:
+</span>  maxFreq = frequency of the most frequent task
+  maxCount = number of tasks that have frequency == maxFreq
+
+Formula:
+  frameSize = (maxFreq - 1) × (n + 1) + maxCount
+  answer = max(frameSize, totalTasks)
+
+WHY max(frameSize, totalTasks)?
+→ Case 1: frameSize ≥ totalTasks
+     → There are IDLE slots in the frame
+     → Not enough other tasks to fill all gaps
+     → Answer = frameSize
+
+→ Case 2: totalTasks &gt; frameSize
+     → More tasks than frame slots
+     → All gaps are filled AND tasks overflow the frame
+     → No idle time needed
+     → Answer = totalTasks (just execute everything back-to-back)
+
+PROOF BY EXAMPLE:
+
+Case 1: tasks=["A","A","A","B","B","B"], n=2
+  maxFreq = 3 (A and B both)
+  maxCount = 2 (A and B)
+  frameSize = (3-1) × (2+1) + 2 = 6 + 2 = 8
+  totalTasks = 6
+  answer = max(8, 6) = 8 ✓
+
+Case 2: tasks=["A","A","A","B","B","B","C","C","C","D","D","D"], n=2
+  maxFreq = 3 (A, B, C, D all)
+  maxCount = 4
+  frameSize = (3-1) × (2+1) + 4 = 6 + 4 = 10
+  totalTasks = 12
+  answer = max(10, 12) = 12 ✓
+  → Enough variety to fill all gaps → no idle time
+  → Schedule: A B C D A B C D A B C D → 12 time units</code></pre></div>
+<h3>Step 4 — Why the Formula Works — Deep Understanding</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>THE FRAME STRUCTURE:
+</span>
+  For maxFreq = 4, n = 3, maxCount = 2 (tasks A and B both have freq 4):
+
+  Chunk 1:  A  B  _  _  |
+  Chunk 2:  A  B  _  _  |
+  Chunk 3:  A  B  _  _  |
+  Last:     A  B
+
+  Frame = 3 chunks of size (n+1) = 4, plus last chunk of size maxCount = 2
+  Frame = 3 × 4 + 2 = 14
+
+  The underscores are slots for OTHER tasks:
+  → Each chunk has (n + 1 - maxCount) available slots for others
+  → Total available = (maxFreq - 1) × (n + 1 - maxCount)
+
+  If other tasks fit: no idle time beyond the frame
+  If other tasks overflow: frame expands → answer = totalTasks
+
+WHY maxCount matters in the last chunk:
+  → If A and B both have maxFreq = 4:
+  → Last chunk needs BOTH A and B: [A, B]
+  → Last chunk size = maxCount = 2
+  → If only A had maxFreq: last chunk = [A], size = 1</code></pre></div>
+<h3>Step 5 — The Alternative Approach: Heap Simulation</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>Instead of the formula, we can SIMULATE the scheduling:
+</span>
+1. Count frequency of each task
+2. Put all frequencies into a MAX-HEAP
+3. Process in rounds of (n+1) slots:
+     → Each round: pull up to (n+1) tasks from heap (highest freq first)
+     → Execute them
+     → Decrement their frequencies
+     → Put back tasks with remaining frequency &gt; 0
+4. If heap is empty after a round → done
+5. If heap still has tasks → add (n+1) to time (full round)
+6. Last round: add actual tasks executed (might be &lt; n+1)
+
+This is more intuitive but slower (O(totalTasks × log 26))
+The formula is O(n) and more elegant
+Both produce the same answer</code></pre></div>
+<hr>
+<h2>🛠️ HOW CAN WE SOLVE IT</h2>
+<h3>Approach 1 — Mathematical Formula (Optimal)</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>ALGORITHM:
+</span>1. Count frequency of each task → freq[26]
+2. Find maxFreq = maximum frequency
+3. Count maxCount = how many tasks have frequency == maxFreq
+4. Compute frameSize = (maxFreq - 1) × (n + 1) + maxCount
+5. Return max(frameSize, tasks.length)
+
+Time: O(N) to count + O(26) to find max = O(N)
+Space: O(26) = O(1)</code></pre></div>
+<h3>Approach 2 — Greedy Simulation with Max-Heap</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>ALGORITHM:
+</span>1. Count frequency of each task → freq[26]
+2. Add all non-zero frequencies to a max-heap
+3. totalTime = 0
+4. While heap is not empty:
+     a. Start a round of (n+1) slots
+     b. tempList = [] (tasks executed this round)
+     c. For slot = 0 to n:
+          → If heap not empty:
+               → Pull highest frequency task
+               → Decrement frequency
+               → If frequency &gt; 0: add to tempList
+     d. Put all tempList entries back into heap
+     e. If heap is empty: totalTime += tasks executed this round
+        Else: totalTime += (n + 1) (full round including possible idle)
+5. Return totalTime
+
+Time: O(totalTasks × log 26) = O(N)
+Space: O(26) = O(1)</code></pre></div>
+<h3>Approach 3 — Greedy Simulation with Heap + Cooldown Queue</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>ALGORITHM (most detailed simulation):
+</span>1. Count frequencies → max-heap
+2. totalTime = 0
+3. cooldownQueue = Queue of (frequency, availableAtTime) pairs
+4. While heap not empty OR queue not empty:
+     a. totalTime++
+     b. If heap not empty:
+          → Pull highest frequency task
+          → Decrement frequency
+          → If frequency &gt; 0: add (freq, totalTime + n) to cooldownQueue
+     c. If queue front's availableAtTime == totalTime:
+          → Remove from queue
+          → Add frequency back to heap
+5. Return totalTime
+
+This simulates EVERY time unit
+→ Slowest but most intuitive
+→ Great for understanding, not for production</code></pre></div>
+<h3>Detailed Walkthrough — Formula Approach</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>tasks = ["A","A","A","A","B","B","B","C","C"], n = 2
+</span>
+Step 1: Count frequencies
+  A: 4, B: 3, C: 2
+
+Step 2: maxFreq = 4 (task A)
+
+Step 3: maxCount = 1 (only A has frequency 4)
+
+Step 4: frameSize = (4-1) × (2+1) + 1 = 3 × 3 + 1 = 10
+
+Step 5: totalTasks = 9
+
+Answer = max(10, 9) = 10
+
+Verification:
+  Frame:  A _ _ | A _ _ | A _ _ | A
+  Fill B: A B _ | A B _ | A B _ | A
+  Fill C: A B C | A B C | A B _ | A
+                                 ↑ one idle slot
+
+  Schedule: A B C A B C A B idle A
+  Time: 10 ✓</code></pre></div>
+<h3>Detailed Walkthrough — Heap Simulation</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>tasks = ["A","A","A","B","B","B"], n = 2
+</span>
+Frequencies: A=3, B=3
+Max-Heap: [3, 3]
+
+Round 1 (slots 0 to 2):
+  Slot 0: pull 3 (was A) → freq becomes 2 → tempList: [2]
+  Slot 1: pull 3 (was B) → freq becomes 2 → tempList: [2, 2]
+  Slot 2: heap empty → idle
+  → Put back [2, 2] → heap: [2, 2]
+  → Heap not empty → totalTime += n+1 = 3
+  → totalTime = 3
+
+Round 2 (slots 0 to 2):
+  Slot 0: pull 2 → freq becomes 1 → tempList: [1]
+  Slot 1: pull 2 → freq becomes 1 → tempList: [1, 1]
+  Slot 2: heap empty → idle
+  → Put back [1, 1] → heap: [1, 1]
+  → Heap not empty → totalTime += 3
+  → totalTime = 6
+
+Round 3 (slots 0 to 2):
+  Slot 0: pull 1 → freq becomes 0 → don't add to tempList
+  Slot 1: pull 1 → freq becomes 0 → don't add to tempList
+  Slot 2: heap empty → (would be idle but this is last round)
+  → tempList empty → heap empty → THIS IS THE LAST ROUND
+  → totalTime += tasks executed this round = 2
+  → totalTime = 8
+
+Answer: 8 ✓</code></pre></div>
+<hr>
+<h2>✅ WHAT SHOULD YOU DO</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ ALWAYS start with the mathematical formula approach
+</span>     → O(N) time, O(1) space — optimal
+     → Clean, concise, elegant
+     → Demonstrates deep understanding of the problem structure
+
+→ ALWAYS verify with small examples
+     → Trace the frame structure on paper
+     → Check both cases: idle needed and no idle needed
+     → Edge case: n=0 → answer = tasks.length always
+
+→ ALWAYS compute max(frameSize, totalTasks)
+     → The frame might be SMALLER than total tasks
+     → When many different tasks exist → no idle time
+     → Total tasks is the MINIMUM possible answer
+     → Frame might require MORE time due to idle slots
+
+→ ALWAYS count maxCount correctly
+     → maxCount = number of tasks with THE maximum frequency
+     → Not "number of distinct tasks" (common confusion)
+     → Not "maximum frequency" (that's maxFreq)
+     → Example: A=5, B=5, C=3 → maxFreq=5, maxCount=2
+
+→ ALWAYS know BOTH approaches (formula + simulation)
+     → Formula: shows mathematical insight
+     → Simulation: shows algorithmic thinking
+     → Interviewers may ask for both
+     → Simulation is easier to explain, formula is harder to derive</code></pre></div>
+<hr>
+<h2>🚫 WHAT SHOULD YOU NOT DO</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ DO NOT try to build the actual schedule
+</span>     → The problem asks for MINIMUM TIME, not the schedule itself
+     → Building the schedule is harder and unnecessary
+     → Formula computes the answer directly
+     → If the problem asked for the schedule → use simulation
+
+→ DO NOT confuse maxFreq with maxCount
+     → maxFreq: the highest frequency value (e.g., 5)
+     → maxCount: how many tasks have that frequency (e.g., 2)
+     → Swapping these → wrong formula → wrong answer
+
+→ DO NOT forget the max(frameSize, totalTasks) step
+     → Without it: undercount when many diverse tasks exist
+     → Example: 100 different tasks, n=1
+     → frameSize might be 3 but totalTasks = 100
+     → Answer is 100, not 3
+
+→ DO NOT assume cooldown applies to different tasks
+     → Cooldown n is between SAME tasks only
+     → A then B then A with n=2: valid (2 slots between A's: B and one more)
+     → A then A with n=2: invalid (need 2 slots between A's)
+
+→ DO NOT over-engineer the simulation
+     → Max 26 distinct tasks (A-Z)
+     → Heap of size 26 → operations are effectively O(1)
+     → No need for complex data structures
+
+→ DO NOT simulate individual time units for large inputs
+     → Approach 3 (unit-by-unit simulation) is O(answer) time
+     → Answer can be very large if maxFreq is huge
+     → Formula approach is O(N) regardless of answer size</code></pre></div>
+<hr>
+<h2>🔀 WHEN TO USE THIS PATTERN</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>✓ Problem involves SCHEDULING with constraints
+</span>✓ The constraint is a COOLDOWN or SPACING requirement
+✓ You need to MINIMIZE total time (including idle)
+✓ The answer depends on FREQUENCY analysis of elements
+✓ Greedy "most frequent first" is provably optimal
+
+SIGNATURE PROBLEMS:
+→ Task Scheduler ← THIS
+→ Task Scheduler II (return actual schedule)
+→ Reorganize String (no two adjacent same characters)
+→ Rearrange String k Distance Apart
+→ Distant Barcodes
+→ Any problem with "minimum time with spacing constraint"
+
+THE GREEDY PRINCIPLE:
+→ "Process the most constrained element first"
+→ The most frequent task creates the most mandatory gaps
+→ Filling gaps with less frequent tasks minimizes idle time
+→ This greedy choice is PROVABLY optimal</code></pre></div>
+<hr>
+<h2>🚫 WHEN NOT TO USE THIS PATTERN</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>✗ Tasks have different DURATIONS (not all unit time)
+</span>     → This formula assumes each task = 1 time unit
+     → Variable durations → need DP or different scheduling algorithm
+
+✗ Tasks have DEPENDENCIES (A must finish before B)
+     → Dependencies → Topological Sort (Project 47, 56)
+     → Not a cooldown problem
+
+✗ Tasks have PRIORITIES (some more important than others)
+     → Priority scheduling → different objective function
+     → Not just about minimizing total time
+
+✗ The cooldown is different for different tasks
+     → This problem assumes UNIFORM cooldown n for all tasks
+     → Per-task cooldowns → more complex scheduling problem
+
+✗ You need the EXACT schedule, not just the time
+     → Formula gives only the total time
+     → For the actual schedule → use heap simulation
+     → Or construct from the frame structure</code></pre></div>
+<hr>
+<h2>⚙️ HOW IT ONLY WORKS — Internal Mechanics</h2>
+<h3>Why "Most Frequent First" is Optimal</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>CLAIM: Processing the most frequent task first minimizes idle time.
+</span>
+PROOF BY CONTRADICTION:
+→ Suppose we DON'T process the most frequent task first
+→ Some less frequent task occupies a prime slot
+→ The most frequent task is pushed later → needs MORE idle slots
+→ Total time INCREASES
+
+INTUITIVE ARGUMENT:
+→ The most frequent task MUST have (maxFreq - 1) gaps of size n
+→ These gaps are MANDATORY — nothing can eliminate them
+→ The best we can do is FILL these gaps with other tasks
+→ Filling greedily (most frequent other tasks first) maximizes fill rate
+→ This minimizes idle slots
+
+EXAMPLE:
+  tasks = [A,A,A,A, B,B, C], n = 2
+  
+  Greedy (A first):
+    A B C A B _ A _ _ A → idle = 3, total = 10
+    
+  Non-greedy (B first):
+    B A C B A _ _ A _ _ A → idle = 4, total = 11 ← WORSE
+    
+  Greedy wins because A's mandatory gaps are the bottleneck
+  Filling A's gaps with B and C reduces idle time maximally</code></pre></div>
+<h3>Why the Formula Works — Mathematical Proof</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>Frame structure for maxFreq = f, cooldown = n:
+</span>
+  [A ... ] [A ... ] [A ... ] ... [A ... ] [A ...]
+  |←─ n+1 ─→| |←─ n+1 ─→|      |←─ n+1 ─→| |← last →|
+  
+  → (f-1) full chunks of size (n+1)
+  → 1 last chunk of size maxCount
+
+Frame total = (f-1) × (n+1) + maxCount
+
+Case 1: totalTasks ≤ frame total
+  → All tasks fit within the frame
+  → Some slots remain idle
+  → Answer = frame total
+
+Case 2: totalTasks &gt; frame total
+  → More tasks than frame slots
+  → Tasks "overflow" the frame
+  → But we can ALWAYS fit them:
+       → After filling the frame, extra tasks go BETWEEN existing slots
+       → Each additional task extends a chunk by 1
+       → Since they're different tasks, no cooldown violation
+  → No idle time needed
+  → Answer = totalTasks
+
+Therefore: answer = max(frameSize, totalTasks) ✓
+
+FORMAL PROOF THAT OVERFLOW DOESN'T VIOLATE COOLDOWN:
+  → If totalTasks &gt; frameSize, there are many distinct tasks
+  → Each distinct task has frequency ≤ maxFreq
+  → With enough variety, we can always interleave without violating cooldown
+  → The round-robin scheduling within (n+1)-sized chunks guarantees this
+  → Each chunk has (n+1) slots → any task appears at most once per chunk
+  → Chunks are (n+1) apart → same task in consecutive chunks has gap ≥ n ✓</code></pre></div>
+<h3>The Idle Slot Calculation</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>Total slots in frame = (maxFreq - 1) × (n + 1) + maxCount
+</span>Filled slots = totalTasks
+Idle slots = max(0, frameSize - totalTasks)
+
+Alternative formulation:
+  Available gap slots = (maxFreq - 1) × (n + 1 - maxCount)
+  → Each of the (maxFreq-1) gaps has (n+1) total positions
+  → maxCount positions are taken by tasks with maxFreq
+  → Remaining = n + 1 - maxCount positions per gap
+
+  Other tasks = totalTasks - maxFreq × maxCount
+  → Total tasks minus the tasks that have maxFreq
+
+  Idle = max(0, availableGapSlots - otherTasks)
+  → If other tasks fill all gaps → no idle
+  → If not enough other tasks → idle remains
+
+  Answer = totalTasks + idle
+
+Both formulations give the same result.</code></pre></div>
+<h3>Heap Simulation — Why It's Correct</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>The heap simulation is correct because:
+</span>
+1. MAX-HEAP always gives the most frequent remaining task
+   → This is the greedy choice (most constrained first)
+
+2. Each round of (n+1) slots ensures cooldown is respected
+   → Within a round, each task is selected at most once
+   → Between rounds, (n+1) slots separate same tasks
+   → n+1 ≥ n+1 → cooldown n is satisfied ✓
+
+3. Tasks with remaining frequency are put back after each round
+   → Ensures they'll be scheduled in future rounds
+   → Heap maintains priority ordering
+
+4. Last round might be shorter than (n+1)
+   → No need to add idle slots after all tasks are done
+   → Only count actual tasks in the last round</code></pre></div>
+<hr>
+<h2>⚠️ COMMON PITFALLS AND FAILURE MODES</h2>
+<h3>Pitfall 1: Forgetting max(frameSize, totalTasks)</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>tasks = ["A","B","C","D","E","F","G","H","I","J"], n = 2
+</span>maxFreq = 1, maxCount = 10
+frameSize = (1-1) × (2+1) + 10 = 0 + 10 = 10
+totalTasks = 10
+
+WRONG: return frameSize = 10 (happens to be correct here)
+
+But consider: tasks = ["A","A","B","C","D","E","F","G","H","I","J","K"], n = 1
+maxFreq = 2, maxCount = 1
+frameSize = (2-1) × (1+1) + 1 = 2 + 1 = 3
+totalTasks = 12
+
+WRONG: return frameSize = 3 → should be 12!
+RIGHT: return max(3, 12) = 12
+
+When tasks are very diverse, totalTasks dominates.</code></pre></div>
+<h3>Pitfall 2: Miscounting maxCount</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>tasks = ["A","A","A","B","B","B","C","C","C"], n = 2
+</span>Frequencies: A=3, B=3, C=3
+
+maxFreq = 3
+maxCount = 3 (ALL three tasks have frequency 3)
+
+WRONG: maxCount = 1 (only counting one task)
+→ frameSize = (3-1) × 3 + 1 = 7
+→ answer = max(7, 9) = 9
+
+RIGHT: maxCount = 3
+→ frameSize = (3-1) × 3 + 3 = 9
+→ answer = max(9, 9) = 9
+
+In this case both give 9, but consider n=3:
+WRONG: frameSize = (3-1) × 4 + 1 = 9 → answer = max(9, 9) = 9
+RIGHT: frameSize = (3-1) × 4 + 3 = 11 → answer = max(11, 9) = 11
+
+Schedule: A B C _ A B C _ A B C → 11 time units
+→ 2 idle slots needed because 3 tasks can't fill gaps of size 3</code></pre></div>
+<h3>Pitfall 3: Heap Simulation — Last Round Handling</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>In the heap simulation, the LAST round is special:
+</span>→ If the heap becomes empty during a round
+→ We should NOT count the remaining slots as time
+→ Only count the tasks actually executed
+
+WRONG:
+  while (!heap.isEmpty()) {
+      totalTime += n + 1;  // Always add full round
+      // ... process round
+  }
+  // Overcounts the last round!
+
+RIGHT:
+  while (!heap.isEmpty()) {
+      List&lt;Integer&gt; temp = new ArrayList&lt;&gt;();
+      int taskCount = 0;
+      for (int i = 0; i &lt;= n; i++) {
+          if (!heap.isEmpty()) {
+              int freq = heap.poll();
+              taskCount++;
+              if (freq - 1 &gt; 0) temp.add(freq - 1);
+          }
+      }
+      heap.addAll(temp);
+      totalTime += heap.isEmpty() ? taskCount : (n + 1);
+  }</code></pre></div>
+<h3>Pitfall 4: n = 0 Edge Case</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>When n = 0: no cooldown → execute all tasks consecutively
+</span>→ frameSize = (maxFreq - 1) × 1 + maxCount
+→ This equals totalTasks (every slot is filled)
+→ answer = max(totalTasks, totalTasks) = totalTasks ✓
+
+No special handling needed — formula works naturally for n = 0
+But verify this in your head to build confidence</code></pre></div>
+<h3>Pitfall 5: All Tasks Are the Same</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>tasks = ["A","A","A","A","A"], n = 3
+</span>maxFreq = 5, maxCount = 1
+frameSize = (5-1) × (3+1) + 1 = 16 + 1 = 17
+totalTasks = 5
+answer = max(17, 5) = 17
+
+Schedule: A _ _ _ A _ _ _ A _ _ _ A _ _ _ A
+→ 17 time units (lots of idle time)
+→ Only 1 distinct task → cannot fill any gaps
+→ Maximum possible idle time for this configuration</code></pre></div>
+<hr>
+<h2>📈 SCALABILITY CONSIDERATIONS</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>FORMULA APPROACH:
+</span>→ Count frequencies: O(N) where N = tasks.length
+→ Find max and count: O(26) = O(1)
+→ Compute formula: O(1)
+→ TOTAL: O(N) time, O(1) space — OPTIMAL
+
+HEAP SIMULATION:
+→ Build heap: O(26) = O(1)
+→ Process rounds: O(totalTime × log 26) = O(totalTime)
+→ totalTime can be up to (maxFreq-1) × (n+1) + maxCount
+→ With maxFreq up to N and n up to N: O(N²) worst case
+→ But with 26 task types: effectively O(N) in practice
+
+COMPARISON:
+┌──────────────────┬──────────┬──────────┬───────────────────┐
+│ Approach         │ Time     │ Space    │ Best Use Case      │
+├──────────────────┼──────────┼──────────┼───────────────────┤
+│ Formula          │ O(N)     │ O(1)     │ Just need the time │
+│ Heap Simulation  │ O(N)     │ O(1)     │ Need the schedule  │
+│ Unit Simulation  │ O(answer)│ O(1)     │ Understanding only │
+└──────────────────┴──────────┴──────────┴───────────────────┘
+
+For LeetCode: Formula approach is fastest and most elegant
+For Interviews: Know both, explain formula, code formula
+For Understanding: Trace the simulation to build intuition</code></pre></div>
+<hr>
+<h2>🔍 INTERPRETABILITY CONSIDERATIONS</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ The FORMULA is elegant but non-obvious:
+</span>     → Interviewers want to see HOW you derived it
+     → Start with the frame visualization
+     → Show the gaps, the filling, the overflow case
+     → Then present the formula as a CONCLUSION, not a starting point
+
+→ The SIMULATION is more intuitive:
+     → "I always pick the most frequent remaining task"
+     → "I process in rounds of (n+1) to respect cooldown"
+     → "The heap ensures I always pick optimally"
+     → Easier to explain step by step
+
+→ INTERVIEW STRATEGY:
+     1. Explain the greedy insight: "most frequent task is the bottleneck"
+     2. Draw the frame structure on the whiteboard
+     3. Derive the formula from the frame
+     4. Handle the overflow case: max(frame, total)
+     5. Code the formula (5 lines of actual logic)
+     6. If time permits: mention the heap simulation alternative
+
+→ This problem tests:
+     → Greedy reasoning (can you identify the optimal strategy?)
+     → Mathematical thinking (can you derive a formula?)
+     → Implementation (can you code it cleanly?)
+     → Edge case handling (n=0, all same tasks, many distinct tasks)</code></pre></div>
+<hr>
+<div class="github-btn-wrap"><a class="github-btn" href="https://github.com/Shakti4640/leetcode-patterns-guide-java/tree/main/project- (60)" target="_blank" rel="noopener"><svg viewBox="0 0 24 24"><path d="M12 .5C5.37.5 0 5.87 0 12.5c0 5.3 3.44 9.8 8.2 11.39.6.11.82-.26.82-.58v-2.03c-3.34.73-4.04-1.61-4.04-1.61-.55-1.39-1.34-1.76-1.34-1.76-1.09-.74.08-.73.08-.73 1.2.09 1.84 1.24 1.84 1.24 1.07 1.83 2.8 1.3 3.49 1 .1-.78.42-1.3.76-1.6-2.67-.3-5.47-1.33-5.47-5.93 0-1.31.47-2.38 1.24-3.22-.14-.3-.54-1.52.1-3.18 0 0 1.01-.32 3.3 1.23a11.5 11.5 0 0 1 3-.4c1.02 0 2.04.13 3 .4 2.28-1.55 3.29-1.23 3.29-1.23.64 1.66.24 2.88.12 3.18.77.84 1.23 1.91 1.23 3.22 0 4.61-2.81 5.63-5.48 5.92.43.37.81 1.1.81 2.22v3.29c0 .32.21.7.82.58C20.56 22.3 24 17.8 24 12.5 24 5.87 18.63.5 12 .5z"/></svg>💻 View Complete Java Code on GitHub</a></div>
+<hr>
+<h2>🔑 EXPECTED OUTPUT</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>╔══════════════════════════════════════════════════════════╗
+</span>║  PROJECT 60: Task Scheduler with Cooldown                ║
+║  Pattern: Greedy → Frequency Slots → Grand Finale        ║
+║                                                          ║
+║  🏆 THE FINAL PROJECT — 60 of 60 — PATTERN MASTERY 🏆   ║
+╚══════════════════════════════════════════════════════════╝
+
+═══ TEST 1: Classic Example ═══
+  Tasks: AAABBB
+  Cooldown n = 2
+
+  ── Frequency Count ──
+    A: 3
+    B: 3
+
+  ── Key Values ──
+    maxFreq = 3 (tasks: A B)
+    maxCount = 2
+    totalTasks = 6
+
+  ── Frame Structure ──
+    gaps = maxFreq - 1 = 2
+    chunk size = n + 1 = 3
+    frameSize = 2 × 3 + 2 = 8
+
+  ── Frame Visualization ──
+    A B _  |
+    A B _  |
+    A B
+
+  ── Result ──
+    frameSize = 8
+    totalTasks = 6
+    answer = max(8, 6) = 8
+    idle slots = 2
+
+  Round 1: [A B _] → +3 → total=3
+  Round 2: [A B _] → +3 → total=6
+  Round 3: [A B] → +2 → total=8 (last round)
+  Total Time: 8
+
+  Actual Schedule: A → B → idle → A → B → idle → A → B
+
+═══ TEST 4: Many Distinct Tasks — No Idle ═══
+  ── Key Values ──
+    maxFreq = 3 (tasks: A B C D)
+    maxCount = 4
+    totalTasks = 12
+
+  ── Result ──
+    frameSize = 2 × 3 + 4 = 10
+    totalTasks = 12
+    answer = max(10, 12) = 12
+    idle slots = 0
+
+═══ TEST 5: All Same Task — Maximum Idle ═══
+  ── Key Values ──
+    maxFreq = 5 (tasks: A)
+    maxCount = 1
+    totalTasks = 5
+
+  ── Result ──
+    frameSize = 4 × 4 + 1 = 17
+    totalTasks = 5
+    answer = max(17, 5) = 17
+    idle slots = 12
+
+  ── Idle Slot Analysis ──
+    available gap slots = 12
+    other tasks (to fill gaps) = 0
+    idle slots = max(0, 12 - 0) = 12
+    answer = 5 + 12 = 17
+
+═══ TEST 9: Verification — All Approaches ═══
+  Test 1: Formula=8   Heap=8   Schedule=8   n=2  ✓ PASS
+  Test 2: Formula=12  Heap=12  Schedule=12  n=2  ✓ PASS
+  Test 3: Formula=13  Heap=13  Schedule=13  n=3  ✓ PASS
+  Test 4: Formula=17  Heap=17  Schedule=17  n=3  ✓ PASS
+  Test 5: Formula=1   Heap=1   Schedule=1   n=5  ✓ PASS
+  Test 6: Formula=6   Heap=6   Schedule=6   n=0  ✓ PASS
+  Test 7: Formula=9   Heap=9   Schedule=9   n=2  ✓ PASS
+  Test 8: Formula=16  Heap=16  Schedule=16  n=2  ✓ PASS
+  Test 9: Formula=52  Heap=52  Schedule=52  n=2  ✓ PASS
+
+  ✅ ALL TESTS PASSED
+
+═══ TEST 10: Performance Test ═══
+  Formula:    result=XXXXXXX  time=~5 ms
+  Heap:       result=XXXXXXX  time=~20 ms
+  Match: ✓</code></pre></div>
+<hr>
+<h2>🧠 KEY TAKEAWAY — THE GRAND FINALE</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>WHAT WE LEARNED IN PROJECT 60:
+</span>→ Greedy insight: most frequent task is the scheduling bottleneck
+→ Frame structure: (maxFreq-1) gaps × (n+1) size + maxCount
+→ Formula: answer = max(frameSize, totalTasks)
+→ Heap simulation: greedy round-by-round processing
+→ Idle slot analysis: understanding WHERE time is wasted
+
+THE GREEDY ARC — COMPLETE:
+
+┌───────────────┬────────────────────┬──────────────────────────┐
+│ Project       │ Problem            │ Greedy Insight           │
+├───────────────┼────────────────────┼──────────────────────────┤
+│ 19: Activity  │ Max non-overlapping│ "Pick activity that      │
+│    Selection  │ activities         │  ends earliest"          │
+├───────────────┼────────────────────┼──────────────────────────┤
+│ 49: Jump Game │ Can reach the end? │ "Track farthest point    │
+│               │                    │  reachable so far"       │
+├───────────────┼────────────────────┼──────────────────────────┤
+│ 60: Task      │ Min time with      │ "Most frequent task      │
+│    Scheduler  │ cooldown           │  determines the frame"   │
+└───────────────┴────────────────────┴──────────────────────────┘
+
+Each greedy problem has a UNIQUE insight:
+→ There is no "one greedy algorithm"
+→ Greedy is a STRATEGY: make the locally optimal choice
+→ The PROOF that local = global optimal is problem-specific
+→ Recognizing the greedy structure is the hard part
+→ Once recognized, the code is usually simple</code></pre></div>
+<hr>
+<h2>🌉 BRIDGE — WHERE TO GO AFTER 60 PROJECTS</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>╔══════════════════════════════════════════════════════════╗
+</span>║                                                          ║
+║     🏆 CONGRATULATIONS — YOU HAVE COMPLETED ALL 60       ║
+║        PROJECTS COVERING 20 ESSENTIAL PATTERNS 🏆        ║
+║                                                          ║
+╚══════════════════════════════════════════════════════════╝
+
+WHAT YOU NOW OWN — 20 MASTERED PATTERNS:
+
+  ✅  1. Two Pointers         (Projects 1-4, 11, 32)
+  ✅  2. Sliding Window        (Projects 5-6, 12-13, 33-34)
+  ✅  3. Fast &amp; Slow Pointers  (Projects 7, 15, 20)
+  ✅  4. Merge Intervals       (Projects 14, 22, 46)
+  ✅  5. Cyclic Sort           (Projects 8, 21)
+  ✅  6. In-place LL Reversal  (Projects 16, 23)
+  ✅  7. Tree BFS              (Projects 17, 24, 25)
+  ✅  8. Tree DFS              (Projects 18, 26, 27)
+  ✅  9. Two Heaps             (Projects 35, 41)
+  ✅ 10. Subsets/Backtracking  (Projects 28, 29, 42)
+  ✅ 11. Modified Binary Search(Projects 9, 30, 31)
+  ✅ 12. Bitwise XOR           (Projects 10, 37)
+  ✅ 13. Top K Elements        (Projects 38, 39)
+  ✅ 14. K-way Merge           (Projects 40, 53)
+  ✅ 15. Dynamic Programming   (Projects 43-45, 50-52)
+  ✅ 16. Topological Sort      (Projects 47, 56)
+  ✅ 17. Union Find            (Projects 48, 57)
+  ✅ 18. Trie                  (Projects 58, 59)
+  ✅ 19. Monotonic Stack       (Projects 36, 54, 55)
+  ✅ 20. Greedy Algorithms     (Projects 19, 49, 60)
+
+WHAT COMES NEXT — THE ADVANCED FRONTIER:
+
+Level 1: PROBLEM VOLUME
+  → Solve 200+ LeetCode problems across all patterns
+  → Target: 5 problems per pattern minimum
+  → Focus on RECOGNIZING which pattern to apply
+  → The hardest skill is PATTERN SELECTION, not pattern execution
+
+Level 2: PATTERN COMBINATIONS
+  → Real interview problems often combine 2-3 patterns
+  → Word Search II (Project 59) combined 5 patterns
+  → Practice problems that don't obviously fit one pattern
+  → Build the "pattern radar" that scans multiple options
+
+Level 3: ADVANCED DATA STRUCTURES
+  → Segment Trees → range queries + updates in O(log n)
+  → Fenwick Trees (BIT) → prefix sums with point updates
+  → Suffix Arrays/Trees → advanced string matching
+  → Balanced BSTs (AVL, Red-Black)</code></pre></div></div>
+</div>
+</body>
+</html></div>
+</div>
+<div class="bottom-nav">
+  <a href="project-59.html" class="nav-btn prev">← Prev</a>
+  <div class="nav-center">
+    <span class="nav-project-label">PROJECT 60 of 60</span>
+    <span class="nav-project-title">Task Scheduler with Cooldown</span>
+    <span class="kbd-hint">← → arrow keys to navigate</span>
+  </div>
+  <span class="nav-btn next disabled">Next →</span>
+  <a href="index.html" class="nav-btn home">🏠 TOC</a>
+</div>
+<div id="progress-track"><div id="progress-fill"></div></div>
+<div id="progress-pct">0%</div>
+<script src="script.js"></script>
+<script>
+document.addEventListener('keydown', function(e) {
+  if (['INPUT','TEXTAREA'].includes(document.activeElement.tagName)) return;
+  if (e.key === 'ArrowRight' && null !== null) window.location = null;
+  if (e.key === 'ArrowLeft' && "project-59.html" !== null) window.location = "project-59.html";
+});
+</script>
+</body>
+</html>

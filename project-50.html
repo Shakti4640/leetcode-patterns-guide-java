@@ -1,0 +1,889 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PROJECT 50: Longest Common Subsequence</title>
+<link rel="icon" type="image/png" href="images/favicon.png">
+<link rel="stylesheet" href="styles.css">
+
+</head>
+<body>
+<div id="progress-bar-container"><div id="progress-bar" style="width:84%"></div></div>
+<div id="progress-label">84%</div>
+<div class="page-wrapper">
+<div class="chat-message"><div class="px-2"><h1>PROJECT 50: Longest Common Subsequence</h1>
+<h2>🎯 Dynamic Programming → 2D String Matching Table → Diagonal Transition</h2>
+<hr>
+<h2>🧩 THE HYPOTHETICAL PROBLEM</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ You are given TWO strings: text1 and text2
+</span>→ Find the LENGTH of their LONGEST COMMON SUBSEQUENCE (LCS)
+→ If there is no common subsequence, return 0
+
+WHAT IS A SUBSEQUENCE?
+  → A subsequence is a sequence derived from another sequence
+    by deleting some (or no) elements WITHOUT changing the order
+  → "ace" is a subsequence of "abcde" (delete b, d)
+  → "aec" is NOT a subsequence of "abcde" (e comes before c in original)
+
+WHAT IS A COMMON SUBSEQUENCE?
+  → A sequence that is a subsequence of BOTH strings
+
+Example 1:
+  text1 = "abcde"
+  text2 = "ace"
+  Output: 3
+  
+  → LCS = "ace"
+  → 'a' appears in both, 'c' appears in both, 'e' appears in both
+  → In text1: a(0), c(2), e(4) → preserves order ✓
+  → In text2: a(0), c(1), e(2) → preserves order ✓
+
+Example 2:
+  text1 = "abc"
+  text2 = "abc"
+  Output: 3
+  
+  → Strings are identical → LCS = "abc" → length 3
+
+Example 3:
+  text1 = "abc"
+  text2 = "def"
+  Output: 0
+  
+  → No common characters at all → LCS is empty
+
+Example 4:
+  text1 = "ABCBDAB"
+  text2 = "BDCABA"
+  Output: 4
+  
+  → LCS = "BCBA" or "BDAB" (multiple LCS possible, same length)
+  → B(1),C(2),B(3),A(6) in text1 → order preserved ✓
+  → B(0),C(2),B(4),A(5) in text2 → order preserved ✓
+
+Example 5:
+  text1 = "horse"
+  text2 = "ros"
+  Output: 2
+  
+  → LCS = "rs" or "os"
+  → r(2),s(4) in "horse" ✓
+  → r(0),s(2) in "ros" ✓</code></pre></div>
+<hr>
+<h2>🔍 HOW TO APPROACH IT</h2>
+<h3>Step 1 — Why Greedy Fails Here</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>PROJECT 49 (Jump Game):
+</span>  → Greedy worked because reachable set was CONTIGUOUS
+  → Single metric (farthest) captured everything
+  → No need to explore alternatives
+
+THIS Problem — Why Greedy Fails:
+  text1 = "abcde"
+  text2 = "aecbd"
+  
+  GREEDY ATTEMPT: Match characters left to right
+  → 'a' matches 'a' → take it → LCS so far: "a"
+  → 'b' → scan text2 for 'b' → found at index 3 → take it → LCS: "ab"
+  → 'c' → scan text2 for 'c' after index 3 → found? 'c' is at index 2 → BEFORE 3 → skip
+  → 'd' → scan text2 for 'd' after index 3 → found at index 4 → take it → LCS: "abd"
+  → 'e' → scan text2 for 'e' after index 4 → none → skip
+  → Greedy result: "abd" → length 3
+
+  BUT the actual LCS could be longer:
+  → "acd" → a(0),c(2),d(3) in text1; a(0),c(2),d(4) in text2 → length 3
+  → "abd" → same length
+  → Hmm, both give 3... let me find a better counterexample:
+
+  text1 = "abcb"
+  text2 = "bcab"
+  
+  GREEDY (match first occurrence):
+  → 'a' → found at index 2 in text2 → take it → LCS: "a"
+  → 'b' → scan after index 2 → found at index 3 → take it → LCS: "ab"
+  → 'c' → scan after index 3 → none → skip
+  → 'b' → scan after index 3 → none → skip
+  → Greedy result: "ab" → length 2
+
+  ACTUAL LCS:
+  → "bcb" → b(1),c(2),b(3) in text1; b(0),c(1),b(3) in text2 → length 3!
+  → Greedy MISSED the better solution by committing to 'a' early
+
+KEY INSIGHT:
+  → Taking a match NOW might block BETTER matches later
+  → We need to consider ALL possibilities → DYNAMIC PROGRAMMING</code></pre></div>
+<h3>Step 2 — Define the Subproblem</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>LET:
+</span>  → text1 has length m
+  → text2 has length n
+  → dp[i][j] = length of LCS of text1[0..i-1] and text2[0..j-1]
+       → first i characters of text1 and first j characters of text2
+
+BASE CASES:
+  → dp[0][j] = 0 for all j → empty text1 → no common subsequence
+  → dp[i][0] = 0 for all i → empty text2 → no common subsequence
+
+RECURRENCE:
+  → If text1[i-1] == text2[j-1]:
+       → Characters match! Include this character in LCS
+       → dp[i][j] = dp[i-1][j-1] + 1
+       → "LCS of first i chars and first j chars = 
+          LCS of first (i-1) and (j-1) chars + this matching char"
+
+  → If text1[i-1] != text2[j-1]:
+       → Characters don't match → skip one of them
+       → dp[i][j] = max(dp[i-1][j], dp[i][j-1])
+       → "Take the better option: skip last char of text1 OR skip last char of text2"
+
+ANSWER:
+  → dp[m][n] = LCS of the full text1 and full text2</code></pre></div>
+<h3>Step 3 — Understand the Recurrence Visually</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>text1 = "ace"  (m=3)
+</span>text2 = "abcde" (n=5)
+
+Table dp[i][j]:
+
+        ""  a   b   c   d   e
+    ""   0  0   0   0   0   0
+    a    0  ?   ?   ?   ?   ?
+    c    0  ?   ?   ?   ?   ?
+    e    0  ?   ?   ?   ?   ?
+
+Fill dp[1][1]: text1[0]='a', text2[0]='a' → MATCH
+  dp[1][1] = dp[0][0] + 1 = 0 + 1 = 1
+
+Fill dp[1][2]: text1[0]='a', text2[1]='b' → NO MATCH
+  dp[1][2] = max(dp[0][2], dp[1][1]) = max(0, 1) = 1
+
+Fill dp[1][3]: text1[0]='a', text2[2]='c' → NO MATCH
+  dp[1][3] = max(dp[0][3], dp[1][2]) = max(0, 1) = 1
+
+Fill dp[1][4]: text1[0]='a', text2[3]='d' → NO MATCH
+  dp[1][4] = max(dp[0][4], dp[1][3]) = max(0, 1) = 1
+
+Fill dp[1][5]: text1[0]='a', text2[4]='e' → NO MATCH
+  dp[1][5] = max(dp[0][5], dp[1][4]) = max(0, 1) = 1
+
+        ""  a   b   c   d   e
+    ""   0  0   0   0   0   0
+    a    0  1   1   1   1   1
+    c    0  ?   ?   ?   ?   ?
+    e    0  ?   ?   ?   ?   ?
+
+Fill dp[2][1]: text1[1]='c', text2[0]='a' → NO MATCH
+  dp[2][1] = max(dp[1][1], dp[2][0]) = max(1, 0) = 1
+
+Fill dp[2][2]: text1[1]='c', text2[1]='b' → NO MATCH
+  dp[2][2] = max(dp[1][2], dp[2][1]) = max(1, 1) = 1
+
+Fill dp[2][3]: text1[1]='c', text2[2]='c' → MATCH!
+  dp[2][3] = dp[1][2] + 1 = 1 + 1 = 2
+
+Fill dp[2][4]: text1[1]='c', text2[3]='d' → NO MATCH
+  dp[2][4] = max(dp[1][4], dp[2][3]) = max(1, 2) = 2
+
+Fill dp[2][5]: text1[1]='c', text2[4]='e' → NO MATCH
+  dp[2][5] = max(dp[1][5], dp[2][4]) = max(1, 2) = 2
+
+        ""  a   b   c   d   e
+    ""   0  0   0   0   0   0
+    a    0  1   1   1   1   1
+    c    0  1   1   2   2   2
+    e    0  ?   ?   ?   ?   ?
+
+Fill dp[3][1]: 'e' vs 'a' → NO MATCH → max(1, 0) = 1
+Fill dp[3][2]: 'e' vs 'b' → NO MATCH → max(1, 1) = 1
+Fill dp[3][3]: 'e' vs 'c' → NO MATCH → max(2, 1) = 2
+Fill dp[3][4]: 'e' vs 'd' → NO MATCH → max(2, 2) = 2
+Fill dp[3][5]: 'e' vs 'e' → MATCH! → dp[2][4] + 1 = 2 + 1 = 3
+
+        ""  a   b   c   d   e
+    ""   0  0   0   0   0   0
+    a    0  1   1   1   1   1
+    c    0  1   1   2   2   2
+    e    0  1   1   2   2   3  ← ANSWER
+
+LCS length = dp[3][5] = 3</code></pre></div>
+<h3>Step 4 — The Diagonal Transition</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>WHEN characters MATCH: dp[i][j] = dp[i-1][j-1] + 1
+</span>  → Value comes from the DIAGONAL (upper-left)
+  → This means: "both strings contribute one character to the LCS"
+  → We move diagonally in the table
+
+        ↘
+  dp[i-1][j-1]  →  dp[i-1][j]
+       ↓              ↓
+  dp[i][j-1]    →  dp[i][j] = dp[i-1][j-1] + 1
+
+WHEN characters DON'T MATCH: dp[i][j] = max(dp[i-1][j], dp[i][j-1])
+  → Value comes from LEFT or TOP (whichever is bigger)
+  → LEFT (dp[i][j-1]): skip current character of text2
+  → TOP (dp[i-1][j]): skip current character of text1
+  → We take the BETTER of the two options
+
+WHY "DIAGONAL TRANSITION" matters:
+  → The diagonal is where PROGRESS happens (LCS grows by 1)
+  → Left/top are where we SEARCH (trying to find the next match)
+  → The path of diagonal moves through the table = the actual LCS
+  → This is the key visual insight for 2D string DP</code></pre></div>
+<h3>Step 5 — Connect to Previous DP Knowledge</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>Project 43 (Climbing Stairs):
+</span>  → 1D DP: dp[i] depends on dp[i-1] and dp[i-2]
+  → Single sequence → single dimension
+  → Linear recurrence
+
+Project 44 (0/1 Knapsack):
+  → 2D DP: dp[i][w] depends on dp[i-1][w] and dp[i-1][w-weight[i]]
+  → Two dimensions: items and capacity
+  → Include/exclude decision
+
+THIS Problem (LCS):
+  → 2D DP: dp[i][j] depends on dp[i-1][j-1], dp[i-1][j], dp[i][j-1]
+  → Two dimensions: characters of text1 and characters of text2
+  → Match/skip decision
+  → SIMILAR to Knapsack but on STRINGS instead of items/capacity
+
+THE PATTERN:
+  → Knapsack: "include item i or skip it" → diagonal or top
+  → LCS: "characters match (diagonal) or don't (top/left)"
+  → Both fill a 2D table → both have O(m×n) complexity
+  → The DECISION at each cell is what differs</code></pre></div>
+<hr>
+<h2>🛠️ HOW CAN WE SOLVE IT</h2>
+<h3>Algorithm — 2D DP Table</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>1. Create dp table of size (m+1) × (n+1), initialized to 0
+</span>2. FOR i = 1 to m:
+     FOR j = 1 to n:
+       IF text1[i-1] == text2[j-1]:
+         dp[i][j] = dp[i-1][j-1] + 1    // match → diagonal + 1
+       ELSE:
+         dp[i][j] = max(dp[i-1][j], dp[i][j-1])  // no match → best of skip
+3. RETURN dp[m][n]</code></pre></div>
+<h3>Reconstructing the Actual LCS (Not Just Length)</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ Start at dp[m][n]
+</span>→ Trace BACKWARD through the table:
+     → If text1[i-1] == text2[j-1]:
+          → This character is part of the LCS
+          → Add it to result → move diagonally: i--, j--
+     → Else if dp[i-1][j] &gt; dp[i][j-1]:
+          → Came from TOP → move up: i--
+     → Else:
+          → Came from LEFT → move left: j--
+→ Reverse the collected characters → that's the LCS string</code></pre></div>
+<h3>Space Optimization — From O(m×n) to O(min(m,n))</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>OBSERVATION:
+</span>  → Each row dp[i][...] only depends on the PREVIOUS row dp[i-1][...]
+  → We don't need the entire 2D table
+  → Keep only TWO rows: previous and current
+  → After processing row i, previous becomes current for next iteration
+
+→ Space: O(m×n) → O(min(m,n)) by using the shorter string as columns
+→ TRADEOFF: lose ability to reconstruct the actual LCS
+→ For length-only problems → space optimization is preferred</code></pre></div>
+<hr>
+<h2>✅ WHAT SHOULD YOU DO</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ ALWAYS use (m+1) × (n+1) table with 0-indexed strings
+</span>     → Row 0 and column 0 represent empty string → all zeros
+     → dp[i][j] uses text1[i-1] and text2[j-1] (1-indexed table, 0-indexed strings)
+     → This avoids messy boundary handling
+
+→ ALWAYS check character equality BEFORE deciding the transition
+     → Match → diagonal + 1
+     → No match → max(top, left)
+     → Getting this order wrong = wrong LCS
+
+→ ALWAYS initialize the base cases (row 0 and column 0 to 0)
+     → In Java, int arrays are initialized to 0 by default
+     → But being explicit helps readability and prevents bugs
+
+→ CONSIDER space optimization when only length is needed
+     → Two-row approach: O(min(m,n)) space
+     → Single-row approach: O(min(m,n)) with careful variable tracking
+     → Interview: mention the optimization even if you implement full table
+
+→ CONSIDER which string is shorter for space optimization
+     → Use shorter string for columns → O(min(m,n)) space
+     → Swap text1 and text2 if needed to ensure shorter is columns</code></pre></div>
+<hr>
+<h2>🚫 WHAT SHOULD YOU NOT DO</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ DO NOT use greedy matching
+</span>     → Matching characters greedily (first occurrence) misses better alignments
+     → Proven counterexample in Step 1 above
+     → DP is REQUIRED for this problem
+
+→ DO NOT confuse subsequence with SUBSTRING
+     → Subsequence: characters don't need to be contiguous
+       → "ace" is a subsequence of "abcde" ✓
+     → Substring: characters MUST be contiguous
+       → "bcd" is a substring of "abcde" ✓
+       → "ace" is NOT a substring of "abcde" ✗
+     → Longest Common SUBSTRING is a different problem with different DP
+
+→ DO NOT use dp[i][j] = dp[i-1][j-1] + 1 when characters DON'T match
+     → Diagonal + 1 is ONLY for matching characters
+     → Non-matching → max(top, left)
+     → Using diagonal + 1 always → counts non-matching characters → wrong
+
+→ DO NOT forget that dp indices are 1-based while string indices are 0-based
+     → dp[i][j] compares text1[i-1] with text2[j-1]
+     → Off-by-one here = wrong character comparisons = wrong answer
+
+→ DO NOT try recursive solution without memoization
+     → Naive recursion: exponential time O(2^(m+n))
+     → With memoization: O(m×n) → same as bottom-up DP
+     → Bottom-up is cleaner and avoids recursion overhead
+
+→ DO NOT assume LCS is unique
+     → Multiple LCS of the same length can exist
+     → The problem asks for LENGTH, not the actual string
+     → If reconstruction needed, any valid LCS is acceptable</code></pre></div>
+<hr>
+<h2>🔀 WHEN TO USE THIS PATTERN</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>✓ You have TWO sequences (strings, arrays, lists)
+</span>✓ You need to find a common property while PRESERVING ORDER
+✓ Characters/elements don't need to be contiguous (subsequence)
+✓ The problem involves MATCHING elements between two sequences
+✓ The problem has OPTIMAL SUBSTRUCTURE:
+     → LCS of full strings = function of LCS of shorter prefixes
+
+VARIANTS AND RELATED PROBLEMS:
+  → Longest Common Subsequence (this project)
+  → Edit Distance (Project 51) — transform one string to another
+  → Longest Common Substring — contiguous version → different DP transition
+  → Shortest Common Supersequence — combine two strings with minimum length
+  → Diff utility (Unix diff) — based on LCS
+  → DNA sequence alignment — bioinformatics application of LCS
+
+REAL-WORLD ANALOGS:
+  → Version control: finding common code between two file versions
+  → Spell checking: similarity between words
+  → Bioinformatics: DNA/protein sequence alignment
+  → Plagiarism detection: finding common passages
+  → File synchronization: identifying unchanged portions</code></pre></div>
+<hr>
+<h2>🚫 WHEN NOT TO USE THIS PATTERN</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>✗ You need contiguous matching (substring, not subsequence)
+</span>     → Longest Common Substring has a different DP transition:
+          → Match: dp[i][j] = dp[i-1][j-1] + 1
+          → No match: dp[i][j] = 0 (reset, not max)
+     → Answer is max value in entire table, not dp[m][n]
+
+✗ You have a SINGLE sequence (not comparing two)
+     → LIS (Longest Increasing Subsequence — Project 45) is single-sequence
+     → Different problem structure → different DP
+
+✗ Order doesn't matter (set intersection)
+     → If order doesn't matter → just count common elements
+     → Use HashSet intersection → O(n) time
+     → LCS is specifically about ORDER-PRESERVING matching
+
+✗ You need the count of ALL common subsequences
+     → LCS gives the LONGEST one
+     → Counting ALL requires different DP formulation
+
+✗ Strings are extremely long (m, n &gt; 10,000)
+     → O(m×n) can be 10^8+ operations → potentially slow
+     → For very long strings with small LCS → Hunt-Szymanski algorithm
+     → But for interview purposes, O(m×n) is the expected solution</code></pre></div>
+<hr>
+<h2>⚙️ HOW IT ONLY WORKS — Internal Mechanics</h2>
+<h3>The Optimal Substructure Proof</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>THEOREM:
+</span>  Let Z = z₁z₂...zₖ be an LCS of X = x₁...xₘ and Y = y₁...yₙ
+
+CASE 1: xₘ == yₙ (last characters match)
+  → Then zₖ = xₘ = yₙ
+  → And z₁...zₖ₋₁ is an LCS of x₁...xₘ₋₁ and y₁...yₙ₋₁
+  → PROOF: If there were a longer CS of the prefixes, appending xₘ
+    would give a CS longer than Z — contradicting Z being the LCS
+
+CASE 2: xₘ ≠ yₙ
+  → If zₖ ≠ xₘ, then Z is an LCS of x₁...xₘ₋₁ and Y
+  → If zₖ ≠ yₙ, then Z is an LCS of X and y₁...yₙ₋₁
+  → At least one of these must be true (possibly both)
+  → We take the LONGER of the two options
+
+THIS PROVES:
+  → LCS has optimal substructure
+  → The solution to the full problem CONTAINS solutions to subproblems
+  → DP is the correct approach</code></pre></div>
+<h3>The Overlapping Subproblems Property</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>NAIVE RECURSION for LCS("ABCD", "AEBD"):
+</span>
+lcs("ABCD", "AEBD")
+├── lcs("ABC", "AEBD")    ← D ≠ D? No, they match → lcs("ABC", "AEB") + 1
+│   Actually: D == D → lcs("ABC", "AEB") + 1
+│   ├── lcs("AB", "AEB")
+│   │   ├── lcs("A", "AEB")
+│   │   └── lcs("AB", "AE")
+│   └── ...
+└── ...
+
+MANY subproblems are computed MULTIPLE TIMES:
+  → lcs("AB", "AE") appears in multiple branches
+  → lcs("A", "A") appears even more times
+  → Without memoization: exponential time
+  → With memoization (or bottom-up DP): O(m×n) → each subproblem computed ONCE</code></pre></div>
+<h3>Why the 2D Table Works</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>TABLE STRUCTURE:
+</span>  → Rows = prefixes of text1 (length 0, 1, 2, ..., m)
+  → Columns = prefixes of text2 (length 0, 1, 2, ..., n)
+  → Cell dp[i][j] = LCS of text1[0..i-1] and text2[0..j-1]
+
+DEPENDENCY PATTERN:
+  dp[i][j] depends on:
+    → dp[i-1][j-1] (diagonal — when characters match)
+    → dp[i-1][j]   (top — skip text1's character)
+    → dp[i][j-1]   (left — skip text2's character)
+
+  All three are ALREADY COMPUTED when we fill dp[i][j]:
+    → We fill row by row, left to right
+    → dp[i-1][...] = previous row → fully computed
+    → dp[i][j-1] = same row, previous column → already computed
+
+FILLING ORDER:
+  → Row 0: all zeros (base case)
+  → Row 1: depends on row 0 → safe
+  → Row 2: depends on rows 0 and 1 → safe
+  → ...
+  → Row m: depends on row m-1 → safe
+
+→ No circular dependencies → bottom-up DP is correct</code></pre></div>
+<h3>The Three Transitions Visualized</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>For cell dp[i][j]:
+</span>
+MATCH (text1[i-1] == text2[j-1]):
+  ┌─────────┬─────────┐
+  │dp[i-1]  │         │
+  │ [j-1]   │         │
+  │    ↘    │         │
+  ├─────────┼─────────┤
+  │         │dp[i][j] │
+  │         │ = ↖ + 1 │
+  └─────────┴─────────┘
+  "Both strings contribute → diagonal + 1"
+
+NO MATCH (text1[i-1] != text2[j-1]):
+  ┌─────────┬─────────┐
+  │         │dp[i-1]  │
+  │         │  [j]    │
+  │         │   ↓     │
+  ├─────────┼─────────┤
+  │dp[i]    │dp[i][j] │
+  │ [j-1] →│= max(↑,←│
+  └─────────┴─────────┘
+  "Skip one character → take the better of top or left"</code></pre></div>
+<h3>Space Optimization — Detailed Mechanics</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>FULL TABLE: O(m×n) space
+</span>
+TWO-ROW OPTIMIZATION:
+  → Only keep previous row and current row
+  → After filling current row, swap: current becomes previous
+  
+  int[] prev = new int[n+1];  // previous row
+  int[] curr = new int[n+1];  // current row
+  
+  For each row i:
+    For each col j:
+      if match: curr[j] = prev[j-1] + 1
+      else: curr[j] = max(prev[j], curr[j-1])
+    swap prev and curr
+
+  Space: O(n) → or O(min(m,n)) if we choose shorter string for columns
+
+SINGLE-ROW OPTIMIZATION:
+  → Even trickier: use ONE array + one variable for diagonal
+  → prev[j-1] would be overwritten → save it first
+
+  int[] dp = new int[n+1];
+  
+  For each row i:
+    int prev_diagonal = 0;  // dp[i-1][j-1] before overwrite
+    For each col j:
+      int temp = dp[j];     // save current dp[j] (will become prev_diagonal next)
+      if match: dp[j] = prev_diagonal + 1
+      else: dp[j] = max(dp[j], dp[j-1])  // dp[j] = top, dp[j-1] = left
+      prev_diagonal = temp;
+
+  Space: O(n) with just ONE array</code></pre></div>
+<h3>Time Complexity</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ Fill (m+1) × (n+1) table: O(m × n)
+</span>→ Each cell: O(1) work (comparison + max)
+→ TOTAL: O(m × n)
+
+→ For m = n = 1000: 1,000,000 operations → instant
+→ For m = n = 5000: 25,000,000 operations → fast
+→ For m = n = 10,000: 100,000,000 operations → borderline (~1 second)</code></pre></div>
+<h3>Space Complexity</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ Full table: O(m × n)
+</span>→ Two-row optimization: O(min(m, n))
+→ Single-row optimization: O(min(m, n))
+→ Reconstruction (backtracking): requires full O(m × n) table</code></pre></div>
+<hr>
+<h2>⚠️ COMMON PITFALLS AND FAILURE MODES</h2>
+<h3>Pitfall 1: Index Confusion Between Table and Strings</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>WRONG:
+</span>  if (text1[i] == text2[j])  // ← when i,j are table indices starting from 1
+  
+RIGHT:
+  if (text1[i-1] == text2[j-1])  // ← table is 1-indexed, strings are 0-indexed
+
+→ dp table has size (m+1) × (n+1)
+→ dp[0][...] and dp[...][0] are base cases (empty string)
+→ dp[i][j] corresponds to text1[i-1] and text2[j-1]
+→ Off-by-one = comparing wrong characters = wrong LCS</code></pre></div>
+<h3>Pitfall 2: Using Diagonal for Non-Matching Characters</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>WRONG:
+</span>  // Always use diagonal
+  dp[i][j] = dp[i-1][j-1] + (text1[i-1] == text2[j-1] ? 1 : 0);
+
+→ This ignores the possibility of skipping characters
+→ dp[i][j] could be LARGER via top or left path
+→ Missing max(top, left) for non-matching case
+
+RIGHT:
+  if (text1[i-1] == text2[j-1]) {
+      dp[i][j] = dp[i-1][j-1] + 1;
+  } else {
+      dp[i][j] = Math.max(dp[i-1][j], dp[i][j-1]);
+  }</code></pre></div>
+<h3>Pitfall 3: Confusing LCS with LIS</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>LCS (Longest Common Subsequence):
+</span>  → TWO strings → find common subsequence → 2D DP
+  → dp[i][j] = LCS of text1[0..i-1] and text2[0..j-1]
+
+LIS (Longest Increasing Subsequence — Project 45):
+  → ONE array → find increasing subsequence → 1D DP (or DP + binary search)
+  → dp[i] = length of LIS ending at index i
+
+→ Different problems, different DP formulations
+→ LCS is 2D, LIS is 1D
+→ Don't mix up the recurrences</code></pre></div>
+<h3>Pitfall 4: Space Optimization Losing Reconstruction</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ Two-row optimization saves space but LOSES the ability to backtrack
+</span>→ Backtracking requires the FULL table to trace the path
+→ If the problem asks for the ACTUAL LCS string (not just length):
+     → Must keep the full table
+     → OR use a separate technique for reconstruction
+→ If only length is needed → space optimization is fine</code></pre></div>
+<h3>Pitfall 5: Not Handling Empty Strings</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ text1 = "" or text2 = "" → LCS = 0
+</span>→ Base cases dp[0][j] = 0 and dp[i][0] = 0 handle this
+→ But if you skip the table and try direct logic → might crash on empty input
+→ Always handle edge cases explicitly</code></pre></div>
+<hr>
+<h2>📈 SCALABILITY CONSIDERATIONS</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>m = length of text1, n = length of text2
+</span>
+→ m=100, n=100 → 10,000 cells → instant
+→ m=1000, n=1000 → 1,000,000 cells → instant
+→ m=5000, n=5000 → 25,000,000 cells → fast (~200ms)
+→ m=10,000, n=10,000 → 100,000,000 cells → ~1 second
+→ m=100,000, n=100,000 → 10^10 cells → TOO SLOW
+
+FOR VERY LARGE STRINGS:
+  → O(m×n) is unavoidable for general LCS
+  → But if LCS is short (length k &lt;&lt; min(m,n)):
+       → Hunt-Szymanski: O((r + n) log n) where r = number of matching pairs
+       → Better for sparse matches
+  → For interview purposes: O(m×n) is the expected solution
+
+SPACE OPTIMIZATION IS CRITICAL:
+  → m=10,000, n=10,000 → full table = 400MB (int) → memory limit exceeded
+  → Two-row: 80KB → easily fits
+  → Always mention space optimization in interviews</code></pre></div>
+<hr>
+<h2>🔍 INTERPRETABILITY CONSIDERATIONS</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>2D Table — Mental Model:
+</span>  → "Imagine a grid where rows are characters of text1, columns are text2"
+  → "Each cell asks: what's the best LCS using these prefixes?"
+  → "When characters match: we found a new LCS character → diagonal + 1"
+  → "When they don't match: try skipping one from each string → take the better"
+  → "The answer accumulates in the bottom-right corner"
+
+Reconstruction — Mental Model:
+  → "Start at the answer cell (bottom-right)"
+  → "If characters match: this character IS in the LCS → go diagonal"
+  → "If they don't match: follow the arrow to the larger neighbor"
+  → "Collect characters along diagonal moves → that's the LCS"
+
+Interview Explanation:
+  → "I use a 2D DP table where dp[i][j] = LCS length of first i chars and first j chars"
+  → "When characters match, I take the diagonal value + 1"
+  → "When they don't, I take max of skipping either character"
+  → "I can optimize space to O(min(m,n)) using two rows"
+  → "Time: O(m×n), Space: O(m×n) or O(min(m,n)) with optimization"</code></pre></div>
+<hr>
+<div class="github-btn-wrap"><a class="github-btn" href="https://github.com/Shakti4640/leetcode-patterns-guide-java/tree/main/project- (50)" target="_blank" rel="noopener"><svg viewBox="0 0 24 24"><path d="M12 .5C5.37.5 0 5.87 0 12.5c0 5.3 3.44 9.8 8.2 11.39.6.11.82-.26.82-.58v-2.03c-3.34.73-4.04-1.61-4.04-1.61-.55-1.39-1.34-1.76-1.34-1.76-1.09-.74.08-.73.08-.73 1.2.09 1.84 1.24 1.84 1.24 1.07 1.83 2.8 1.3 3.49 1 .1-.78.42-1.3.76-1.6-2.67-.3-5.47-1.33-5.47-5.93 0-1.31.47-2.38 1.24-3.22-.14-.3-.54-1.52.1-3.18 0 0 1.01-.32 3.3 1.23a11.5 11.5 0 0 1 3-.4c1.02 0 2.04.13 3 .4 2.28-1.55 3.29-1.23 3.29-1.23.64 1.66.24 2.88.12 3.18.77.84 1.23 1.91 1.23 3.22 0 4.61-2.81 5.63-5.48 5.92.43.37.81 1.1.81 2.22v3.29c0 .32.21.7.82.58C20.56 22.3 24 17.8 24 12.5 24 5.87 18.63.5 12 .5z"/></svg>💻 View Complete Java Code on GitHub</a></div>
+
+<hr>
+<h2>🔑 EXPECTED OUTPUT</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>╔═══════════════════════════════════════════════════════╗
+</span>║  PROJECT 50: Longest Common Subsequence               ║
+║  Pattern: 2D DP → String Matching → Diagonal Transition║
+╚═══════════════════════════════════════════════════════╝
+
+═══ TEST 1: Classic Example ═══
+text1 = "ace" (length 3)
+text2 = "abcde" (length 5)
+
+─── DP Table ───
+        ""   a   b   c   d   e
+      -------------------------
+ "" |    0   0   0   0   0   0
+  a |    0 [1]   1   1   1   1
+  c |    0   1   1 [2]   2   2
+  e |    0   1   1   2   2 [3]
+
+Legend: [X] = diagonal match (character included in LCS)
+
+─── Reconstruction ───
+  dp[3][5]: 'e' matches → INCLUDE → go diagonal
+  dp[2][4]: no match → go LEFT (skip 'd' from text2)
+  dp[2][3]: 'c' matches → INCLUDE → go diagonal
+  dp[1][2]: no match → go LEFT (skip 'b' from text2)
+  dp[1][1]: 'a' matches → INCLUDE → go diagonal
+
+═══ LCS = "ace" (length 3) ═══
+
+═══ TEST 3: No Common Characters ═══
+text1 = "abc" (length 3)
+text2 = "def" (length 3)
+
+─── DP Table ───
+        ""   d   e   f
+      ----------------
+ "" |    0   0   0   0
+  a |    0   0   0   0
+  b |    0   0   0   0
+  c |    0   0   0   0
+
+═══ LCS = "" (length 0) ═══
+
+═══ TEST 4: Longer Example ═══
+text1 = "ABCBDAB" (length 7)
+text2 = "BDCABA" (length 6)
+
+─── DP Table ───
+        ""   B   D   C   A   B   A
+      ----------------------------
+ "" |    0   0   0   0   0   0   0
+  A |    0   0   0   0 [1]   1 [1]
+  B |    0 [1]   1   1   1 [2]   2
+  C |    0   1   1 [2]   2   2   2
+  B |    0 [1]   1   2   2 [3]   3
+  D |    0   1 [2]   2   2   3   3
+  A |    0   1   2   2 [3]   3 [4]
+  B |    0 [1]   2   2   3 [4]   4
+
+═══ LCS = "BCBA" (length 4) ═══
+
+═══ TEST 6: Greedy Would Fail ═══
+text1 = "abcb" (length 4)
+text2 = "bcab" (length 4)
+
+═══ LCS = "bcb" (length 3) ═══
+  (Greedy would give "ab" = length 2 — WRONG!)
+
+═══ TEST 7: Cross-Verification (All Approaches) ═══
+  Test 1:  "ace" vs "abcde"              → length=3  LCS="ace"   ✓
+  Test 2:  "abc" vs "abc"                → length=3  LCS="abc"   ✓
+  Test 3:  "abc" vs "def"                → length=0  LCS=""      ✓
+  Test 4:  "ABCBDAB" vs "BDCABA"         → length=4  LCS="BCBA"  ✓
+  Test 5:  "horse" vs "ros"              → length=2  LCS="os"    ✓
+  Test 6:  "abcb" vs "bcab"              → length=3  LCS="bcb"   ✓
+  Test 7:  "" vs "abc"                   → length=0  LCS=""      ✓
+  Test 8:  "a" vs ""                     → length=0  LCS=""      ✓
+  Test 9:  "oxcpqrsvwf" vs "shmtulqrypy" → length=2  LCS="sr"   ✓
+  Test 10: "bsbininm" vs "jmjkbkjkv"     → length=1  LCS="b"    ✓
+
+═══ TEST 8: Diff Application ═══
+Diff (text1 → text2):
+  REMOVE 'A'
+  KEEP   'B'
+  REMOVE 'C'
+  KEEP   'B'
+  REMOVE 'D'
+  ADD    'D'
+  ADD    'C'
+  KEEP   'A'
+  KEEP   'B'
+  REMOVE 'B'
+  KEEP   'A'
+
+═══ TEST 9: Shortest Common Supersequence ═══
+  "abac" + "cab"     → LCS=2  SCS=5  (m=4 + n=3 - LCS=2 = 5)
+  "AGGTAB" + "GXTXAYB" → LCS=4  SCS=9  (m=6 + n=7 - LCS=4 = 9)
+  "abc" + "def"      → LCS=0  SCS=6  (m=3 + n=3 - LCS=0 = 6)
+
+═══ TEST 10: Performance Benchmark ═══
+  String lengths: 2000 × 2000
+  Full DP:    LCS=1041 → 18 ms
+  Two-row:    LCS=1041 → 12 ms
+  Single-row: LCS=1041 → 10 ms
+  Memoized:   LCS=1041 → 25 ms
+  All match: true
+
+═══ TEST 11: Scalability Test ═══
+  n=100   → LCS=76   → 0 ms
+  n=500   → LCS=394  → 2 ms
+  n=1000  → LCS=789  → 5 ms
+  n=2000  → LCS=1586 → 15 ms
+  n=5000  → LCS=3974 → 85 ms</code></pre></div>
+<hr>
+<h2>🧠 COMPARISON: DP Problems Encountered So Far</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>┌──────────────────────────┬─────────┬──────────────┬──────────────────────────┬─────────┐
+</span>│ Problem                  │ Dims    │ State        │ Transition               │ Project │
+├──────────────────────────┼─────────┼──────────────┼──────────────────────────┼─────────┤
+│ Climbing Stairs          │ 1D      │ dp[i]=ways   │ dp[i-1] + dp[i-2]       │ 43      │
+│                          │         │ to reach i   │                          │         │
+├──────────────────────────┼─────────┼──────────────┼──────────────────────────┼─────────┤
+│ 0/1 Knapsack             │ 2D      │ dp[i][w]=max │ include item or skip     │ 44      │
+│                          │         │ value at cap │ dp[i-1][w-wt]+val OR     │         │
+│                          │         │              │ dp[i-1][w]               │         │
+├──────────────────────────┼─────────┼──────────────┼──────────────────────────┼─────────┤
+│ Longest Increasing Subseq│ 1D      │ dp[i]=LIS    │ max(dp[j]+1) for j&lt;i    │ 45      │
+│                          │         │ ending at i  │ where nums[j]&lt;nums[i]   │         │
+├──────────────────────────┼─────────┼──────────────┼──────────────────────────┼─────────┤
+│ LCS (this project)       │ 2D      │ dp[i][j]=LCS │ match: diagonal+1       │ 50      │
+│                          │         │ of prefixes  │ no match: max(top,left)  │         │
+├──────────────────────────┼─────────┼──────────────┼──────────────────────────┼─────────┤
+│ Edit Distance (next)     │ 2D      │ dp[i][j]=min │ match: diagonal          │ 51      │
+│                          │         │ operations   │ no match: min(D,I,R)+1   │         │
+└──────────────────────────┴─────────┴──────────────┴──────────────────────────┴─────────┘
+
+KEY INSIGHT — The Evolution:
+  → Project 43: 1D, ONE sequence, COUNTING paths → simplest DP
+  → Project 44: 2D, items × capacity, MAXIMIZING value → include/exclude
+  → Project 45: 1D, ONE sequence, MAXIMIZING length → element comparison
+  → Project 50: 2D, TWO sequences, MAXIMIZING match length → match/skip
+  → Project 51: 2D, TWO sequences, MINIMIZING cost → insert/delete/replace
+
+  → PATTERN: DP dimensions match the NUMBER OF SEQUENCES
+  → 1 sequence → 1D DP
+  → 2 sequences → 2D DP
+  → The TRANSITION logic changes based on what we're optimizing</code></pre></div>
+<hr>
+<h2>🧠 COMPARISON: LCS vs Related String Problems</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>┌───────────────────────────┬────────────────────────┬──────────────────────────────┐
+</span>│ Problem                   │ Match Transition       │ No-Match Transition          │
+├───────────────────────────┼────────────────────────┼──────────────────────────────┤
+│ LCS (this project)        │ dp[i-1][j-1] + 1      │ max(dp[i-1][j], dp[i][j-1]) │
+│                           │ (include char)         │ (skip one char)             │
+├───────────────────────────┼────────────────────────┼──────────────────────────────┤
+│ Longest Common Substring  │ dp[i-1][j-1] + 1      │ 0 (reset — must be          │
+│                           │ (extend substring)     │  contiguous)                │
+├───────────────────────────┼────────────────────────┼──────────────────────────────┤
+│ Edit Distance (Project 51)│ dp[i-1][j-1]           │ 1 + min(dp[i-1][j-1],       │
+│                           │ (no cost — chars match)│  dp[i-1][j], dp[i][j-1])   │
+├───────────────────────────┼────────────────────────┼──────────────────────────────┤
+│ Sequence Alignment        │ dp[i-1][j-1] + score   │ max(dp[i-1][j] + gap,       │
+│ (bioinformatics)          │ (match reward)         │  dp[i][j-1] + gap)          │
+└───────────────────────────┴────────────────────────┴──────────────────────────────┘
+
+KEY INSIGHT:
+  → ALL these problems share the same 2D table structure
+  → ALL have the same dependency pattern: diagonal, top, left
+  → The ONLY difference is the FORMULA at each cell
+  → Master LCS → the others become variations on the same theme</code></pre></div>
+<hr>
+<h2>🧠 KEY TAKEAWAY</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>WHAT WE LEARNED:
+</span>→ LCS is the CANONICAL 2D string DP problem
+→ Two strings → two dimensions → (m+1)×(n+1) table
+→ Match = diagonal + 1 (both strings contribute a character)
+→ No match = max(top, left) (skip one character from either string)
+→ Greedy FAILS because early matches can block better later matches
+→ Space can be optimized from O(m×n) to O(min(m,n)) using rolling rows
+→ Reconstruction requires full table + backtracking from dp[m][n]
+
+THE CORE MENTAL MODEL:
+→ "Two strings, one grid"
+→ "Each cell: do these characters match?"
+→ "Match: celebrate → diagonal + 1 → LCS grows"
+→ "No match: choose the better path → top or left"
+→ "Answer accumulates in the bottom-right corner"
+
+PATTERN SIGNATURE:
+→ Two sequences to compare ✓
+→ Order must be preserved ✓
+→ Elements don't need to be contiguous ✓
+→ Maximize common elements ✓
+→ = 2D DP WITH DIAGONAL TRANSITION
+
+THE DP JOURNEY SO FAR:
+  Project 43: "How many ways?" → count paths → 1D
+  Project 44: "Maximum value?" → include/exclude items → 2D
+  Project 45: "Longest increasing?" → element ordering → 1D + binary search
+  Project 50: "Longest common?" → match characters → 2D diagonal
+  
+→ Each problem adds a new DP DIMENSION or TRANSITION TYPE
+→ The TABLE STRUCTURE stays consistent
+→ Only the FORMULA at each cell changes
+→ This is why mastering the table-filling paradigm is essential</code></pre></div>
+<hr>
+<h2>🌉 BRIDGE TO NEXT PROJECT</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>PROJECT 50 taught us:
+</span>→ 2D DP for comparing two strings
+→ Match → diagonal + 1 (MAXIMIZE common length)
+→ No match → max(top, left) (skip one character)
+
+PROJECT 51 (Edit Distance / Levenshtein Distance) will ask:
+→ What if instead of finding what's COMMON, we find what's DIFFERENT?
+→ "What is the MINIMUM number of operations to transform text1 into text2?"
+→ Three allowed operations: INSERT, DELETE, REPLACE
+→ Same 2D table structure, same diagonal/top/left dependencies
+→ BUT the formula REVERSES:
+     → LCS: MAXIMIZE matches → max(top, left)
+     → Edit Distance: MINIMIZE operations → 1 + min(diagonal, top, left)
+     → Match: LCS adds 1, Edit Distance adds 0 (free — no operation needed)
+     → No match: LCS skips, Edit Distance PAYS a cost of 1
+
+The progression:
+  Project 50: LCS → "How SIMILAR are these strings?" → MAXIMIZE
+  Project 51: Edit Distance → "How DIFFERENT are these strings?" → MINIMIZE
+  Project 52: Word Break → "Can this string be PARTITIONED?" → 1D DP on strings
+
+→ Same table, same dependencies, OPPOSITE optimization direction
+→ LCS and Edit Distance are TWO SIDES OF THE SAME COIN
+→ In fact: Edit Distance = m + n - 2 × LCS (for insert/delete only)
+→ The replace operation in Edit Distance adds a third transition
+  that LCS doesn't have → making it slightly richer
+
+MATHEMATICAL CONNECTION:
+  → For strings of length m and n with LCS of length L:
+  → Deletions needed = m - L (remove chars from text1 not in LCS)
+  → Insertions needed = n - L (add chars from text2 not in LCS)
+  → Total operations (without replace) = m + n - 2L
+  → Edit Distance ≤ m + n - 2L (replace can reduce the count further)
+  → Understanding LCS makes Edit Distance INTUITIVE</code></pre></div>
+<hr>
+<p><strong>Ready for Project 51: Edit Distance / Levenshtein Distance (Dynamic Programming → Insert/Delete/Replace Transitions → Min-Cost Path in Grid)?</strong></p>
+</div>
+</div>
+
+<!-- ========== data-index="19" ========== -->
+<div class="chat-message" data-index="19"></div>
+</div>
+<div class="bottom-nav">
+  <a href="project-49.html" class="nav-btn prev">← Prev</a>
+  <div class="nav-center">
+    <span class="nav-project-label">PROJECT 50 of 60</span>
+    <span class="nav-project-title">Longest Common Subsequence</span>
+    <span class="kbd-hint">← → arrow keys to navigate</span>
+  </div>
+  <a href="project-51.html" class="nav-btn next">Next →</a>
+  <a href="index.html" class="nav-btn home">🏠 TOC</a>
+</div>
+<div id="progress-track"><div id="progress-fill"></div></div>
+<div id="progress-pct">0%</div>
+<script src="script.js"></script>
+<script>
+document.addEventListener('keydown', function(e) {
+  if (['INPUT','TEXTAREA'].includes(document.activeElement.tagName)) return;
+  if (e.key === 'ArrowRight' && "project-51.html" !== null) window.location = "project-51.html";
+  if (e.key === 'ArrowLeft' && "project-49.html" !== null) window.location = "project-49.html";
+});
+</script>
+</body>
+</html>

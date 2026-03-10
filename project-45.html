@@ -1,0 +1,890 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PROJECT 45: Longest Increasing Subsequence (LIS)</title>
+<link rel="icon" type="image/png" href="images/favicon.png">
+<link rel="stylesheet" href="styles.css">
+
+</head>
+<body>
+<div id="progress-bar-container"><div id="progress-bar" style="width:75%"></div></div>
+<div id="progress-label">75%</div>
+<div class="page-wrapper">
+<div class="chat-message"><div class="px-2"><h1>PROJECT 45: Longest Increasing Subsequence (LIS)</h1>
+<h2>🎯 Dynamic Programming → DP + Binary Search Hybrid → Patience Sorting</h2>
+<hr>
+<h2>🧩 THE HYPOTHETICAL PROBLEM</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ You are given an UNSORTED array of integers
+</span>→ Find the length of the LONGEST STRICTLY INCREASING SUBSEQUENCE
+→ A subsequence is derived by deleting some (or no) elements
+     WITHOUT changing the order of remaining elements
+→ Elements need NOT be contiguous (subsequence ≠ subarray)
+
+Example 1:
+  Input:  nums = [10, 9, 2, 5, 3, 7, 101, 18]
+  
+  Some increasing subsequences:
+    [2, 5, 7, 101]  → length 4 ✓ (longest)
+    [2, 5, 7, 18]   → length 4 ✓ (also longest)
+    [2, 3, 7, 101]  → length 4 ✓ (also longest)
+    [10, 101]        → length 2
+    [9, 101]         → length 2
+    [2, 5, 101]      → length 3
+    
+  Output: 4
+
+Example 2:
+  Input:  nums = [0, 1, 0, 3, 2, 3]
+  
+  Longest: [0, 1, 2, 3] → length 4
+  Output: 4
+
+Example 3:
+  Input:  nums = [7, 7, 7, 7, 7]
+  
+  STRICTLY increasing → no two same elements
+  Longest: [7] → length 1
+  Output: 1
+
+Example 4:
+  Input:  nums = [1, 2, 3, 4, 5]
+  
+  Already sorted → entire array is the LIS
+  Output: 5
+
+Example 5:
+  Input:  nums = [5, 4, 3, 2, 1]
+  
+  Strictly decreasing → every single element is a LIS of length 1
+  Output: 1</code></pre></div>
+<hr>
+<h2>🔍 HOW TO APPROACH IT</h2>
+<h3>Step 1 — Understand "Subsequence" vs "Subarray"</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>SUBARRAY: contiguous elements
+</span>  [10, 9, 2, 5, 3, 7, 101, 18]
+  Subarray [2, 5, 3] → indices 2,3,4 → contiguous ✓
+  
+SUBSEQUENCE: maintain order but can skip elements
+  [10, 9, 2, 5, 3, 7, 101, 18]
+  Subsequence [2, 5, 7, 101] → indices 2,3,5,6 → order preserved ✓
+  
+  [2, 7, 5] is NOT a valid subsequence → 7 comes before 5 in the result
+  but 7 is at index 5 and 5 is at index 3 → order VIOLATED ✗
+
+WHY THIS MATTERS:
+  → Subarrays = sliding window problems (Projects 5, 6, 12)
+  → Subsequences = DP problems (you choose which elements to keep)
+  → The CHOICE of which elements to include is what creates overlapping subproblems</code></pre></div>
+<h3>Step 2 — Try the Classic DP Approach (O(n²))</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>DEFINE STATE:
+</span>  dp[i] = length of the longest increasing subsequence ENDING at index i
+
+WHY "ENDING AT i"?
+  → If we defined dp[i] = "LIS of first i elements" (like knapsack)
+  → We can't easily build the recurrence
+  → We don't know WHERE the LIS ends → can't extend it
+  → By defining "ending at i" → we know the LAST element is nums[i]
+  → We can check: can we EXTEND some previous LIS by appending nums[i]?
+
+RECURRENCE:
+  dp[i] = 1 + max(dp[j]) for all j &lt; i where nums[j] &lt; nums[i]
+  
+  In words:
+  → Look at ALL elements before index i
+  → Find those that are SMALLER than nums[i] (can extend)
+  → Take the LONGEST such subsequence
+  → Append nums[i] → length increases by 1
+
+BASE CASE:
+  dp[i] = 1 for all i (every element alone is a subsequence of length 1)
+
+ANSWER:
+  max(dp[0], dp[1], ..., dp[n-1]) — LIS could end at ANY index
+
+EXAMPLE: nums = [10, 9, 2, 5, 3, 7, 101, 18]
+
+  dp[0] = 1                          → LIS ending at 10: [10]
+  dp[1] = 1                          → LIS ending at 9: [9] (no prev &lt; 9? 10&gt;9)
+  dp[2] = 1                          → LIS ending at 2: [2]
+  dp[3] = 1 + max(dp[2]) = 2         → LIS ending at 5: [2,5]
+  dp[4] = 1 + max(dp[2]) = 2         → LIS ending at 3: [2,3]
+  dp[5] = 1 + max(dp[3],dp[4]) = 3   → LIS ending at 7: [2,5,7] or [2,3,7]
+  dp[6] = 1 + max(dp[5]) = 4         → LIS ending at 101: [2,5,7,101]
+  dp[7] = 1 + max(dp[5]) = 4         → LIS ending at 18: [2,5,7,18]
+
+  Answer = max(1,1,1,2,2,3,4,4) = 4 ✓
+
+TIME: O(n²) — for each i, scan all j &lt; i
+SPACE: O(n) — dp array</code></pre></div>
+<h3>Step 3 — Why O(n²) Can Be Too Slow</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>For n = 10,000:  O(n²) = 10^8 → borderline (1-2 seconds)
+</span>For n = 100,000: O(n²) = 10^10 → WAY too slow
+For n = 1,000,000: forget it
+
+WE NEED A FASTER APPROACH.
+
+THE BOTTLENECK:
+  → For each i, we scan ALL j &lt; i to find the best predecessor
+  → This "scan all previous" step is O(n) per element → O(n²) total
+  → Can we find the best predecessor FASTER?
+  → YES — using BINARY SEARCH on a cleverly maintained structure</code></pre></div>
+<h3>Step 4 — The Patience Sorting Insight</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>ANALOGY: Patience card game (a form of solitaire)
+</span>
+RULES:
+  → Cards arrive one by one (array elements)
+  → You place each card on PILES:
+       → If the card is LARGER than ALL pile tops → start a NEW pile
+       → Otherwise → place it on the LEFTMOST pile whose top is ≥ the card
+  → The NUMBER OF PILES = length of LIS
+
+EXAMPLE: nums = [10, 9, 2, 5, 3, 7, 101, 18]
+
+  Card 10:  Piles: [10]
+  Card 9:   9 &lt; 10 → replace 10 with 9
+            Piles: [9]
+  Card 2:   2 &lt; 9 → replace 9 with 2
+            Piles: [2]
+  Card 5:   5 &gt; 2 → new pile
+            Piles: [2] [5]
+  Card 3:   3 &gt; 2, 3 &lt; 5 → replace 5 with 3
+            Piles: [2] [3]
+  Card 7:   7 &gt; 3 → new pile
+            Piles: [2] [3] [7]
+  Card 101: 101 &gt; 7 → new pile
+            Piles: [2] [3] [7] [101]
+  Card 18:  18 &lt; 101 → replace 101 with 18
+            Piles: [2] [3] [7] [18]
+
+  Number of piles = 4 = LIS length ✓
+
+KEY OBSERVATION:
+  → The pile tops are ALWAYS in SORTED order
+  → "Leftmost pile whose top ≥ card" = BINARY SEARCH for insertion point
+  → Each element: O(log L) where L = current number of piles
+  → Total: O(n log n)
+
+THIS IS THE BREAKTHROUGH:
+  O(n²) → O(n log n) by using binary search on pile tops</code></pre></div>
+<h3>Step 5 — Why This Works (The Proof Intuition)</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>CLAIM: The number of piles = LIS length
+</span>
+WHY?
+
+OBSERVATION 1: Pile tops are always sorted (ascending)
+  → When we place a card on a pile → that pile's top decreases or stays
+  → When we start a new pile → its top &gt; all existing tops
+  → Therefore: tops are always in increasing order left to right
+
+OBSERVATION 2: Each pile represents a "slot" in potential LIS
+  → Pile k's top = the SMALLEST possible ending value for an increasing
+    subsequence of length k+1
+  → By keeping the smallest possible ending values, we MAXIMIZE our
+    ability to extend subsequences in the future
+
+OBSERVATION 3: If we have L piles, an LIS of length L exists
+  → Each pile has a card that's part of a valid increasing subsequence
+  → The "new pile" events correspond to genuine extensions of the LIS
+  → Replacements optimize for FUTURE extensions
+
+INTUITION:
+  → tails[k] = smallest value that can END an increasing subsequence of length k+1
+  → Maintaining this array with binary search → O(n log n)
+  → The LENGTH of this array = LIS length
+  → The VALUES in this array are NOT the actual LIS elements
+       (they represent optimal "tail" values for each length)</code></pre></div>
+<h3>Step 6 — The tails Array Mechanics</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>tails[k] = smallest ending value of any increasing subsequence of length k+1
+</span>
+PROCESSING EACH ELEMENT nums[i]:
+
+CASE 1: nums[i] &gt; tails[last]
+  → nums[i] is larger than the largest tail
+  → We can EXTEND the longest subsequence by 1
+  → Append nums[i] to tails → tails length increases by 1
+
+CASE 2: nums[i] ≤ tails[last]
+  → nums[i] can't extend the longest subsequence
+  → But it might IMPROVE a shorter subsequence's tail
+  → Find the LEFTMOST position in tails where tails[pos] &gt;= nums[i]
+  → Replace tails[pos] with nums[i]
+  → This doesn't change LIS length but optimizes for future extensions
+
+FINDING THE POSITION: Binary search for "first element ≥ nums[i]"
+  → tails is sorted → binary search works → O(log L)
+  → This is the "lower bound" search (from Project 9's binary search)
+
+EXAMPLE WALKTHROUGH: nums = [10, 9, 2, 5, 3, 7, 101, 18]
+
+  tails = []
+
+  Process 10: tails empty → append
+    tails = [10]
+
+  Process 9:  9 &lt; 10 → find first ≥ 9 in tails → index 0 (value 10)
+              replace tails[0] with 9
+    tails = [9]
+
+  Process 2:  2 &lt; 9 → find first ≥ 2 in tails → index 0 (value 9)
+              replace tails[0] with 2
+    tails = [2]
+
+  Process 5:  5 &gt; 2 (last element) → append
+    tails = [2, 5]
+
+  Process 3:  3 ≤ 5 → find first ≥ 3 in tails → index 1 (value 5)
+              replace tails[1] with 3
+    tails = [2, 3]
+
+  Process 7:  7 &gt; 3 (last element) → append
+    tails = [2, 3, 7]
+
+  Process 101: 101 &gt; 7 → append
+    tails = [2, 3, 7, 101]
+
+  Process 18: 18 ≤ 101 → find first ≥ 18 in tails → index 3 (value 101)
+              replace tails[3] with 18
+    tails = [2, 3, 7, 18]
+
+  LIS length = tails.length = 4 ✓
+
+NOTE: tails = [2, 3, 7, 18] is NOT necessarily the actual LIS
+  → It's the optimal tail values for each subsequence length
+  → An actual LIS is [2, 5, 7, 101] or [2, 3, 7, 18] or [2, 5, 7, 18]
+  → To recover the actual LIS → need additional tracking (covered below)</code></pre></div>
+<hr>
+<h2>🛠️ HOW CAN WE SOLVE IT</h2>
+<h3>The Algorithm — Both Approaches</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>APPROACH 1: Classic DP — O(n²)
+</span>  1. Create dp[n] initialized to 1 (each element is LIS of length 1)
+  2. For i = 1 to n-1:
+       For j = 0 to i-1:
+         if nums[j] &lt; nums[i]:
+             dp[i] = max(dp[i], dp[j] + 1)
+  3. Return max(dp[0..n-1])
+
+APPROACH 2: Binary Search on tails — O(n log n)
+  1. Create tails list (initially empty)
+  2. For each num in nums:
+       if tails is empty OR num &gt; tails[last]:
+           tails.append(num)    → extend LIS
+       else:
+           pos = binary search for first element ≥ num in tails
+           tails[pos] = num     → optimize tail value
+  3. Return tails.length</code></pre></div>
+<hr>
+<h2>✅ WHAT SHOULD YOU DO</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ ALWAYS clarify: STRICTLY increasing or non-decreasing?
+</span>     → Strictly increasing: nums[j] &lt; nums[i] → use "first ≥" (lower_bound)
+     → Non-decreasing: nums[j] ≤ nums[i] → use "first &gt;" (upper_bound)
+     → Different binary search target → different results!
+
+→ ALWAYS start with the O(n²) DP to understand the problem
+     → It's correct and easy to verify
+     → Then optimize to O(n log n) with binary search
+     → In interviews: explain O(n²) first, then optimize
+
+→ ALWAYS remember: tails array gives LENGTH but not the actual LIS
+     → Length = tails.size() → always correct
+     → Values in tails → NOT necessarily the actual subsequence
+     → To recover actual LIS → need parent tracking (covered below)
+
+→ ALWAYS use Arrays.binarySearch or custom binary search correctly
+     → Java's Arrays.binarySearch returns:
+          → index if found
+          → -(insertion point) - 1 if not found
+     → Need careful handling for "first element ≥ target"
+     → Custom binary search is often cleaner for this specific case
+
+→ ALWAYS handle the empty tails case
+     → First element always starts a new subsequence
+     → Either check explicitly or handle via binary search logic
+
+→ ALWAYS consider whether to use int[] or ArrayList for tails
+     → int[] with size counter: faster (no boxing/unboxing)
+     → ArrayList&lt;Integer&gt;: simpler code but slower
+     → For competitive programming: int[] preferred
+     → For interviews: either is fine</code></pre></div>
+<hr>
+<h2>🚫 WHAT SHOULD YOU NOT DO</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>→ DO NOT confuse subsequence with subarray
+</span>     → Subarray = contiguous → sliding window
+     → Subsequence = can skip → DP
+     → "Longest increasing subarray" is a different (easier) problem
+
+→ DO NOT assume tails array IS the LIS
+     → tails = [2, 3, 7, 18] → this is NOT necessarily a valid subsequence
+     → It represents optimal tail values for each possible length
+     → The actual LIS might be [2, 5, 7, 101]
+     → Only the LENGTH of tails is guaranteed correct
+
+→ DO NOT use "first element &gt;" when problem says "strictly increasing"
+     → Strictly increasing: each element &gt; previous
+     → Binary search for "first ≥" (lower_bound) → correct for strict
+     → "First &gt;" (upper_bound) → gives non-decreasing (allows equal)
+     → Getting this wrong → wrong LIS length for arrays with duplicates
+
+→ DO NOT forget that dp[i] = 1 initially (not 0)
+     → Every single element is a valid subsequence of length 1
+     → Starting from 0 → every dp value is off by 1
+
+→ DO NOT skip the O(n²) approach in interviews
+     → Start with O(n²) → shows understanding
+     → Then say "we can optimize using binary search"
+     → Jumping straight to O(n log n) without explanation → risky
+     → Interviewer might think you memorized the solution
+
+→ DO NOT use this for "longest non-decreasing subsequence" without adjusting
+     → Non-decreasing allows equal consecutive elements
+     → Need upper_bound instead of lower_bound in binary search
+     → Or: use nums[j] &lt;= nums[i] in O(n²) DP</code></pre></div>
+<hr>
+<h2>🔀 WHEN TO USE THIS PATTERN</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>✓ "Find the longest increasing/decreasing subsequence"
+</span>✓ "Minimum number of elements to remove for sorted order"
+     → = n - LIS length
+✓ "Maximum number of envelopes that can be nested"
+     → Russian doll envelopes → 2D LIS variant
+✓ "Longest chain of pairs"
+     → Sort by first element → LIS on second element
+✓ "Number of longest increasing subsequences" (count variant)
+✓ Any problem reducible to LIS
+
+REAL-WORLD APPLICATIONS:
+  → Stock analysis: longest period of increasing prices (non-contiguous)
+  → Task scheduling: longest chain of dependent tasks
+  → DNA sequencing: longest common increasing subsequence
+  → Patience sorting algorithm (actual sorting method)</code></pre></div>
+<hr>
+<h2>🚫 WHEN NOT TO USE THIS PATTERN</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>✗ Problem asks for CONTIGUOUS increasing subarray
+</span>     → Simple linear scan or sliding window → O(n)
+     → No DP or binary search needed
+
+✗ Array is already sorted
+     → LIS = entire array → answer is n
+     → No computation needed
+
+✗ Need longest COMMON subsequence of TWO arrays
+     → Different problem → 2D DP (Project 50)
+     → LIS is single-array; LCS is two-array
+
+✗ Need the actual subsequence elements (not just length)
+     → O(n log n) tails approach gives LENGTH only
+     → Need additional tracking for actual elements
+     → O(n²) DP with parent array is simpler for recovery
+
+✗ Subsequence must satisfy complex constraints beyond "increasing"
+     → LIS binary search trick relies on simple ordering
+     → Complex constraints may need general backtracking or 2D DP</code></pre></div>
+<hr>
+<h2>⚙️ HOW IT ONLY WORKS — Internal Mechanics</h2>
+<h3>The tails Array Invariant</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>INVARIANT: At all times:
+</span>  1. tails is SORTED in strictly increasing order
+  2. tails[k] = smallest possible ending value for an increasing 
+     subsequence of length k+1
+  3. tails.length = length of the longest increasing subsequence found so far
+
+PROOF OF INVARIANT 1 (tails is always sorted):
+
+  Initially: tails is empty → trivially sorted ✓
+
+  When we APPEND (num &gt; tails[last]):
+    → num &gt; tails[last] → sorted order maintained ✓
+
+  When we REPLACE tails[pos] with num:
+    → We found pos such that tails[pos] ≥ num (first such position)
+    → Therefore: tails[pos-1] &lt; num (previous element is smaller)
+    → After replacement: tails[pos-1] &lt; num ≤ old tails[pos]
+    → And num &lt; tails[pos+1] (since tails[pos] ≤ tails[pos+1] and 
+      tails[pos] was the FIRST ≥ num → tails[pos+1] &gt; num)
+    → Sorted order maintained ✓
+
+PROOF OF INVARIANT 2 (optimal tail values):
+
+  When we replace tails[pos] with a SMALLER value num:
+    → There exists an increasing subsequence of length pos+1 ending at num
+    → num ≤ old tails[pos] → this is a BETTER (smaller) ending value
+    → Smaller ending → easier to extend in the future
+    → Optimal ✓
+
+  When we append num:
+    → There exists an increasing subsequence of length tails.length ending at num
+    → This is the FIRST subsequence of this length → trivially optimal ✓</code></pre></div>
+<h3>Binary Search Implementation Detail</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>We need: "first position in tails where tails[pos] &gt;= num"
+</span>This is called "lower bound" search.
+
+CUSTOM BINARY SEARCH:
+  int lo = 0, hi = tailsLength;
+  while (lo &lt; hi) {
+      int mid = lo + (hi - lo) / 2;
+      if (tails[mid] &lt; num) {
+          lo = mid + 1;    // tails[mid] too small → look right
+      } else {
+          hi = mid;         // tails[mid] &gt;= num → could be answer, look left
+      }
+  }
+  // lo = first position where tails[pos] &gt;= num
+
+WHY NOT Arrays.binarySearch?
+  → Arrays.binarySearch returns negative value when not found
+  → Requires awkward transformation: -(result) - 1
+  → Custom binary search is cleaner and more intuitive
+  → Also: Arrays.binarySearch finds ANY match, not necessarily the FIRST
+
+FOR NON-DECREASING (allowing equal):
+  → Change condition to tails[mid] &lt;= num → lo = mid + 1
+  → This finds "first position where tails[pos] &gt; num" (upper bound)
+  → Allows equal values in the subsequence</code></pre></div>
+<h3>Time Complexity — Precise Analysis</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>O(n²) DP:
+</span>  → Outer loop: n iterations
+  → Inner loop: up to n iterations
+  → Total: O(n²)
+  → Space: O(n) for dp array
+
+O(n log n) Binary Search:
+  → For each of n elements:
+       → Binary search on tails: O(log L) where L ≤ n
+       → Append or replace: O(1)
+  → Total: O(n log n)
+  → Space: O(n) for tails array (worst case: entire array is sorted)
+
+COMPARISON:
+  n = 10,000:
+    O(n²) = 10^8 → 1-2 seconds → borderline
+    O(n log n) = 10^4 * 13 ≈ 130K → instant
+
+  n = 100,000:
+    O(n²) = 10^10 → minutes → TLE
+    O(n log n) = 10^5 * 17 ≈ 1.7M → instant
+
+  n = 1,000,000:
+    O(n²) = impossible
+    O(n log n) = 10^6 * 20 ≈ 20M → ~200ms → comfortable</code></pre></div>
+<h3>Recovering the Actual LIS (Not Just Length)</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>THE PROBLEM: tails gives us LENGTH but not the actual subsequence.
+</span>
+SOLUTION FOR O(n²) APPROACH:
+  → Maintain parent[] array alongside dp[]
+  → parent[i] = index of previous element in LIS ending at i
+  → After finding the max dp[i], trace back through parent pointers
+
+SOLUTION FOR O(n log n) APPROACH:
+  → Maintain a parallel array tracking which ORIGINAL index was placed at each position
+  → Also maintain a predecessor array for each element
+  → When replacing tails[pos] with nums[i]:
+       → Record that nums[i]'s predecessor is whoever is at position pos-1
+  → After processing all elements:
+       → Start from the last element placed in the last tails position
+       → Follow predecessor chain backward → reconstruct LIS
+
+This recovery adds O(n) space but doesn't change time complexity.</code></pre></div>
+<hr>
+<h2>⚠️ COMMON PITFALLS AND FAILURE MODES</h2>
+<h3>Pitfall 1: Strictly Increasing vs Non-Decreasing</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>nums = [1, 3, 3, 5]
+</span>
+STRICTLY INCREASING (each &gt; previous):
+  LIS = [1, 3, 5] → length 3
+  Binary search: "first ≥" → when processing second 3:
+    tails = [1, 3] → first ≥ 3 is index 1 → replace tails[1] with 3 → [1, 3]
+    (no change — 3 replaces 3)
+    tails stays [1, 3] → next 5 appends → [1, 3, 5] → length 3 ✓
+
+NON-DECREASING (each ≥ previous):
+  LIS = [1, 3, 3, 5] → length 4
+  Binary search: "first &gt;" → when processing second 3:
+    tails = [1, 3] → first &gt; 3 is index 2 (beyond end) → APPEND 3
+    tails = [1, 3, 3] → next 5 appends → [1, 3, 3, 5] → length 4 ✓
+
+THE DIFFERENCE IS IN THE BINARY SEARCH CONDITION:
+  Strictly increasing: tails[mid] &lt; num → go right (find first ≥)
+  Non-decreasing:      tails[mid] &lt;= num → go right (find first &gt;)
+  
+  ONE CHARACTER DIFFERENCE (&lt; vs &lt;=) → DIFFERENT ANSWER</code></pre></div>
+<h3>Pitfall 2: Forgetting dp[i] = 1 Initialization</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>WRONG:
+</span>  int[] dp = new int[n]; // all zeros
+  for (int i = 1; i &lt; n; i++)
+      for (int j = 0; j &lt; i; j++)
+          if (nums[j] &lt; nums[i])
+              dp[i] = Math.max(dp[i], dp[j] + 1);
+  
+  → dp[0] = 0 (never updated!) → wrong
+  → dp values are all 1 less than correct
+
+CORRECT:
+  int[] dp = new int[n];
+  Arrays.fill(dp, 1); // every element is LIS of length 1
+  for (int i = 1; i &lt; n; i++)
+      for (int j = 0; j &lt; i; j++)
+          if (nums[j] &lt; nums[i])
+              dp[i] = Math.max(dp[i], dp[j] + 1);</code></pre></div>
+<h3>Pitfall 3: All Equal Elements</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>nums = [7, 7, 7, 7, 7]
+</span>
+STRICTLY increasing: LIS = 1 (can't have equal neighbors)
+
+With O(n²) DP:
+  dp = [1, 1, 1, 1, 1] → nums[j] &lt; nums[i] is NEVER true → correct ✓
+
+With binary search:
+  Process 7: tails = [7]
+  Process 7: first ≥ 7 is index 0 → replace tails[0] with 7 → tails = [7]
+  (repeats for all elements)
+  tails = [7] → length 1 ✓
+
+Both handle it correctly as long as we use STRICT comparison.</code></pre></div>
+<h3>Pitfall 4: Single Element</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>nums = [42]
+</span>→ LIS = 1
+
+Both approaches handle this:
+  O(n²): dp = [1] → max = 1 ✓
+  Binary search: tails = [42] → length 1 ✓
+
+Edge case but trivially correct.</code></pre></div>
+<h3>Pitfall 5: Assuming tails IS the LIS</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>nums = [3, 1, 4, 1, 5, 9, 2, 6]
+</span>
+Binary search process:
+  3 → tails = [3]
+  1 → replace 3 → tails = [1]
+  4 → append → tails = [1, 4]
+  1 → replace 1 → tails = [1, 4]   (no change)
+  5 → append → tails = [1, 4, 5]
+  9 → append → tails = [1, 4, 5, 9]
+  2 → replace 4 → tails = [1, 2, 5, 9]
+  6 → replace 9 → tails = [1, 2, 5, 6]
+
+  tails = [1, 2, 5, 6] → length 4 ✓
+  
+  But is [1, 2, 5, 6] an actual LIS?
+  → 1 is at index 1 or 3
+  → 2 is at index 6
+  → 5 is at index 4
+  → 6 is at index 7
+  → Order: 1(idx3), 5(idx4), 2(idx6), 6(idx7) → 2 &lt; 5 → NOT increasing!
+  
+  tails = [1, 2, 5, 6] is NOT a valid subsequence!
+  The actual LIS could be [1, 4, 5, 9] or [1, 4, 5, 6] or [3, 4, 5, 9]
+  
+  LENGTH is correct (4) → VALUES are misleading</code></pre></div>
+<h3>Pitfall 6: Negative Numbers</h3>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>nums = [-5, -3, -8, -1, -7]
+</span>
+Works identically — comparisons handle negatives naturally:
+  -5: tails = [-5]
+  -3: -3 &gt; -5 → append → tails = [-5, -3]
+  -8: first ≥ -8 is index 0 (-5) → replace → tails = [-8, -3]
+  -1: -1 &gt; -3 → append → tails = [-8, -3, -1]
+  -7: first ≥ -7 is index 1 (-3) → replace → tails = [-8, -7, -1]
+
+  LIS length = 3 ✓ (e.g., [-5, -3, -1] or [-8, -3, -1])</code></pre></div>
+<hr>
+<h2>📈 SCALABILITY CONSIDERATIONS</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>SCENARIO 1: Small n (n ≤ 1000)
+</span>  → O(n²) = 10^6 → instant
+  → Use O(n²) for simplicity + easy LIS recovery
+
+SCENARIO 2: Medium n (n ≤ 10,000)
+  → O(n²) = 10^8 → 1-2 seconds → borderline
+  → O(n log n) recommended for safety
+
+SCENARIO 3: Large n (n ≤ 100,000)
+  → O(n²) = 10^10 → TLE
+  → O(n log n) = 10^5 * 17 ≈ 2M → instant
+  → MUST use binary search approach
+
+SCENARIO 4: Very large n (n ≤ 10^6)
+  → O(n log n) = 10^6 * 20 ≈ 20M → ~200ms
+  → Comfortable but use int[] for tails (not ArrayList)
+  → Avoid boxing/unboxing overhead
+
+MEMORY:
+  → O(n²) DP: dp array = O(n) (manageable)
+  → O(n log n): tails array = O(n) worst case
+  → Both use O(n) space — no advantage either way
+  → But O(n²) DP with parent tracking also O(n)</code></pre></div>
+<hr>
+<h2>🔍 INTERPRETABILITY CONSIDERATIONS</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>MENTAL MODEL — "Building the Tallest Tower of Blocks"
+</span>
+→ Blocks arrive one by one (array elements)
+→ Each block has a height (its value)
+→ You can only stack a block on top if it's TALLER than the current top
+→ You want the TALLEST possible tower (most blocks)
+→ You can SKIP blocks that don't help
+
+O(n²) DP MODEL:
+  → For each new block: "Which existing tower can I extend?"
+  → Check ALL towers → find the tallest one I can extend → add my block
+  → Track the height of each tower ending at each block
+
+O(n log n) TAILS MODEL:
+  → Maintain "showcase towers" — one per possible height
+  → Each showcase shows the SHORTEST top block for that tower height
+  → New block: if taller than all showcases → start new (taller) showcase
+  → Otherwise: find the showcase where it can replace the top with a shorter block
+  → The number of showcases = the tallest possible tower
+
+DEBUGGING:
+  → Print dp array for O(n²) → verify each value
+  → Print tails array after each step for O(n log n)
+  → Verify tails is always sorted
+  → Compare both approaches' final lengths — must match</code></pre></div>
+<hr>
+<div class="github-btn-wrap"><a class="github-btn" href="https://github.com/Shakti4640/leetcode-patterns-guide-java/tree/main/project- (45)" target="_blank" rel="noopener"><svg viewBox="0 0 24 24"><path d="M12 .5C5.37.5 0 5.87 0 12.5c0 5.3 3.44 9.8 8.2 11.39.6.11.82-.26.82-.58v-2.03c-3.34.73-4.04-1.61-4.04-1.61-.55-1.39-1.34-1.76-1.34-1.76-1.09-.74.08-.73.08-.73 1.2.09 1.84 1.24 1.84 1.24 1.07 1.83 2.8 1.3 3.49 1 .1-.78.42-1.3.76-1.6-2.67-.3-5.47-1.33-5.47-5.93 0-1.31.47-2.38 1.24-3.22-.14-.3-.54-1.52.1-3.18 0 0 1.01-.32 3.3 1.23a11.5 11.5 0 0 1 3-.4c1.02 0 2.04.13 3 .4 2.28-1.55 3.29-1.23 3.29-1.23.64 1.66.24 2.88.12 3.18.77.84 1.23 1.91 1.23 3.22 0 4.61-2.81 5.63-5.48 5.92.43.37.81 1.1.81 2.22v3.29c0 .32.21.7.82.58C20.56 22.3 24 17.8 24 12.5 24 5.87 18.63.5 12 .5z"/></svg>💻 View Complete Java Code on GitHub</a></div>
+
+<hr>
+<h2>🔑 EXPECTED OUTPUT</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>╔═══════════════════════════════════════════════════════════╗
+</span>║  PROJECT 45: Longest Increasing Subsequence               ║
+║  Pattern: DP + Binary Search Hybrid → Patience Sorting    ║
+╚═══════════════════════════════════════════════════════════╝
+
+═══ TEST 1: O(n²) DP Trace ═══
+Array: [10, 9, 2, 5, 3, 7, 101, 18]
+═══════════════════════════════════════════
+O(n²) DP Trace:
+  i=0 val=10 → dp[0]=1 (best predecessor: none)
+  i=1 val=9 → dp[1]=1 (best predecessor: none)
+  i=2 val=2 → dp[2]=1 (best predecessor: none)
+  i=3 val=5 → dp[3]=2 (best predecessor: j=2(val=2,dp=1))
+  i=4 val=3 → dp[4]=2 (best predecessor: j=2(val=2,dp=1))
+  i=5 val=7 → dp[5]=3 (best predecessor: j=3(val=5,dp=2))
+  i=6 val=101 → dp[6]=4 (best predecessor: j=5(val=7,dp=3))
+  i=7 val=18 → dp[7]=4 (best predecessor: j=5(val=7,dp=3))
+dp = [1, 1, 1, 2, 2, 3, 4, 4]
+LIS length = 4
+Actual LIS: [2, 5, 7, 101]
+
+═══ TEST 2: O(n log n) Binary Search Trace ═══
+Array: [10, 9, 2, 5, 3, 7, 101, 18]
+═══════════════════════════════════════════
+O(n log n) Binary Search Trace:
+  Process 10 → APPEND (new longest) → tails = [10]
+  Process 9 → REPLACE tails[0]=10 with 9 → tails = [9]
+  Process 2 → REPLACE tails[0]=9 with 2 → tails = [2]
+  Process 5 → APPEND (new longest) → tails = [2, 5]
+  Process 3 → REPLACE tails[1]=5 with 3 → tails = [2, 3]
+  Process 7 → APPEND (new longest) → tails = [2, 3, 7]
+  Process 101 → APPEND (new longest) → tails = [2, 3, 7, 101]
+  Process 18 → REPLACE tails[3]=101 with 18 → tails = [2, 3, 7, 18]
+LIS length = 4
+
+═══ TEST 4: Verify All Approaches Agree ═══
+┌────────────────────────────────────┬──────┬──────┐
+│ Array                              │ O(n²)│O(nlogn)│
+├────────────────────────────────────┼──────┼──────┤
+│ [10, 9, 2, 5, 3, 7, 101, 18]      │    4 │    4 │
+│ [0, 1, 0, 3, 2, 3]                │    4 │    4 │
+│ [7, 7, 7, 7, 7]                   │    1 │    1 │
+│ [1, 2, 3, 4, 5]                   │    5 │    5 │
+│ [5, 4, 3, 2, 1]                   │    1 │    1 │
+│ [3, 1, 4, 1, 5, 9, 2, 6, 5, 3... │    6 │    6 │
+│ [1]                                │    1 │    1 │
+│ [1, 3, 2]                         │    2 │    2 │
+│ [-5, -3, -8, -1, -7]              │    3 │    3 │
+└────────────────────────────────────┴──────┴──────┘
+
+═══ TEST 5: Strictly Increasing vs Non-Decreasing ═══
+Array: [1, 3, 3, 5, 5, 7]
+Strictly increasing (LIS):  4
+Non-decreasing (LNDS):      6
+
+═══ TEST 8: Count of Longest Increasing Subsequences ═══
+[1, 3, 5, 4, 7] → LIS=4, count=2
+[2, 2, 2, 2, 2] → LIS=1, count=5
+[1, 2, 4, 3, 5, 4, 7, 2] → LIS=5, count=2
+
+═══ TEST 9: Performance Comparison ═══
+┌─────────┬───────────────┬─────────────────┬─────────┐
+│   n     │ O(n²) time    │ O(n log n) time │ LIS len │
+├─────────┼───────────────┼─────────────────┼─────────┤
+│    1000 │ 3 ms          │ 0 ms            │      63 │
+│    5000 │ 25 ms         │ 1 ms            │     130 │
+│   10000 │ 95 ms         │ 1 ms            │     180 │
+│   50000 │ SKIPPED       │ 5 ms            │     385 │
+│  100000 │ SKIPPED       │ 8 ms            │     530 │
+└─────────┴───────────────┴─────────────────┴─────────┘
+
+═══ TEST 10: Edge Cases ═══
+Empty: 0
+Single: 1
+Two increasing: 2
+Two decreasing: 1
+Two equal: 1
+Already sorted: 5
+Reverse sorted: 1
+Zigzag [1, 10, 2, 9, 3, 8, 4, 7, 5, 6]: 6</code></pre></div>
+<hr>
+<h2>📊 THE CROSS-PATTERN FUSION — DP + Binary Search</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>┌───────────┬────────────────────────────────────────────────────────┐
+</span>│ Pattern   │ How It Contributes to LIS                             │
+├───────────┼────────────────────────────────────────────────────────┤
+│ DP        │ Defines the state: "LIS ending at index i"            │
+│ (P43-44)  │ Recurrence: dp[i] = 1 + max(dp[j]) for valid j       │
+│           │ Gives O(n²) solution → correct but slow               │
+├───────────┼────────────────────────────────────────────────────────┤
+│ Binary    │ Optimizes the "find best predecessor" step            │
+│ Search    │ Instead of scanning all j &lt; i → binary search on      │
+│ (P9)      │ sorted tails array → O(log n) per element             │
+│           │ Reduces O(n²) → O(n log n)                            │
+├───────────┼────────────────────────────────────────────────────────┤
+│ Greedy    │ The tails array maintenance is greedy:                │
+│ (P19)     │ "Always keep the SMALLEST possible tail for each      │
+│           │  subsequence length" → maximizes future extensibility  │
+│           │ Local optimal (smallest tail) = global optimal (LIS)   │
+└───────────┴────────────────────────────────────────────────────────┘
+
+THIS IS THE FIRST TRUE CROSS-PATTERN FUSION:
+  → DP provides the FRAMEWORK (what to compute)
+  → Binary Search provides the SPEED (how to compute fast)
+  → Greedy provides the STRATEGY (what to maintain)
+  → Three patterns COMBINE into something none could achieve alone
+
+WHY THIS MATTERS:
+  → Real interview problems rarely use ONE pattern in isolation
+  → Recognizing that "this DP bottleneck can be binary-searched"
+     is the mark of an advanced problem solver
+  → The ability to COMBINE patterns = competitive advantage</code></pre></div>
+<hr>
+<h2>📊 THE COMPLETE DP PROGRESSION — Projects 43, 44, 45</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>┌──────────────────────┬─────────────────────┬──────────────────────┬──────────────────────┐
+</span>│ Aspect               │ Project 43          │ Project 44           │ Project 45           │
+│                      │ (Climbing Stairs)   │ (0/1 Knapsack)       │ (LIS)                │
+├──────────────────────┼─────────────────────┼──────────────────────┼──────────────────────┤
+│ State dimension      │ 1D (step n)         │ 2D (item i, cap w)   │ 1D (index i)         │
+│ State meaning        │ ways to reach n     │ max value with i,w   │ LIS ending at i      │
+│ Recurrence type      │ SUM (counting)      │ MAX (optimization)   │ MAX (optimization)   │
+│ Dependencies         │ dp[i-1], dp[i-2]    │ dp[i-1][w],          │ ALL dp[j] for j &lt; i  │
+│                      │ (constant: 2)       │ dp[i-1][w-wt]       │ (variable: up to i)  │
+│ Naive time           │ O(2^n)              │ O(2^N)               │ O(2^n)               │
+│ DP time              │ O(n)                │ O(N*W)               │ O(n²)                │
+│ Optimized time       │ O(n) → can't beat   │ O(N*W) → can't beat  │ O(n log n) ← HYBRID! │
+│ Optimization tool    │ Rolling variables   │ 1D array R-to-L      │ Binary search        │
+│ Space (optimized)    │ O(1)                │ O(W)                 │ O(n)                 │
+│ New concept          │ DP framework        │ 2D state + include/  │ DP + binary search   │
+│                      │ (memo/tab/rolling)  │ exclude decision     │ fusion               │
+└──────────────────────┴─────────────────────┴──────────────────────┴──────────────────────┘
+
+THE PROGRESSION OF OPTIMIZATION TECHNIQUES:
+  Project 43: Space optimization via rolling variables
+  Project 44: Space optimization via 1D array + loop direction
+  Project 45: TIME optimization via binary search on maintained structure
+
+EACH PROJECT TAUGHT A NEW OPTIMIZATION DIMENSION:
+  43 → Optimize SPACE by reducing dependency window
+  44 → Optimize SPACE by careful processing order
+  45 → Optimize TIME by replacing linear scan with binary search</code></pre></div>
+<hr>
+<h2>🧠 KEY TAKEAWAY</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>WHAT WE LEARNED:
+</span>→ LIS is solvable in O(n²) with classic DP → good starting point
+→ The O(n²) bottleneck is "scan all predecessors" → O(n) per element
+→ Maintaining a sorted tails array enables binary search → O(log n) per element
+→ tails[k] = smallest ending value for increasing subsequence of length k+1
+→ tails gives correct LENGTH but NOT the actual subsequence
+→ To recover actual LIS → need additional predecessor tracking
+
+THE BINARY SEARCH ON TAILS — WHY IT'S BRILLIANT:
+→ The tails array is always sorted → binary search works
+→ Each new element either EXTENDS (append) or OPTIMIZES (replace)
+→ Extending increases LIS length → append to tails
+→ Optimizing improves future extensibility → replace in tails
+→ This greedy strategy provably gives the correct LIS length
+
+THE PATTERN FUSION LESSON:
+→ DP alone: O(n²) — good but not great
+→ Binary search alone: can't solve LIS
+→ DP + Binary Search + Greedy: O(n log n) — optimal
+→ The COMBINATION is more powerful than any individual pattern
+→ This cross-pollination thinking is what makes expert problem solvers
+
+STRICTLY vs NON-DECREASING:
+→ Strictly increasing: binary search for "first ≥" (lower_bound)
+→ Non-decreasing: binary search for "first &gt;" (upper_bound)
+→ ONE character difference in code → completely different behavior
+→ ALWAYS clarify which version the problem requires
+
+PATTERN SIGNATURE:
+→ "Longest increasing/decreasing subsequence" ✓
+→ "Minimum deletions to make sorted" ✓
+→ "Maximum chain length" ✓
+→ Array elements with ordering constraint ✓
+→ = LIS → O(n²) DP or O(n log n) DP + BINARY SEARCH</code></pre></div>
+<hr>
+<h2>🌉 BRIDGE TO NEXT PROJECT</h2>
+<div class="relative"><pre style="color: rgb(57, 58, 52); font-family: Consolas, &quot;Bitstream Vera Sans Mono&quot;, &quot;Courier New&quot;, Courier, monospace; direction: ltr; text-align: left; white-space: pre; word-spacing: normal; word-break: normal; font-size: 0.9em; line-height: 1.2em; tab-size: 4; hyphens: none; padding: 1em; margin: 0.5em 0px; overflow: auto; border: 1px solid rgb(221, 221, 221); background-color: white;"><code style="white-space: pre-wrap; word-break: break-all;"><span>PROJECT 43 taught us:
+</span>→ 1D DP fundamentals → memoization, tabulation, rolling variables
+
+PROJECT 44 taught us:
+→ 2D DP → include/exclude decision → knapsack family
+
+PROJECT 45 taught us:
+→ DP + Binary Search hybrid → cross-pattern optimization
+→ Sometimes DP gives a correct but slow solution
+→ A clever data structure can accelerate the DP transitions
+
+PROJECT 46 (Minimum Meeting Rooms Required) will ask:
+→ Given a list of meeting intervals [start, end]
+→ Find the MINIMUM number of rooms needed so no two overlapping
+     meetings share a room
+→ This combines:
+     → Intervals pattern (Project 14) → sort by start time
+     → Min-heap (Project 35) → track earliest ending meeting per room
+     → Greedy thinking (Project 19) → assign to room that frees up soonest
+
+THE KEY SHIFT:
+  ┌────────────────────┬────────────────────────┬──────────────────────────┐
+  │ Aspect             │ Project 45             │ Project 46               │
+  │                    │ (LIS)                  │ (Meeting Rooms)          │
+  ├────────────────────┼────────────────────────┼──────────────────────────┤
+  │ Input              │ Array of numbers       │ Array of intervals       │
+  │ Core pattern       │ DP + Binary Search     │ Intervals + Heap         │
+  │ Optimization       │ Sorted tails array     │ Min-heap of end times    │
+  │ Decision           │ Extend or replace      │ Reuse room or add new    │
+  │ Answer             │ Length of tails        │ Max size of heap         │
+  └────────────────────┴────────────────────────┴──────────────────────────┘
+
+→ From sequence optimization → to interval scheduling
+→ Both use sorted structures for efficient decisions
+→ Both track "active" elements and decide extend vs replace
+→ The THINKING patterns rhyme even when the problems look different</code></pre></div>
+<hr>
+<p><strong>Ready for Project 46: Minimum Meeting Rooms Required (Intervals → Min-Heap of End Times → Overlap Counting via Heap Size)?</strong></p>
+</div>
+</div>
+
+
+<!-- ========== data-index="5" ========== -->
+<div class="chat-message" data-index="5"></div>
+</div>
+<div class="bottom-nav">
+  <a href="project-44.html" class="nav-btn prev">← Prev</a>
+  <div class="nav-center">
+    <span class="nav-project-label">PROJECT 45 of 60</span>
+    <span class="nav-project-title">Longest Increasing Subsequence (LIS)</span>
+    <span class="kbd-hint">← → arrow keys to navigate</span>
+  </div>
+  <a href="project-46.html" class="nav-btn next">Next →</a>
+  <a href="index.html" class="nav-btn home">🏠 TOC</a>
+</div>
+<div id="progress-track"><div id="progress-fill"></div></div>
+<div id="progress-pct">0%</div>
+<script src="script.js"></script>
+<script>
+document.addEventListener('keydown', function(e) {
+  if (['INPUT','TEXTAREA'].includes(document.activeElement.tagName)) return;
+  if (e.key === 'ArrowRight' && "project-46.html" !== null) window.location = "project-46.html";
+  if (e.key === 'ArrowLeft' && "project-44.html" !== null) window.location = "project-44.html";
+});
+</script>
+</body>
+</html>
